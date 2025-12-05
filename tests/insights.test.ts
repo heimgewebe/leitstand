@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFile, mkdir, rm } from 'fs/promises';
+import { writeFile, rm, mkdtemp } from 'fs/promises';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { loadDailyInsights } from '../src/insights.js';
 
 describe('insights', () => {
-  const testDir = '/tmp/leitstand-test-insights';
+  let testDir: string;
   
   beforeEach(async () => {
-    await mkdir(testDir, { recursive: true });
+    testDir = await mkdtemp(join(tmpdir(), 'leitstand-test-insights-'));
   });
   
   afterEach(async () => {

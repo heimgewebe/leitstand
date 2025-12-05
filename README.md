@@ -68,8 +68,7 @@ Create a `leitstand.config.json` file in your project root:
     "dir": "digests/daily"
   },
   "digest": {
-    "maxEvents": 20,
-    "timezone": "UTC"
+    "maxEvents": 20
   }
 }
 ```
@@ -81,7 +80,6 @@ Create a `leitstand.config.json` file in your project root:
 - `paths.wgx.metricsDir`: Directory containing metrics snapshot JSON files from WGX
 - `output.dir`: Output directory for generated digests
 - `digest.maxEvents`: Maximum number of events to include in the digest (default: 20)
-- `digest.timezone`: Timezone for time calculations - "UTC" or "local" (default: "UTC")
 
 **Environment Variables**: Paths support environment variable expansion using `$VAR_NAME` syntax.
 

@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFile, mkdir, rm } from 'fs/promises';
+import { writeFile, rm, mkdtemp } from 'fs/promises';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { loadRecentEvents } from '../src/events.js';
 
 describe('events', () => {
-  const testDir = '/tmp/leitstand-test-events';
+  let testDir: string;
   
   beforeEach(async () => {
-    await mkdir(testDir, { recursive: true });
+    testDir = await mkdtemp(join(tmpdir(), 'leitstand-test-events-'));
   });
   
   afterEach(async () => {

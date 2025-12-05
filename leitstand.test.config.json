@@ -14,7 +14,6 @@
     "dir": "digests/daily"
   },
   "digest": {
-    "maxEvents": 20,
-    "timezone": "UTC"
+    "maxEvents": 20
   }
 }

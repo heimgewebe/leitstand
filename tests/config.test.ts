@@ -1,14 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFile, mkdir, rm } from 'fs/promises';
+import { writeFile, rm, mkdtemp } from 'fs/promises';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { loadConfig } from '../src/config.js';
 
 describe('config', () => {
-  const testDir = '/tmp/leitstand-test-config';
-  const configPath = join(testDir, 'test.config.json');
+  let testDir: string;
+  let configPath: string;
   
   beforeEach(async () => {
-    await mkdir(testDir, { recursive: true });
+    testDir = await mkdtemp(join(tmpdir(), 'leitstand-test-config-'));
+    configPath = join(testDir, 'test.config.json');
   });
   
   afterEach(async () => {
@@ -71,5 +73,20 @@ describe('config', () => {
     expect(config.paths.semantah.todayInsights).toContain('/test/root/insights/today.json');
     
     delete process.env.TEST_ROOT;
+  });
+  
+  it('should fail when environment variables are not set', async () => {
+    const configData = {
+      paths: {
+        semantah: { todayInsights: '$UNDEFINED_VAR/insights/today.json' },
+        chronik: { dataDir: './chronik/data' },
+        wgx: { metricsDir: './wgx/metrics' },
+      },
+      output: { dir: './digests/daily' },
+    };
+    
+    await writeFile(configPath, JSON.stringify(configData), 'utf-8');
+    
+    await expect(loadConfig(configPath)).rejects.toThrow('Environment variable(s) not set: UNDEFINED_VAR');
   });
 });

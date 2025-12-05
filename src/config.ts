@@ -22,23 +22,40 @@ const ConfigSchema = z.object({
   }),
   digest: z.object({
     maxEvents: z.number().int().positive().default(20),
-    timezone: z.enum(['UTC', 'local']).default('UTC'),
-  }).optional().default({ maxEvents: 20, timezone: 'UTC' }),
+  }).optional().default({ maxEvents: 20 }),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
 
 /**
  * Expands environment variables in a path string
+ * @throws Error if an environment variable is not set
  */
 function expandEnvVars(path: string): string {
-  return path.replace(/\$([A-Z_]+)/g, (_, varName) => {
-    return process.env[varName] || `$${varName}`;
+  const unexpandedVars: string[] = [];
+  
+  const expanded = path.replace(/\$([A-Z_]+)/g, (_, varName) => {
+    const value = process.env[varName];
+    if (value === undefined) {
+      unexpandedVars.push(varName);
+      return `$${varName}`;
+    }
+    return value;
   });
+  
+  if (unexpandedVars.length > 0) {
+    throw new Error(
+      `Environment variable(s) not set: ${unexpandedVars.join(', ')}. ` +
+      `Please set these variables or use absolute/relative paths instead.`
+    );
+  }
+  
+  return expanded;
 }
 
 /**
  * Resolves a path relative to a base directory
+ * @throws Error if path contains unexpanded environment variables
  */
 function resolvePath(path: string, baseDir: string): string {
   const expanded = expandEnvVars(path);

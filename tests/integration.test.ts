@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFile, mkdir, rm, readFile } from 'fs/promises';
+import { writeFile, mkdir, rm, readFile, mkdtemp } from 'fs/promises';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { loadConfig } from '../src/config.js';
 import { loadDailyInsights } from '../src/insights.js';
 import { loadRecentEvents } from '../src/events.js';
@@ -9,13 +10,19 @@ import { buildDailyDigest } from '../src/digest.js';
 import { renderDailyDigestMarkdown } from '../src/renderMarkdown.js';
 
 describe('integration', () => {
-  const testDir = '/tmp/leitstand-test-integration';
-  const insightsDir = join(testDir, 'insights');
-  const eventsDir = join(testDir, 'events');
-  const metricsDir = join(testDir, 'metrics');
-  const outputDir = join(testDir, 'digests', 'daily');
+  let testDir: string;
+  let insightsDir: string;
+  let eventsDir: string;
+  let metricsDir: string;
+  let outputDir: string;
   
   beforeEach(async () => {
+    testDir = await mkdtemp(join(tmpdir(), 'leitstand-test-integration-'));
+    insightsDir = join(testDir, 'insights');
+    eventsDir = join(testDir, 'events');
+    metricsDir = join(testDir, 'metrics');
+    outputDir = join(testDir, 'digests', 'daily');
+    
     await mkdir(insightsDir, { recursive: true });
     await mkdir(eventsDir, { recursive: true });
     await mkdir(metricsDir, { recursive: true });
