@@ -1,0 +1,20 @@
+{
+  "paths": {
+    "semantah": {
+      "todayInsights": "test-data/insights/today.json"
+    },
+    "chronik": {
+      "dataDir": "test-data/chronik/data"
+    },
+    "wgx": {
+      "metricsDir": "test-data/wgx/metrics"
+    }
+  },
+  "output": {
+    "dir": "digests/daily"
+  },
+  "digest": {
+    "maxEvents": 20,
+    "timezone": "UTC"
+  }
+}

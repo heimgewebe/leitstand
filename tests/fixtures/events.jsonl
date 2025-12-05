@@ -1,0 +1,4 @@
+{"timestamp":"2025-12-05T10:30:00Z","kind":"ci.success","repo":"heimgewebe/wgx","job":"test"}
+{"timestamp":"2025-12-05T09:15:00Z","kind":"ci.failure","repo":"heimgewebe/semantAH","job":"build","severity":"high"}
+{"timestamp":"2025-12-05T08:00:00Z","kind":"deploy.success","repo":"heimgewebe/hausKI","job":"production"}
+{"timestamp":"2025-12-04T23:45:00Z","kind":"ci.warning","repo":"heimgewebe/chronik","job":"lint","severity":"low"}
