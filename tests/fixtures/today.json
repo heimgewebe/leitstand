@@ -1,0 +1,17 @@
+{
+  "ts": "2025-12-05",
+  "topics": [
+    ["TypeScript", 15],
+    ["Testing", 10],
+    ["CI/CD", 8],
+    ["Documentation", 5]
+  ],
+  "questions": [
+    "How to improve test coverage?",
+    "Should we migrate to ESM?"
+  ],
+  "deltas": [
+    "Added new leitstand repository",
+    "Updated CI workflows in metarepo"
+  ]
+}

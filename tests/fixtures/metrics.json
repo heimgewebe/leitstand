@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-12-05T12:00:00Z",
+  "repoCount": 5,
+  "status": {
+    "ok": 3,
+    "warn": 1,
+    "fail": 1
+  },
+  "metadata": {
+    "source": "wgx-snapshot"
+  }
+}

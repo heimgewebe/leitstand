@@ -1,0 +1,19 @@
+{
+  "paths": {
+    "semantah": {
+      "todayInsights": "$VAULT_ROOT/.gewebe/insights/today.json"
+    },
+    "chronik": {
+      "dataDir": "$VAULT_ROOT/.gewebe/chronik/data"
+    },
+    "wgx": {
+      "metricsDir": "$VAULT_ROOT/.gewebe/wgx/metrics"
+    }
+  },
+  "output": {
+    "dir": "digests/daily"
+  },
+  "digest": {
+    "maxEvents": 20
+  }
+}
