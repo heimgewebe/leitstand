@@ -253,5 +253,53 @@ This is the initial iteration focused on generating daily digests. Future versio
 - Integration with hausKI for AI-powered insights
 
 ## License
-
 MIT
+
+## Heimgewebe Data Flow
+
+This section shows how `leitstand` fits into the wider Heimgewebe organism.
+
+```mermaid
+flowchart TD
+
+    FEEDS[aussensensor<br/>Feeds & News] --> CHRONIK[chronik<br/>Events (JSONL)]
+
+    CHRONIK --> SEMANTAH[semantAH<br/>Semantic Index<br/>Daily Insights]
+    CHRONIK --> LEITSTAND[leitstand<br/>Daily Digest Generator]
+
+    SEMANTAH --> LEITSTAND
+
+    LEITSTAND --> HAUSKI[hausKI<br/>Decision Engine]
+    HAUSKI --> CHRONIK
+```
+
+### Roles in the flow
+
+- **aussensensor**
+  Curated external feeds. Writes events into `chronik` as JSONL.
+
+- **chronik**
+  Event log and audit store. Each domain (for example `metrics.snapshot`) maps to one JSONL file in `CHRONIK_DATA_DIR`.
+
+- **semantAH**
+  Builds and updates the semantic index and writes **daily insights** to:
+  - `$VAULT_ROOT/.gewebe/insights/today.json`
+  - `$VAULT_ROOT/.gewebe/insights/daily/YYYY-MM-DD.json`
+
+- **wgx** (not drawn explicitly)
+  Generates fleet metrics snapshots which are stored in `chronik` as `metrics.snapshot` events and exported to:
+  - `$VAULT_ROOT/.gewebe/wgx/metrics/YYYY-MM-DD.json`
+  - `$VAULT_ROOT/.gewebe/wgx/metrics/latest.json`
+
+- **leitstand**
+  Reads three main inputs:
+  1. Daily insights from semantAH (`today.json`),
+  2. recent events from chronik (JSONL files),
+  3. fleet health metrics from WGX snapshots.
+
+  It combines them into a single daily digest (Markdown + JSON) that can be used as a dashboard, email, or further automation input.
+
+- **hausKI**
+  Consumes digests and insights as part of its decision-making, and writes decisions and outcomes back into `chronik`, closing the loop.
+
+In short: `leitstand` is the place where the organism looks at itself once per day and formulates a coherent story about its current state.
