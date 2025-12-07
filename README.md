@@ -287,6 +287,39 @@ This is the initial iteration focused on generating daily digests. Future versio
 - Multi-day trend analysis
 - Integration with hausKI for AI-powered insights
 
+## Data Flow & Contracts
+
+Leitstand ist die **visuelle Schaltzentrale** des Heimgewebes.  
+Damit Leitstand korrekte und stabile Ansichten liefern kann, stützt es sich
+auf klar definierte Datenverträge.
+
+Die verbindliche Sicht auf die Datenströme, die Leitstand konsumiert, steht in:
+
+- `docs/data-flow.md`
+
+Dort sind die zentralen Eingänge beschrieben:
+
+- `fleet.health` – Fleet-Gesundheit (wgx / metarepo Contracts)
+- `insights.daily` – semantische Tages-Insights aus semantAH
+- `event.line` – Event-Backbone aus chronik
+
+Die zugrunde liegenden JSON-Schemas sind im **metarepo** dokumentiert:
+
+- `contracts/fleet.health.schema.json`
+- `contracts/insights.daily.schema.json`
+- `contracts/insights.schema.json`
+- `contracts/event.line.schema.json`
+
+Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
+
+- `docs/contracts-index.md`
+
+Hinweis:
+
+- Neue Leitstand-Features, die zusätzliche Datenquellen nutzen, sollten
+  sowohl in `docs/data-flow.md` als auch im Contracts-Index des metarepos
+  verankert werden.
+
 ## License
 MIT
 
