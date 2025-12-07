@@ -5,13 +5,13 @@ Es ist die verbindliche Sicht auf den Organismus-Fluss:
 
     aussensensor → chronik → semantAH → leitstand → hausKI → chronik
 
-Leitstand ist damit das „Regelzentrum“ des Heimgewebes.
+Leitstand ist damit die **visuelle Schaltzentrale** des Heimgewebes.
 
 ---
 
 ## 1. Eingehende Datenströme
 
-Leitstand konsumiert drei zentrale Contract-Typen:
+Im aktuellen Stand konsumiert Leitstand drei zentrale Contract-Typen:
 
 ### 1.1 `fleet.health`
 Schema: `contracts/fleet.health.schema.json`
@@ -34,7 +34,8 @@ Quelle:
 
 Garantierte Felder:
   - `ts: YYYY-MM-DD`
-  - `topics: [[string, number], …]`
+  - `topics`: Liste thematischer Einträge, sortiert nach Relevanz
+    (konkrete Struktur der Einträge gemäß `contracts/insights.daily.schema.json`)
   - `questions: [...]`
   - `deltas: [...]`
   - optional: `source`, `metadata`
@@ -60,7 +61,7 @@ Verwendung:
 ## 2. Aktualisierungsfrequenzen
 
 - `fleet.health` – bei jedem wgx-guard/smoke Lauf, min. täglich
-- `insights.daily` – 1× täglich, bereit bis 08:00
+- `insights.daily` – 1× täglich, typischerweise bereit bis 08:00 (lokale Zeit)
 - `event.line` – kontinuierlich, Append-only
 
 Leitstand verarbeitet diese Daten asynchron; fehlende Quellen werden angezeigt, nicht verschwiegen.
