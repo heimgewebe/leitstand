@@ -5,13 +5,13 @@ Es ist die verbindliche Sicht auf den Organismus-Fluss:
 
     aussensensor → chronik → semantAH → leitstand → hausKI → chronik
 
-Leitstand ist damit die **visuelle Schaltzentrale** des Heimgewebes.
+Leitstand ist damit das „Regelzentrum“ des Heimgewebes.
 
 ---
 
-## 1. Eingehende Datenströme
+## 1. Eingehende Datenströme (Stand heute)
 
-Im aktuellen Stand konsumiert Leitstand drei zentrale Contract-Typen:
+Leitstand konsumiert **Stand heute** drei zentrale Contract-Typen. Weitere können in Zukunft hinzukommen.
 
 ### 1.1 `fleet.health`
 Schema: `contracts/fleet.health.schema.json`
@@ -27,7 +27,16 @@ Bedeutung:
 ---
 
 ### 1.2 `insights.daily`
-Schema: `contracts/insights.daily.schema.json`
+Schema (semantische Ebene):
+  → `contracts/insights.daily.schema.json`
+
+Technische Grundlage (Feldtypen, Validierung):
+  → `contracts/insights.schema.json`
+
+Hinweis:
+`insights.daily.schema.json` ist die **Daily-Spezialisierung** des allgemeineren
+`insights.schema.json`. Leitstand validiert primär gegen das Daily-Schema;
+`insights.schema.json` definiert die geteilten Feldstrukturen.
 
 Quelle:
   - semantAH (`.gewebe/insights/daily/YYYY-MM-DD.json`)
@@ -35,7 +44,7 @@ Quelle:
 Garantierte Felder:
   - `ts: YYYY-MM-DD`
   - `topics`: Liste thematischer Einträge, sortiert nach Relevanz
-    (konkrete Struktur der Einträge gemäß `contracts/insights.daily.schema.json`)
+    (konkrete Struktur → `insights.daily.schema.json`, Feldtypen → `insights.schema.json`)
   - `questions: [...]`
   - `deltas: [...]`
   - optional: `source`, `metadata`
@@ -43,6 +52,10 @@ Garantierte Felder:
 Verwendung:
   - semantische Tagesansicht
   - Trendanalysen über mehrere Tage
+
+**Atomizität:**
+Daily-Dateien werden atomar erzeugt (tmp → rename).
+Leitstand liest nie „teilbeschriebene“ Dateien; entweder die alte oder eine vollständig neue Version.
 
 ---
 
@@ -61,7 +74,7 @@ Verwendung:
 ## 2. Aktualisierungsfrequenzen
 
 - `fleet.health` – bei jedem wgx-guard/smoke Lauf, min. täglich
-- `insights.daily` – 1× täglich, typischerweise bereit bis 08:00 (lokale Zeit)
+- `insights.daily` – 1× täglich, bereit bis 08:00
 - `event.line` – kontinuierlich, Append-only
 
 Leitstand verarbeitet diese Daten asynchron; fehlende Quellen werden angezeigt, nicht verschwiegen.
