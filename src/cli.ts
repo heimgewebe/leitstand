@@ -2,7 +2,7 @@
 
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
-import { format, startOfDay, addDays, parseISO } from 'date-fns';
+import { format, startOfDay, addDays, parseISO, isValid } from 'date-fns';
 import { loadConfig } from './config.js';
 import { loadDailyInsights } from './insights.js';
 import { loadRecentEvents } from './events.js';
@@ -30,6 +30,23 @@ function parseArgs(): { configPath?: string; date?: string; help: boolean } {
   }
   
   return result;
+}
+
+/**
+ * Parses and validates the target date for the digest.
+ *
+ * @param dateInput - Optional date string (YYYY-MM-DD)
+ * @returns Date object for the requested day
+ * @throws Error when the provided date is invalid
+ */
+export function parseTargetDate(dateInput?: string): Date {
+  const parsed = dateInput ? parseISO(dateInput) : new Date();
+
+  if (!isValid(parsed)) {
+    throw new Error('Invalid date format. Please use YYYY-MM-DD.');
+  }
+
+  return parsed;
 }
 
 /**
@@ -69,7 +86,7 @@ async function main(): Promise<void> {
     const config = await loadConfig(configPath);
     
     // Determine the date for the digest
-    const targetDate = args.date ? parseISO(args.date) : new Date();
+    const targetDate = parseTargetDate(args.date);
     const dateStr = format(targetDate, 'yyyy-MM-dd');
     console.log(`Generating digest for ${dateStr}...`);
     
