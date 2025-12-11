@@ -34,7 +34,7 @@ export type Config = z.infer<typeof ConfigSchema>;
 function expandEnvVars(path: string): string {
   const unexpandedVars: string[] = [];
   
-  const expanded = path.replace(/\$([A-Z_]+)/g, (_, varName) => {
+  const expanded = path.replace(/\$([A-Z0-9_]+)/g, (_, varName) => {
     const value = process.env[varName];
     if (value === undefined) {
       unexpandedVars.push(varName);

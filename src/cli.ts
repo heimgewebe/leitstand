@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 import { mkdir, writeFile } from 'fs/promises';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { format, startOfDay, addDays, parseISO, isValid } from 'date-fns';
 import { loadConfig } from './config.js';
 import { loadDailyInsights } from './insights.js';
 import { loadRecentEvents } from './events.js';
-import { loadLatestMetrics } from './metrics.js';
+import { loadLatestMetrics, loadMetricsSnapshot } from './metrics.js';
 import { buildDailyDigest } from './digest.js';
 import { renderDailyDigestMarkdown } from './renderMarkdown.js';
 
@@ -98,7 +98,22 @@ async function main(): Promise<void> {
     console.log('Loading daily insights...');
     let insights = null;
     try {
-      insights = await loadDailyInsights(config.paths.semantah.todayInsights);
+      // Determine which insights file to load
+      // If today, use todayInsights from config
+      // If historical date, try to find it in daily directory
+      // We assume daily directory is parent of todayInsights + /daily/
+      const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+      let insightsPath = config.paths.semantah.todayInsights;
+
+      if (!isToday) {
+        // Try to construct historical path
+        // Standard layout: .../insights/today.json -> .../insights/daily/YYYY-MM-DD.json
+        const insightsDir = join(dirname(config.paths.semantah.todayInsights), 'daily');
+        insightsPath = join(insightsDir, `${dateStr}.json`);
+        console.log(`  Targeting historical insights: ${insightsPath}`);
+      }
+
+      insights = await loadDailyInsights(insightsPath);
     } catch (error) {
       console.warn(`Warning: Could not load insights: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -115,7 +130,23 @@ async function main(): Promise<void> {
     console.log('Loading fleet metrics...');
     let metrics = null;
     try {
-      metrics = await loadLatestMetrics(config.paths.wgx.metricsDir);
+      // Let's try to manually construct the path if we are looking for history.
+      const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+
+      if (!isToday) {
+         // Try to load specific metrics file
+         const metricsPath = join(config.paths.wgx.metricsDir, `${dateStr}.json`);
+         try {
+             metrics = await loadMetricsSnapshot(metricsPath);
+             console.log(`  Loaded historical metrics from ${metricsPath}`);
+         } catch (e) {
+             console.log(`  Could not load historical metrics for ${dateStr}, falling back to latest.`);
+             metrics = await loadLatestMetrics(config.paths.wgx.metricsDir);
+         }
+      } else {
+         metrics = await loadLatestMetrics(config.paths.wgx.metricsDir);
+      }
+
       if (metrics) {
         console.log(`  Metrics from ${metrics.timestamp}`);
       } else {

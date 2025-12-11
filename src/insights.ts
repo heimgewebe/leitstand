@@ -36,11 +36,20 @@ export async function loadDailyInsights(path: string): Promise<DailyInsights> {
       throw new Error('Missing or invalid "ts" field');
     }
     
+    // Validate topics structure
+    const topics: Topic[] = (Array.isArray(data.topics) ? data.topics : [])
+      .filter((t: unknown): t is Topic =>
+        Array.isArray(t) &&
+        t.length === 2 &&
+        typeof t[0] === 'string' &&
+        typeof t[1] === 'number'
+      );
+
     return {
       ts: data.ts,
-      topics: Array.isArray(data.topics) ? data.topics : [],
-      questions: Array.isArray(data.questions) ? data.questions : [],
-      deltas: Array.isArray(data.deltas) ? data.deltas : [],
+      topics,
+      questions: Array.isArray(data.questions) ? data.questions.filter((q: unknown): q is string => typeof q === 'string') : [],
+      deltas: Array.isArray(data.deltas) ? data.deltas.filter((d: unknown): d is string => typeof d === 'string') : [],
     };
   } catch (error) {
     if (error instanceof SyntaxError) {

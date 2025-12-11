@@ -25,35 +25,15 @@ export interface MetricsSnapshot {
 }
 
 /**
- * Loads the latest metrics snapshot from the metrics directory
+ * Loads a metrics snapshot from a specific file path
  * 
- * @param metricsDir - Directory containing metrics snapshot JSON files
- * @returns Latest metrics snapshot, or null if none found
+ * @param filePath - Path to the metrics JSON file
+ * @returns Parsed metrics snapshot
+ * @throws Error if file cannot be read or parsed
  */
-export async function loadLatestMetrics(metricsDir: string): Promise<MetricsSnapshot | null> {
+export async function loadMetricsSnapshot(filePath: string): Promise<MetricsSnapshot> {
   try {
-    const files = await readdir(metricsDir);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
-    
-    if (jsonFiles.length === 0) {
-      return null;
-    }
-    
-    // Find the most recent file by modification time
-    let latestFile = jsonFiles[0];
-    let latestMtime = (await stat(join(metricsDir, latestFile))).mtime;
-    
-    for (const file of jsonFiles.slice(1)) {
-      const filePath = join(metricsDir, file);
-      const fileStat = await stat(filePath);
-      if (fileStat.mtime > latestMtime) {
-        latestFile = file;
-        latestMtime = fileStat.mtime;
-      }
-    }
-    
-    // Load and parse the latest file
-    const content = await readFile(join(metricsDir, latestFile), 'utf-8');
+    const content = await readFile(filePath, 'utf-8');
     const data = JSON.parse(content);
     
     // Extract basic metrics with fallback defaults
@@ -70,6 +50,58 @@ export async function loadLatestMetrics(metricsDir: string): Promise<MetricsSnap
       status,
       metadata: data.metadata,
     };
+  } catch (error) {
+    throw new Error(`Failed to load metrics snapshot from ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Loads the latest metrics snapshot from the metrics directory
+ *
+ * @param metricsDir - Directory containing metrics snapshot JSON files
+ * @returns Latest metrics snapshot, or null if none found
+ */
+export async function loadLatestMetrics(metricsDir: string): Promise<MetricsSnapshot | null> {
+  try {
+    const files = await readdir(metricsDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+    if (jsonFiles.length === 0) {
+      return null;
+    }
+
+    // Find the most recent file by filename (YYYY-MM-DD.json)
+    // We prioritize date-named files over others like 'latest.json' to ensure we get a specific snapshot
+    const datedFiles = jsonFiles.filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f));
+
+    let latestFile: string;
+
+    if (datedFiles.length > 0) {
+      // Sort desc
+      datedFiles.sort().reverse();
+      latestFile = datedFiles[0];
+    } else {
+      // Fallback to latest.json if it exists, or whatever is there
+      if (jsonFiles.includes('latest.json')) {
+        latestFile = 'latest.json';
+      } else {
+        // Fallback to mtime if no dated files and no latest.json
+        // (This preserves original behavior for non-standard files)
+        latestFile = jsonFiles[0];
+        let latestMtime = (await stat(join(metricsDir, latestFile))).mtime;
+
+        for (const file of jsonFiles.slice(1)) {
+          const filePath = join(metricsDir, file);
+          const fileStat = await stat(filePath);
+          if (fileStat.mtime > latestMtime) {
+            latestFile = file;
+            latestMtime = fileStat.mtime;
+          }
+        }
+      }
+    }
+
+    return await loadMetricsSnapshot(join(metricsDir, latestFile));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       // Directory doesn't exist or is empty
