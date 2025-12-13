@@ -27,6 +27,18 @@ app.get('/observatory', async (_req, res) => {
   }
 });
 
+app.get('/intent', async (_req, res) => {
+  try {
+    const dataPath = join(process.cwd(), 'src', 'fixtures', 'intent.json');
+    const dataContent = await readFile(dataPath, 'utf-8');
+    const data = JSON.parse(dataContent);
+    res.render('intent', { data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Error loading intent data');
+  }
+});
+
 app.listen(port, () => {
   console.log(`Leitstand server running at http://localhost:${port}`);
 });
