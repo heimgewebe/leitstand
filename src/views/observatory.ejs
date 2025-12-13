@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Observatorium - Leitstand</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    nav { margin-bottom: 20px; padding: 10px; background: #f0f0f0; }
+    nav a { margin-right: 15px; text-decoration: none; color: #333; font-weight: bold; }
+    nav a:hover { text-decoration: underline; }
+    .topic { margin-bottom: 20px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
+    .topic h3 { margin-top: 0; }
+    .meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/observatory">Observatorium</a>
+  </nav>
+  <h1>Observatorium</h1>
+  <p class="meta">Generated at: <%= data.generated_at %></p>
+
+  <div class="topics">
+    <% if (data.topics && data.topics.length > 0) { %>
+      <% data.topics.forEach(function(topic) { %>
+        <div class="topic">
+          <h3><%= topic.title %></h3>
+          <p>Sources: <%= topic.sources ? topic.sources.length : 0 %></p>
+        </div>
+      <% }); %>
+    <% } else { %>
+      <p>No topics available.</p>
+    <% } %>
+  </div>
+</body>
+</html>

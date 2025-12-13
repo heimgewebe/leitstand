@@ -11,13 +11,18 @@
     "test:watch": "vitest",
     "lint": "eslint . --ext .ts",
     "daily-digest": "node dist/cli.js",
+    "start:server": "node dist/server.js",
     "typecheck": "tsc --noEmit"
   },
   "bin": {
     "leitstand": "./dist/cli.js"
   },
   "dependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.6",
     "date-fns": "^3.0.0",
+    "ejs": "^3.1.10",
+    "express": "^5.2.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {

@@ -1,0 +1,17 @@
+{
+  "generated_at": "2023-10-27T10:00:00Z",
+  "topics": [
+    {
+      "title": "System Update",
+      "sources": ["chronik", "semantAH", "wgx"]
+    },
+    {
+      "title": "Security Alert",
+      "sources": ["chronik"]
+    },
+    {
+      "title": "Performance Degradation",
+      "sources": ["wgx", "metrics"]
+    }
+  ]
+}
