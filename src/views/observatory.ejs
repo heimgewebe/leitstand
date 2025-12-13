@@ -20,7 +20,15 @@
   <h1>Observatorium</h1>
   <div class="meta">
     <div><strong>Generated:</strong> <%= data.generated_at || "n/a" %></div>
-    <div><strong>Source:</strong> <%= data.source || "n/a" %></div>
+    <div><strong>Source:</strong>
+      <% if (typeof data.source === 'string') { %>
+        <%= data.source %>
+      <% } else if (data.source && typeof data.source === 'object') { %>
+        <%= data.source.source_type %>: <%= data.source.ref %>
+      <% } else { %>
+        n/a
+      <% } %>
+    </div>
     <div><strong>ID:</strong> <%= data.observatory_id || "n/a" %></div>
   </div>
 
