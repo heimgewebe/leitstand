@@ -1,17 +1,24 @@
 {
-  "generated_at": "2023-10-27T10:00:00Z",
+  "observatory_id": "obs-fixture-0001",
+  "generated_at": "2024-10-27T10:00:00Z",
+  "source": "semantAH",
   "topics": [
     {
-      "title": "System Update",
-      "sources": ["chronik", "semantAH", "wgx"]
+      "topic_id": "topic-logistics-optimization",
+      "title": "Logistics Optimization",
+      "summary": "Beispielthema für Leitstand-Rendering (Fixture).",
+      "sources": [
+        { "source_type": "event", "ref": "evt-log-001" },
+        { "source_type": "repo_file", "ref": "docs/logistics.md" }
+      ]
     },
     {
-      "title": "Security Alert",
-      "sources": ["chronik"]
-    },
-    {
-      "title": "Performance Degradation",
-      "sources": ["wgx", "metrics"]
+      "topic_id": "topic-ai-ethics",
+      "title": "AI Ethics",
+      "summary": "Zweites Beispielthema für Source-Counts.",
+      "sources": [
+        { "source_type": "vault_note", "ref": "notes/ethics/ai_guidelines.md" }
+      ]
     }
   ]
 }

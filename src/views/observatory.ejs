@@ -16,17 +16,23 @@
   <nav>
     <a href="/">Home</a>
     <a href="/observatory">Observatorium</a>
-    <a href="/intent">Intent</a>
   </nav>
   <h1>Observatorium</h1>
-  <p class="meta">Generated at: <%= data.generated_at %></p>
+  <div class="meta">
+    <div><strong>Generated:</strong> <%= data.generated_at || "n/a" %></div>
+    <div><strong>Source:</strong> <%= data.source || "n/a" %></div>
+    <div><strong>ID:</strong> <%= data.observatory_id || "n/a" %></div>
+  </div>
 
   <div class="topics">
     <% if (data.topics && data.topics.length > 0) { %>
       <% data.topics.forEach(function(topic) { %>
         <div class="topic">
           <h3><%= topic.title %></h3>
-          <p>Sources: <%= topic.sources ? topic.sources.length : 0 %></p>
+          <% if (topic.summary) { %>
+            <p><%= topic.summary %></p>
+          <% } %>
+          <p><strong>Sources:</strong> <%= topic.sources ? topic.sources.length : 0 %></p>
         </div>
       <% }); %>
     <% } else { %>
