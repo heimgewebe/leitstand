@@ -1,0 +1,9 @@
+{
+  "intent_type": "OptimizeCacheStrategy",
+  "confidence": 0.92,
+  "signals": [
+    { "kind": "PerformanceMetric", "ref": "latency-spike-2023-11" },
+    { "kind": "UserReport", "ref": "slow-load-times-ticket-456" }
+  ],
+  "generated_at": "2023-11-01T14:30:00Z"
+}

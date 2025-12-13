@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Aktueller Intent - Leitstand</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    nav { margin-bottom: 20px; padding: 10px; background: #f0f0f0; }
+    nav a { margin-right: 15px; text-decoration: none; color: #333; font-weight: bold; }
+    nav a:hover { text-decoration: underline; }
+    .card { border: 1px solid #ccc; padding: 20px; border-radius: 5px; max-width: 600px; }
+    .meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
+    ul { list-style-type: none; padding: 0; }
+    li { background: #eee; margin: 5px 0; padding: 10px; border-radius: 4px; }
+    .confidence { font-weight: bold; color: green; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/observatory">Observatorium</a>
+    <a href="/intent">Intent</a>
+  </nav>
+  <h1>Aktueller Intent</h1>
+  <p class="meta">Generated at: <%= data.generated_at %></p>
+
+  <div class="card">
+    <h2><%= data.intent_type %></h2>
+    <p>Confidence: <span class="confidence"><%= (data.confidence * 100).toFixed(0) %>%</span></p>
+
+    <h3>Signals</h3>
+    <ul>
+      <% if (data.signals && data.signals.length > 0) { %>
+        <% data.signals.forEach(function(signal) { %>
+          <li>
+            <strong><%= signal.kind %></strong>: <%= signal.ref %>
+          </li>
+        <% }); %>
+      <% } else { %>
+        <li>No signals detected.</li>
+      <% } %>
+    </ul>
+  </div>
+</body>
+</html>
