@@ -1,0 +1,11 @@
+leitstand: NO WGX PROFILE (by design)
+
+This repository is a dashboard / UI observer.
+It consumes fleet outputs (chronik, semantAH insights, wgx metrics),
+but it does not execute WGX motorik itself.
+
+Rationale:
+- Prevent semantic confusion: a motorik profile suggests guard/smoke/render responsibilities.
+- Keep fleet coherence: presence of this marker is an explicit, reviewable exception.
+
+If leitstand ever becomes an executor repo, remove this file and add .wgx/profile.yml.
