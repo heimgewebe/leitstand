@@ -2,6 +2,7 @@
 
 import { mkdir, writeFile } from 'fs/promises';
 import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { format, startOfDay, addDays, parseISO, isValid } from 'date-fns';
 import { loadConfig } from './config.js';
 import { loadDailyInsights } from './insights.js';
@@ -195,5 +196,7 @@ async function main(): Promise<void> {
   }
 }
 
-// Run the CLI
-main();
+// Run the CLI if executed directly
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main();
+}
