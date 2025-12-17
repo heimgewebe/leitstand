@@ -1,0 +1,90 @@
+---
+ai_context_version: 1.1
+
+project:
+  name: leitstand
+  summary: "Dashboard and control-room for the heimgewebe organism - daily system digest generator."
+  role: dashboard_and_digest_generator
+  primary_language: typescript
+  visibility: internal
+
+heimgewebe:
+  axis:
+    - UI
+    - Semantik
+  fleet:
+    enabled: true
+  wgx:
+    profile_expected: false
+    guard_smoke_expected: false
+
+interfaces:
+  consumes:
+    - "event.line"
+    - "fleet.health"
+    - "insights.daily"
+  produces:
+    - "insights.digest"
+    - "dashboard.view"
+
+contracts:
+  schemas:
+    - path: "contracts/*.schema.json"
+      note: "Validates incoming data against canonical schemas."
+
+dependencies:
+  internal:
+    - name: metarepo
+      relationship: uses
+      interface: [docs, templates]
+    - name: wgx
+      relationship: consumes
+      interface: [fleet.health]
+    - name: semantAH
+      relationship: consumes
+      interface: [insights.daily]
+    - name: chronik
+      relationship: consumes
+      interface: [event.line]
+  external:
+    - name: node
+      version: ">=18.0.0"
+    - name: pnpm
+      version: ">=8.0.0"
+
+architecture:
+  entrypoints:
+    - "src/cli.ts"
+    - "src/server.ts"
+  key_paths:
+    - path: "src/fixtures/"
+      purpose: "Static data for UI (e.g. observatory.json)"
+    - path: "src/views/"
+      purpose: "EJS templates for the web server"
+  data_flow:
+    input: "Consumes fleet.health, insights.daily, and event.line files."
+    processing: "Aggregates data into daily digests and serves dashboard views."
+    output: "Displays dashboard UI and generates digest files."
+
+boundaries:
+  not_responsible_for:
+    - "Generating raw insights (responsibility of specialized agents)"
+    - "Executing motorik actions (except for self-healing if needed)"
+  dangerous_assumptions:
+    - "Assuming all data sources are always present (must handle missing files gracefully)"
+
+conventions:
+  branching: "main, feature/*"
+  commit_prefix: "LEITSTAND"
+  ci_platform: github_actions
+
+documentation:
+  runbook: docs/data-flow.md
+
+ai_guidance:
+  do:
+    - "Ensure data loading logic prioritizes filename timestamps over mtime."
+    - "Validate all incoming data against JSON schemas in contracts/."
+  dont:
+    - "Hardcode data paths without flexibility for historical processing."
+    - "Modify external schemas to fit the application."
