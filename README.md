@@ -37,14 +37,17 @@ The daily digest generator combines:
 
 ## Installation
 
-This project uses [pnpm](https://pnpm.io/) for package management:
+This project uses [pnpm](https://pnpm.io/) for package management.
 
 ```bash
-# Install dependencies
-pnpm install
+# Enable pnpm (optional if you have it globally)
+corepack enable
 
-# Build the project
-pnpm build
+# Install dependencies (strictly respecting lockfile)
+pnpm install --frozen-lockfile
+
+# Start development server
+pnpm dev
 ```
 
 ## Configuration
