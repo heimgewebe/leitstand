@@ -26,11 +26,6 @@ interfaces:
     - "insights.digest"
     - "dashboard.view"
 
-contracts:
-  schemas:
-    - path: "contracts/*.schema.json"
-      note: "Validates incoming data against canonical schemas."
-
 dependencies:
   internal:
     - name: metarepo
@@ -50,6 +45,10 @@ dependencies:
       version: ">=18.0.0"
     - name: pnpm
       version: ">=8.0.0"
+
+contracts:
+  schemas: []
+  # No local schemas; relies on canonical schemas from metarepo or external contracts.
 
 architecture:
   entrypoints:
@@ -86,7 +85,7 @@ documentation:
 ai_guidance:
   do:
     - "Ensure data loading logic prioritizes filename timestamps over mtime."
-    - "Validate all incoming data against JSON schemas in contracts/."
+    - "Validate incoming data against canonical schemas where possible."
   dont:
     - "Hardcode data paths without flexibility for historical processing."
     - "Modify external schemas to fit the application."
