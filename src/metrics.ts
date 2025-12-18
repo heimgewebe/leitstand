@@ -70,38 +70,37 @@ export async function loadLatestMetrics(metricsDir: string): Promise<MetricsSnap
       return null;
     }
 
-    // Find the most recent file by filename (YYYY-MM-DD.json)
-    // We prioritize date-named files over others like 'latest.json' to ensure we get a specific snapshot
-    const datedFiles = jsonFiles.filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f));
+    // Always pick the most recently modified metrics file to avoid serving stale data,
+    // regardless of whether it's named using a date or a "latest.json" alias.
+    const stats = await Promise.all(
+      jsonFiles.map(async (file) => {
+        const filePath = join(metricsDir, file);
+        const fileStat = await stat(filePath);
+        return { file, filePath, mtime: fileStat.mtime };
+      })
+    );
 
-    let latestFile: string;
+    const latest = stats.reduce((currentLatest, entry) => {
+      if (!currentLatest) return entry;
 
-    if (datedFiles.length > 0) {
-      // Sort desc
-      datedFiles.sort().reverse();
-      latestFile = datedFiles[0];
-    } else {
-      // Fallback to latest.json if it exists, or whatever is there
-      if (jsonFiles.includes('latest.json')) {
-        latestFile = 'latest.json';
-      } else {
-        // Fallback to mtime if no dated files and no latest.json
-        // (This preserves original behavior for non-standard files)
-        latestFile = jsonFiles[0];
-        let latestMtime = (await stat(join(metricsDir, latestFile))).mtime;
-
-        for (const file of jsonFiles.slice(1)) {
-          const filePath = join(metricsDir, file);
-          const fileStat = await stat(filePath);
-          if (fileStat.mtime > latestMtime) {
-            latestFile = file;
-            latestMtime = fileStat.mtime;
-          }
-        }
+      if (entry.mtime > currentLatest.mtime) {
+        return entry;
       }
-    }
 
-    return await loadMetricsSnapshot(join(metricsDir, latestFile));
+      // Stable tie-breaker: prefer date-named snapshots, otherwise use lexicographic order
+      if (entry.mtime.getTime() === currentLatest.mtime.getTime()) {
+        const entryIsDated = /^\d{4}-\d{2}-\d{2}\.json$/.test(entry.file);
+        const latestIsDated = /^\d{4}-\d{2}-\d{2}\.json$/.test(currentLatest.file);
+        if (entryIsDated !== latestIsDated) {
+          return entryIsDated ? entry : currentLatest;
+        }
+        return entry.file > currentLatest.file ? entry : currentLatest;
+      }
+
+      return currentLatest;
+    }, null as { file: string; filePath: string; mtime: Date } | null);
+
+    return latest ? await loadMetricsSnapshot(latest.filePath) : null;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       // Directory doesn't exist or is empty
