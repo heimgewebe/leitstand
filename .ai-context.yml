@@ -11,7 +11,6 @@ project:
 heimgewebe:
   axis:
     - UI
-    - Semantik
   fleet:
     enabled: true
   wgx:
@@ -70,8 +69,11 @@ boundaries:
   not_responsible_for:
     - "Generating raw insights (responsibility of specialized agents)"
     - "Executing motorik actions (except for self-healing if needed)"
+    - "UI repo is profile-free by policy."
+    - "Don’t add .wgx/profile.yml unless policy changes."
   dangerous_assumptions:
     - "Assuming all data sources are always present (must handle missing files gracefully)"
+    - "Assume npm; repo uses pnpm (see packageManager/pnpm-lock.yaml)."
 
 conventions:
   branching: "main, feature/*"
