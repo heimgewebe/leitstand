@@ -26,11 +26,6 @@ interfaces:
     - "insights.digest"
     - "dashboard.view"
 
-contracts:
-  schemas:
-    - path: "contracts/*.schema.json"
-      note: "Validates incoming data against canonical schemas."
-
 dependencies:
   internal:
     - name: metarepo
@@ -45,11 +40,6 @@ dependencies:
     - name: chronik
       relationship: consumes
       interface: [event.line]
-  external:
-    - name: node
-      version: ">=18.0.0"
-    - name: pnpm
-      version: ">=8.0.0"
 
 architecture:
   entrypoints:
@@ -86,7 +76,6 @@ documentation:
 ai_guidance:
   do:
     - "Ensure data loading logic prioritizes filename timestamps over mtime."
-    - "Validate all incoming data against JSON schemas in contracts/."
   dont:
     - "Hardcode data paths without flexibility for historical processing."
     - "Modify external schemas to fit the application."
