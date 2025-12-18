@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFile, rm, mkdtemp } from 'fs/promises';
+import { writeFile, rm, mkdtemp, utimes } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { loadLatestMetrics } from '../src/metrics.js';
@@ -46,17 +46,48 @@ describe('metrics', () => {
       repoCount: 5,
       status: { ok: 3, warn: 1, fail: 1 },
     };
-    
-    await writeFile(join(testDir, 'old.json'), JSON.stringify(oldMetrics), 'utf-8');
-    
-    // Wait a bit to ensure different mtime
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    await writeFile(join(testDir, 'new.json'), JSON.stringify(newMetrics), 'utf-8');
-    
+
+    const oldPath = join(testDir, 'old.json');
+    const newPath = join(testDir, 'new.json');
+
+    await writeFile(oldPath, JSON.stringify(oldMetrics), 'utf-8');
+    // Force deterministic mtimes (avoids FS timestamp resolution flakiness)
+    await utimes(oldPath, new Date('2025-12-04T12:00:00Z'), new Date('2025-12-04T12:00:00Z'));
+
+    await writeFile(newPath, JSON.stringify(newMetrics), 'utf-8');
+    await utimes(newPath, new Date('2025-12-05T12:00:00Z'), new Date('2025-12-05T12:00:00Z'));
+
     const metrics = await loadLatestMetrics(testDir);
     
     expect(metrics?.repoCount).toBe(5); // Should load the newer file
+  });
+
+  it('prefers the most recently modified snapshot even when date-named files exist', async () => {
+    const datedMetrics = {
+      timestamp: '2025-12-04T12:00:00Z',
+      repoCount: 3,
+      status: { ok: 2, warn: 1, fail: 0 },
+    };
+
+    const latestMetrics = {
+      timestamp: '2025-12-06T12:00:00Z',
+      repoCount: 6,
+      status: { ok: 4, warn: 1, fail: 1 },
+    };
+
+    const datedPath = join(testDir, '2025-12-04.json');
+    const latestPath = join(testDir, 'latest.json');
+
+    await writeFile(datedPath, JSON.stringify(datedMetrics), 'utf-8');
+    await utimes(datedPath, new Date('2025-12-04T12:00:00Z'), new Date('2025-12-04T12:00:00Z'));
+
+    await writeFile(latestPath, JSON.stringify(latestMetrics), 'utf-8');
+    await utimes(latestPath, new Date('2025-12-06T12:00:00Z'), new Date('2025-12-06T12:00:00Z'));
+
+    const metrics = await loadLatestMetrics(testDir);
+    
+    expect(metrics?.repoCount).toBe(6);
+    expect(metrics?.timestamp).toBe('2025-12-06T12:00:00Z');
   });
   
   it('should return null for empty directory', async () => {
