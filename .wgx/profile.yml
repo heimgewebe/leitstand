@@ -1,0 +1,15 @@
+wgx:
+  apiVersion: v1
+  requiredWgx: "^2.0"
+  repoKind: "node"
+  tasks:
+    guard: |
+      set -euo pipefail
+      corepack enable >/dev/null 2>&1 || true
+      pnpm -s lint
+      pnpm -s typecheck
+      pnpm -s test
+    smoke: |
+      set -euo pipefail
+      corepack enable >/dev/null 2>&1 || true
+      pnpm -s build
