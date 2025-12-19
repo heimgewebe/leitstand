@@ -1,15 +1,38 @@
 wgx:
   apiVersion: v1
-  requiredWgx: "^2.0"
+  requiredWgx: "^2.0.0"
   repoKind: "node"
+
+  tooling:
+    shell:
+      default: bash
+
   tasks:
+    up: |
+      set -euo pipefail
+      echo "[wgx.up] leitstand"
+      # Corepack may be disabled on CI runners by default.
+      corepack enable >/dev/null 2>&1 || true
+      if command -v pnpm >/dev/null 2>&1; then
+        pnpm -s install --frozen-lockfile
+      else
+        echo "pnpm not found; install Node+Corepack/pnpm first"
+        exit 2
+      fi
+
     guard: |
       set -euo pipefail
+      echo "[wgx.guard] leitstand"
       corepack enable >/dev/null 2>&1 || true
-      pnpm -s lint
-      pnpm -s typecheck
-      pnpm -s test
+      pnpm -s install --frozen-lockfile
+      # Be resilient: not every repo keeps every script forever.
+      pnpm -s run --if-present lint
+      pnpm -s run --if-present typecheck
+      pnpm -s run --if-present test
+
     smoke: |
       set -euo pipefail
+      echo "[wgx.smoke] leitstand"
       corepack enable >/dev/null 2>&1 || true
-      pnpm -s build
+      pnpm -s install --frozen-lockfile
+      pnpm -s run --if-present build
