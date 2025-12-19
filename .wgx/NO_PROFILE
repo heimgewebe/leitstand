@@ -1,9 +1,0 @@
-leitstand: NO WGX PROFILE (observer by design)
-
-This repository is a UI / dashboard.
-It consumes fleet outputs (chronik, semantAH, wgx metrics),
-but does not execute WGX motorik itself.
-
-If leitstand ever becomes an executor:
-  - remove this file
-  - add .wgx/profile.yml

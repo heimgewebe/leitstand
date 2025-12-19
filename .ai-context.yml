@@ -14,8 +14,8 @@ heimgewebe:
   fleet:
     enabled: true
   wgx:
-    profile_expected: false
-    guard_smoke_expected: false
+    profile_expected: true
+    guard_smoke_expected: true
 
 interfaces:
   consumes:
