@@ -62,13 +62,17 @@ describe('metrics', () => {
     expect(metrics?.repoCount).toBe(5); // Should load the newer file
   });
 
-  it('prefers the most recently modified snapshot even when date-named files exist', async () => {
+  it('prefers date-named snapshots over other files', async () => {
+    // 2025-12-04.json: has a date in filename.
     const datedMetrics = {
       timestamp: '2025-12-04T12:00:00Z',
       repoCount: 3,
       status: { ok: 2, warn: 1, fail: 0 },
     };
 
+    // latest.json: logically newer content (dec 6), and newer mtime (dec 6).
+    // BUT since it lacks a date in filename, the logic should prefer the explicit snapshot 2025-12-04.
+    // This enforces "snapshot" semantics over "last written" semantics for loadLatestMetrics.
     const latestMetrics = {
       timestamp: '2025-12-06T12:00:00Z',
       repoCount: 6,
@@ -79,15 +83,39 @@ describe('metrics', () => {
     const latestPath = join(testDir, 'latest.json');
 
     await writeFile(datedPath, JSON.stringify(datedMetrics), 'utf-8');
+    // Mtime is old
     await utimes(datedPath, new Date('2025-12-04T12:00:00Z'), new Date('2025-12-04T12:00:00Z'));
 
     await writeFile(latestPath, JSON.stringify(latestMetrics), 'utf-8');
+    // Mtime is new
     await utimes(latestPath, new Date('2025-12-06T12:00:00Z'), new Date('2025-12-06T12:00:00Z'));
 
     const metrics = await loadLatestMetrics(testDir);
     
-    expect(metrics?.repoCount).toBe(6);
-    expect(metrics?.timestamp).toBe('2025-12-06T12:00:00Z');
+    // Expect 2025-12-04.json because it is dated
+    expect(metrics?.repoCount).toBe(3);
+    expect(metrics?.timestamp).toBe('2025-12-04T12:00:00Z');
+  });
+
+  it('prefers the latest date-named snapshot among multiple dated files', async () => {
+    const olderMetrics = { repoCount: 1, status: { ok: 1, warn: 0, fail: 0 } };
+    const newerMetrics = { repoCount: 2, status: { ok: 2, warn: 0, fail: 0 } };
+
+    const olderPath = join(testDir, '2025-01-01.json');
+    const newerPath = join(testDir, '2025-02-01.json');
+
+    await writeFile(olderPath, JSON.stringify(olderMetrics), 'utf-8');
+    await writeFile(newerPath, JSON.stringify(newerMetrics), 'utf-8');
+
+    // Give older file a NEWER mtime to verify we rely on filename date
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 86400000);
+    await utimes(newerPath, yesterday, yesterday);
+    await utimes(olderPath, now, now);
+
+    const metrics = await loadLatestMetrics(testDir);
+
+    expect(metrics?.repoCount).toBe(2);
   });
   
   it('should return null for empty directory', async () => {

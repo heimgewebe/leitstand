@@ -165,8 +165,24 @@ export async function loadLatestMetrics(metricsDir: string): Promise<MetricsSnap
       return null;
     }
 
-    // Always pick the most recently modified metrics file to avoid serving stale data,
-    // regardless of whether it's named using a date or a "latest.json" alias.
+    // Prioritize files with YYYY-MM-DD pattern to ensure accurate identification of latest snapshot,
+    // even if an older snapshot was recently modified (re-generated).
+    const datePattern = /^(\d{4}-\d{2}-\d{2})\.json$/;
+    const datedFiles = jsonFiles
+      .map(f => {
+        const match = f.match(datePattern);
+        return match ? { file: f, date: match[1] } : null;
+      })
+      .filter((item): item is { file: string, date: string } => item !== null);
+
+    if (datedFiles.length > 0) {
+      // Sort by date descending
+      datedFiles.sort((a, b) => b.date.localeCompare(a.date));
+      const latestDated = datedFiles[0];
+      return await loadMetricsSnapshot(join(metricsDir, latestDated.file));
+    }
+
+    // Fallback: pick the most recently modified metrics file
     const stats = await Promise.all(
       jsonFiles.map(async (file) => {
         const filePath = join(metricsDir, file);
@@ -182,13 +198,8 @@ export async function loadLatestMetrics(metricsDir: string): Promise<MetricsSnap
         return entry;
       }
 
-      // Stable tie-breaker: prefer date-named snapshots, otherwise use lexicographic order
+      // Stable tie-breaker: lexicographic order
       if (entry.mtime.getTime() === currentLatest.mtime.getTime()) {
-        const entryIsDated = /^\d{4}-\d{2}-\d{2}\.json$/.test(entry.file);
-        const latestIsDated = /^\d{4}-\d{2}-\d{2}\.json$/.test(currentLatest.file);
-        if (entryIsDated !== latestIsDated) {
-          return entryIsDated ? entry : currentLatest;
-        }
         return entry.file > currentLatest.file ? entry : currentLatest;
       }
 
