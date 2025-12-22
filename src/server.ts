@@ -47,8 +47,8 @@ app.get('/observatory', async (_req, res) => {
         data = JSON.parse(fixtureContent);
         sourceKind = 'fixture';
         console.warn('Observatory loaded from fixture (fallback) - artifact not found');
-      } else if (artifactError instanceof SyntaxError) {
-        // Invalid JSON in artifact
+      } else if (artifactError instanceof SyntaxError || artifactError?.name === 'SyntaxError') {
+        // Invalid JSON in artifact (checked both instanceof and name for robustness across bundling/transpilation)
         console.error('Observatory artifact contains invalid JSON:', artifactError.message);
         throw new Error('Artifact file contains invalid JSON');
       } else if (artifactError instanceof EmptyFileError) {
