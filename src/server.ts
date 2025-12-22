@@ -25,7 +25,8 @@ app.get('/', (_req, res) => {
 
 app.get('/observatory', async (_req, res) => {
   try {
-    const artifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
+    const defaultArtifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
+    const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
     const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
 
     let data;
@@ -68,8 +69,13 @@ app.get('/observatory', async (_req, res) => {
       }
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Error loading observatory data');
+    // 500 handler already logs the error via the re-throw above, or allows generic error logging here
+    // But since we logged the specific cause above, this might be redundant for artifact errors.
+    // However, keeping it for unexpected errors is good practice.
+    if (!res.headersSent) {
+       console.error('Final error handler:', error);
+       res.status(500).send('Error loading observatory data');
+    }
   }
 });
 
