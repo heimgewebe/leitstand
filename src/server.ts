@@ -28,23 +28,25 @@ app.get('/observatory', async (_req, res) => {
       data = JSON.parse(artifactContent);
       sourceKind = 'artifact';
       console.log('Observatory loaded from artifact');
-    } catch (artifactError) {
-      // Fallback to fixture
-      const fixtureContent = await readFile(fixturePath, 'utf-8');
-      data = JSON.parse(fixtureContent);
-      sourceKind = 'fixture';
-      console.log('Observatory loaded from fixture (fallback)');
+    } catch (artifactError: any) {
+      if (artifactError.code === 'ENOENT') {
+        // Fallback to fixture only if artifact is missing
+        const fixtureContent = await readFile(fixturePath, 'utf-8');
+        data = JSON.parse(fixtureContent);
+        sourceKind = 'fixture';
+        console.log('Observatory loaded from fixture (fallback)');
+      } else {
+        // Re-throw other errors (e.g. invalid JSON, permission denied)
+        throw artifactError;
+      }
     }
 
-    // Pass meta info to view
-    const viewData = {
-      ...data,
-      meta: {
+    res.render('observatory', {
+      data,
+      view_meta: {
         source_kind: sourceKind
       }
-    };
-
-    res.render('observatory', { data: viewData });
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send('Error loading observatory data');
