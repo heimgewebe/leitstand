@@ -26,7 +26,9 @@ app.get('/observatory', async (_req, res) => {
     try {
       const artifactContent = await readFile(artifactPath, 'utf-8');
       if (!artifactContent.trim()) {
-        throw new Error('Artifact file is empty');
+        const emptyError = new Error('Artifact file is empty');
+        (emptyError as any).code = 'EMPTY_FILE';
+        throw emptyError;
       }
       data = JSON.parse(artifactContent);
       sourceKind = 'artifact';
@@ -38,11 +40,11 @@ app.get('/observatory', async (_req, res) => {
         data = JSON.parse(fixtureContent);
         sourceKind = 'fixture';
         console.warn('Observatory loaded from fixture (fallback) - artifact not found');
-      } else if (artifactError instanceof SyntaxError) {
+      } else if (artifactError.name === 'SyntaxError') {
         // Invalid JSON in artifact
         console.error('Observatory artifact contains invalid JSON:', artifactError.message);
         throw new Error('Artifact file contains invalid JSON');
-      } else if (artifactError.message === 'Artifact file is empty') {
+      } else if (artifactError.code === 'EMPTY_FILE') {
         // Empty artifact file
         console.error('Observatory artifact file is empty');
         throw artifactError;
