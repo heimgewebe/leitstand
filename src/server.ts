@@ -17,10 +17,34 @@ app.get('/', (_req, res) => {
 
 app.get('/observatory', async (_req, res) => {
   try {
-    const dataPath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
-    const dataContent = await readFile(dataPath, 'utf-8');
-    const data = JSON.parse(dataContent);
-    res.render('observatory', { data });
+    const artifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
+    const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
+
+    let data;
+    let sourceKind;
+
+    try {
+      const artifactContent = await readFile(artifactPath, 'utf-8');
+      data = JSON.parse(artifactContent);
+      sourceKind = 'artifact';
+      console.log('Observatory loaded from artifact');
+    } catch (artifactError) {
+      // Fallback to fixture
+      const fixtureContent = await readFile(fixturePath, 'utf-8');
+      data = JSON.parse(fixtureContent);
+      sourceKind = 'fixture';
+      console.log('Observatory loaded from fixture (fallback)');
+    }
+
+    // Pass meta info to view
+    const viewData = {
+      ...data,
+      meta: {
+        source_kind: sourceKind
+      }
+    };
+
+    res.render('observatory', { data: viewData });
   } catch (error) {
     console.error(error);
     res.status(500).send('Error loading observatory data');
