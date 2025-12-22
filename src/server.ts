@@ -2,6 +2,14 @@ import express from 'express';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 
+class EmptyFileError extends Error {
+  code = 'EMPTY_FILE';
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmptyFileError';
+  }
+}
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -26,9 +34,7 @@ app.get('/observatory', async (_req, res) => {
     try {
       const artifactContent = await readFile(artifactPath, 'utf-8');
       if (!artifactContent.trim()) {
-        const emptyError = new Error('Artifact file is empty');
-        (emptyError as any).code = 'EMPTY_FILE';
-        throw emptyError;
+        throw new EmptyFileError('Artifact file is empty');
       }
       data = JSON.parse(artifactContent);
       sourceKind = 'artifact';
@@ -40,11 +46,11 @@ app.get('/observatory', async (_req, res) => {
         data = JSON.parse(fixtureContent);
         sourceKind = 'fixture';
         console.warn('Observatory loaded from fixture (fallback) - artifact not found');
-      } else if (artifactError.name === 'SyntaxError') {
+      } else if (artifactError instanceof SyntaxError) {
         // Invalid JSON in artifact
         console.error('Observatory artifact contains invalid JSON:', artifactError.message);
         throw new Error('Artifact file contains invalid JSON');
-      } else if (artifactError.code === 'EMPTY_FILE') {
+      } else if (artifactError instanceof EmptyFileError) {
         // Empty artifact file
         console.error('Observatory artifact file is empty');
         throw artifactError;
