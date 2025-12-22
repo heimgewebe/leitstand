@@ -17,7 +17,8 @@ app.get('/', (_req, res) => {
 
 app.get('/observatory', async (_req, res) => {
   try {
-    const artifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
+    const defaultArtifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
+    const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
     const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
 
     let data;
@@ -34,9 +35,10 @@ app.get('/observatory', async (_req, res) => {
         const fixtureContent = await readFile(fixturePath, 'utf-8');
         data = JSON.parse(fixtureContent);
         sourceKind = 'fixture';
-        console.log('Observatory loaded from fixture (fallback)');
+        console.warn('Observatory loaded from fixture (fallback): artifact missing at', artifactPath);
       } else {
-        // Re-throw other errors (e.g. invalid JSON, permission denied)
+        // Log specific error cause internally before re-throwing
+        console.error(`Failed to load artifact from ${artifactPath}:`, artifactError.message);
         throw artifactError;
       }
     }
@@ -48,8 +50,13 @@ app.get('/observatory', async (_req, res) => {
       }
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Error loading observatory data');
+    // 500 handler already logs the error via the re-throw above, or allows generic error logging here
+    // But since we logged the specific cause above, this might be redundant for artifact errors.
+    // However, keeping it for unexpected errors is good practice.
+    if (!res.headersSent) {
+       console.error('Final error handler:', error);
+       res.status(500).send('Error loading observatory data');
+    }
   }
 });
 
