@@ -2,6 +2,14 @@ import express from 'express';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 
+class EmptyFileError extends Error {
+  code = 'EMPTY_FILE';
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmptyFileError';
+  }
+}
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -26,6 +34,9 @@ app.get('/observatory', async (_req, res) => {
 
     try {
       const artifactContent = await readFile(artifactPath, 'utf-8');
+      if (!artifactContent.trim()) {
+        throw new EmptyFileError('Artifact file is empty');
+      }
       data = JSON.parse(artifactContent);
       sourceKind = 'artifact';
       console.log('Observatory loaded from artifact');
@@ -35,10 +46,18 @@ app.get('/observatory', async (_req, res) => {
         const fixtureContent = await readFile(fixturePath, 'utf-8');
         data = JSON.parse(fixtureContent);
         sourceKind = 'fixture';
-        console.warn('Observatory loaded from fixture (fallback): artifact missing at', artifactPath);
+        console.warn('Observatory loaded from fixture (fallback) - artifact not found');
+      } else if (artifactError instanceof SyntaxError || artifactError?.name === 'SyntaxError') {
+        // Invalid JSON in artifact (dual check handles bundling/transpilation edge cases)
+        console.error('Observatory artifact contains invalid JSON:', artifactError.message);
+        throw new Error('Artifact file contains invalid JSON');
+      } else if (artifactError instanceof EmptyFileError) {
+        // Empty artifact file
+        console.error('Observatory artifact file is empty');
+        throw artifactError;
       } else {
-        // Log specific error cause internally before re-throwing
-        console.error(`Failed to load artifact from ${artifactPath}:`, artifactError.message);
+        // Other errors (e.g. permission denied)
+        console.error('Error reading observatory artifact:', artifactError.message);
         throw artifactError;
       }
     }
