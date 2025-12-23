@@ -7,6 +7,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
+    "build:static": "node scripts/build-static.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint . --ext .ts",
