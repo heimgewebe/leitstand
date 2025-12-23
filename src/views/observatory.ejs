@@ -30,6 +30,16 @@
       <% } %>
     </div>
     <div><strong>ID:</strong> <%= data.observatory_id || "n/a" %></div>
+    <div>
+      <strong>Quelle:</strong>
+      <% if (locals.view_meta && locals.view_meta.source_kind === 'artifact') { %>
+        live artefakt
+      <% } else if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
+        Fixture (Fallback)
+      <% } else { %>
+        unknown
+      <% } %>
+    </div>
   </div>
 
   <div class="topics">
