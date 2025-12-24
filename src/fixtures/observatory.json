@@ -14,5 +14,16 @@
         { "source_type": "repo_file", "ref": "docs/roadmap.md" }
       ]
     }
+  ],
+  "insights": [
+    {
+      "type": "insight.negation",
+      "id": "neg-hash-123",
+      "relation": {
+        "thesis": "t-001",
+        "antithesis": "neg-hash-123"
+      },
+      "verdict": "Direct contradiction: Thesis claims X, while source Y claims !X."
+    }
   ]
 }
