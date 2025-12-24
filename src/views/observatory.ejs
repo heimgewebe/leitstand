@@ -10,6 +10,16 @@
     .topic { margin-bottom: 20px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
     .topic h3 { margin-top: 0; }
     .meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
+
+    /* Insights & Negations */
+    .section-title { margin-top: 30px; border-bottom: 2px solid #333; padding-bottom: 5px; }
+    .insight-card { margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fafafa; }
+    .insight-card.negation { border-left: 5px solid #d9534f; background: #fff0f0; }
+    .insight-card h4 { margin: 0 0 5px 0; font-size: 1.1em; }
+    .insight-meta { font-size: 0.85em; color: #555; margin-bottom: 5px; }
+    .verdict { font-weight: bold; color: #d9534f; margin-top: 5px; }
+    .relation { display: flex; gap: 10px; margin-top: 10px; font-size: 0.9em; }
+    .relation-item { background: #eee; padding: 2px 6px; border-radius: 3px; }
   </style>
 </head>
 <body>
@@ -42,6 +52,35 @@
     </div>
   </div>
 
+  <% if (data.insights && data.insights.length > 0) { %>
+    <h2 class="section-title">Insights / Conflicts</h2>
+    <div class="insights">
+      <% data.insights.forEach(function(insight) { %>
+        <% if (insight.type === 'insight.negation') { %>
+          <div class="insight-card negation">
+            <h4>Conflict Detected</h4>
+            <div class="insight-meta">ID: <%= insight.id %></div>
+            <div class="verdict">Verdict: <%= insight.verdict %></div>
+            <div class="relation">
+              <% if (insight.relation) { %>
+                <span class="relation-item">Thesis: <%= insight.relation.thesis %></span>
+                <span class="relation-item">Antithesis: <%= insight.relation.antithesis %></span>
+              <% } %>
+            </div>
+            <!-- Optional: Link to thesis detail if we had a route for it -->
+          </div>
+        <% } else { %>
+          <!-- Generic insight fallback -->
+          <div class="insight-card">
+            <h4><%= insight.type || 'Generic Insight' %></h4>
+            <div class="insight-meta">ID: <%= insight.id %></div>
+          </div>
+        <% } %>
+      <% }); %>
+    </div>
+  <% } %>
+
+  <h2 class="section-title">Topics</h2>
   <div class="topics">
     <% if (data.topics && data.topics.length > 0) { %>
       <% data.topics.forEach(function(topic) { %>
