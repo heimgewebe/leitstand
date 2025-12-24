@@ -23,7 +23,7 @@
       "file": "README.md",
       "source": "manual",
       "score": 85,
-      "bucket": "content",
+      "bucket": "warn",
       "ingested_at": "2025-12-13T00:00:00Z",
       "relation": {
         "thesis": "t-001",
