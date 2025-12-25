@@ -41,7 +41,7 @@ jobs:
           echo "Fetching insights.daily.json from semantAH releases..."
           # Fetch the latest daily insights artifact from semantAH.
           # We use || echo to ensure the build continues (falling back to fixture) if the artifact is missing.
-          curl -f -L -o artifacts/insights.daily.json https://github.com/heimgewebe/semantAH/releases/latest/download/insights.daily.json || echo "Failed to fetch artifact, continuing with build (will fallback to fixture)"
+          curl -f -L -o artifacts/insights.daily.json https://github.com/heimgewebe/semantAH/releases/download/insights-daily/insights.daily.json || (echo "::notice::Using fixture fallback (artifact missing)" && echo "Failed to fetch artifact, continuing with build")
 
       - name: Build Static Site
         run: pnpm run build:static
