@@ -43,6 +43,20 @@ jobs:
           # We use || echo to ensure the build continues (falling back to fixture) if the artifact is missing.
           curl -f -L -o artifacts/insights.daily.json https://github.com/heimgewebe/semantAH/releases/download/insights-daily/insights.daily.json || (echo "::notice::Using fixture fallback (artifact missing)" && echo "Failed to fetch artifact, continuing with build")
 
+      - name: Validate Fetched Artifact
+        run: |
+          if [ -f artifacts/insights.daily.json ]; then
+            echo "Validating JSON integrity..."
+            if ! node -e "JSON.parse(require('fs').readFileSync('artifacts/insights.daily.json','utf8'))"; then
+              echo "::notice::Invalid artifact (JSON parse failed), using fixture fallback."
+              rm artifacts/insights.daily.json
+            else
+              echo "Artifact is valid JSON."
+            fi
+          else
+            echo "Artifact missing, skipping validation."
+          fi
+
       - name: Build Static Site
         run: pnpm run build:static
 
