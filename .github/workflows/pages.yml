@@ -38,11 +38,9 @@ jobs:
       - name: Fetch Observatory Artifact
         run: |
           mkdir -p artifacts
-          echo "Attempting to fetch insights.daily.json from semantAH artifact (simulated)..."
-          # Placeholder for real fetch logic.
-          # In a real scenario, this might download an artifact from a separate repo or a release.
-          # For now, we simulate the 'try fetch' behavior.
-          # The key is: if it fails, we do NOT fail the build.
+          echo "Fetching insights.daily.json from semantAH releases..."
+          # Fetch the latest daily insights artifact from semantAH.
+          # We use || echo to ensure the build continues (falling back to fixture) if the artifact is missing.
           curl -f -L -o artifacts/insights.daily.json https://github.com/heimgewebe/semantAH/releases/latest/download/insights.daily.json || echo "Failed to fetch artifact, continuing with build (will fallback to fixture)"
 
       - name: Build Static Site
