@@ -68,8 +68,10 @@ async function main() {
        console.error('Observatory artifact contains invalid JSON:', artifactError.message);
        throw new Error('Artifact file contains invalid JSON');
     } else if (artifactError instanceof EmptyFileError || artifactError.code === 'EMPTY_FILE') {
-       console.error('Observatory artifact file is empty');
-       throw artifactError;
+       console.warn('Observatory artifact file is empty (fallback to fixture)');
+       const fixtureContent = await readFile(fixturePath, 'utf-8');
+       observatoryData = JSON.parse(fixtureContent);
+       sourceKind = "fixture";
     } else {
        console.error('Error reading observatory artifact:', artifactError.message);
        throw artifactError;
