@@ -41,17 +41,22 @@ jobs:
           echo "Fetching insights.daily.json from semantAH releases..."
           # Fetch the latest daily insights artifact from semantAH.
           # We use || echo to ensure the build continues (falling back to fixture) if the artifact is missing.
-          curl -f -L -o artifacts/insights.daily.json https://github.com/heimgewebe/semantAH/releases/download/insights-daily/insights.daily.json || (echo "::notice::Using fixture fallback (artifact missing)" && echo "Failed to fetch artifact, continuing with build")
+          curl -f -L --retry 3 --retry-delay 2 -o artifacts/insights.daily.json https://github.com/heimgewebe/semantAH/releases/download/insights-daily/insights.daily.json || (echo "::notice::Using fixture fallback (artifact missing)" && echo "Failed to fetch artifact, continuing with build")
 
       - name: Validate Fetched Artifact
         run: |
           if [ -f artifacts/insights.daily.json ]; then
-            echo "Validating JSON integrity..."
-            if ! node -e "JSON.parse(require('fs').readFileSync('artifacts/insights.daily.json','utf8'))"; then
-              echo "::notice::Invalid artifact (JSON parse failed), using fixture fallback."
+            if [ ! -s artifacts/insights.daily.json ]; then
+              echo "::notice::Artifact is empty, using fixture fallback."
               rm artifacts/insights.daily.json
             else
-              echo "Artifact is valid JSON."
+              echo "Validating JSON integrity..."
+              if ! node -e "JSON.parse(require('fs').readFileSync('artifacts/insights.daily.json','utf8'))"; then
+                echo "::notice::Invalid artifact (JSON parse failed), using fixture fallback."
+                rm artifacts/insights.daily.json
+              else
+                echo "Artifact is valid JSON."
+              fi
             fi
           else
             echo "Artifact missing, skipping validation."
