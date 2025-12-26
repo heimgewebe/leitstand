@@ -6,6 +6,8 @@
   "author": "heimgewebe",
   "license": "MIT",
   "scripts": {
+    "fetch:observatory": "node scripts/fetch-observatory.mjs",
+    "build:cf": "pnpm run fetch:observatory && pnpm run build:static",
     "build": "tsc",
     "build:static": "node scripts/build-static.mjs",
     "test": "vitest run",

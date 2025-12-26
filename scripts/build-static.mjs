@@ -42,7 +42,7 @@ async function main() {
   await renderTo(join(OUT, "index.html"), "index");
 
   // 2) Observatory (Artefakt -> Fallback Fixture)
-  const defaultArtifactPath = join(ROOT, "artifacts", "insights.daily.json");
+  const defaultArtifactPath = join(ROOT, "artifacts", "knowledge.observatory.json");
   const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
   const fixturePath = join(ROOT, "src", "fixtures", "observatory.json");
 
@@ -59,6 +59,10 @@ async function main() {
     console.log(`Loaded observatory data from artifact: ${artifactPath}`);
   } catch (artifactError) {
     if (artifactError.code === 'ENOENT') {
+      if (process.env.NODE_ENV === 'production') {
+        console.error(`FATAL: Observatory artifact missing at ${artifactPath} in Production environment.`);
+        process.exit(1);
+      }
       // Fallback to fixture only if artifact is missing
       console.warn(`Artifact not found at ${artifactPath}, falling back to fixture.`);
       const fixtureContent = await readFile(fixturePath, 'utf-8');
