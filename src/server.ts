@@ -40,16 +40,23 @@ app.get('/observatory', async (_req, res) => {
       data = JSON.parse(artifactContent);
       sourceKind = 'artifact';
       console.log('Observatory loaded from artifact');
-    } catch (artifactError: any) {
-      if (artifactError.code === 'ENOENT') {
+    } catch (artifactError) {
+      // Type guards
+      const isEnoent = (err: unknown): boolean =>
+        typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'ENOENT';
+      const isSyntaxError = (err: unknown): err is SyntaxError =>
+        err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
+
+      if (isEnoent(artifactError)) {
         // Fallback to fixture only if artifact is missing
         const fixtureContent = await readFile(fixturePath, 'utf-8');
         data = JSON.parse(fixtureContent);
         sourceKind = 'fixture';
         console.warn('Observatory loaded from fixture (fallback) - artifact not found');
-      } else if (artifactError instanceof SyntaxError || artifactError?.name === 'SyntaxError') {
+      } else if (isSyntaxError(artifactError)) {
         // Invalid JSON in artifact (dual check handles bundling/transpilation edge cases)
-        console.error('Observatory artifact contains invalid JSON:', artifactError.message);
+        const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
+        console.error('Observatory artifact contains invalid JSON:', msg);
         throw new Error('Artifact file contains invalid JSON');
       } else if (artifactError instanceof EmptyFileError) {
         // Empty artifact file - treat as missing to trigger fallback
@@ -59,7 +66,8 @@ app.get('/observatory', async (_req, res) => {
         sourceKind = 'fixture';
       } else {
         // Other errors (e.g. permission denied)
-        console.error('Error reading observatory artifact:', artifactError.message);
+        const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
+        console.error('Error reading observatory artifact:', msg);
         throw artifactError;
       }
     }
