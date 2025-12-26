@@ -30,7 +30,6 @@ try {
   console.warn(`[leitstand] WARN: Fetch failed: ${err.message}. Proceeding without artifact.`);
 }
 
-// Minimal sanity checks
 if (fs.existsSync(OUT)) {
   const s = fs.readFileSync(OUT, "utf8");
   if (s.trim().length < 10) {
