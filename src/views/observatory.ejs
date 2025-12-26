@@ -52,6 +52,40 @@
     </div>
   </div>
 
+  <div id="runtime-observatory" style="margin-top: 20px; padding: 15px; background: #eef; border: 1px solid #ccd; border-radius: 5px;">
+    <h3>Live Data (Runtime Fetch)</h3>
+    <div id="obs-runtime-status">Initializing...</div>
+    <pre id="obs-runtime-json" style="max-height: 200px; overflow: auto; background: #fff; padding: 10px; border: 1px solid #ddd; display: none;"></pre>
+  </div>
+
+  <script>
+    (async function() {
+      const URL = "<%= locals.observatoryUrl %>";
+      const statusEl = document.getElementById("obs-runtime-status");
+      const preEl = document.getElementById("obs-runtime-json");
+
+      statusEl.textContent = "Fetching live data from: " + URL;
+
+      try {
+        const r = await fetch(URL, { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const data = await r.json();
+
+        statusEl.innerHTML = "<strong>Live data loaded!</strong><br>" +
+                             "Generated: " + (data.generated_at || "n/a") + "<br>" +
+                             "Source: " + URL;
+        statusEl.style.color = "green";
+
+        preEl.textContent = JSON.stringify(data, null, 2);
+        preEl.style.display = "block";
+      } catch (e) {
+        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e) +
+                             "<br>Showing build-time data (above).";
+        statusEl.style.color = "red";
+      }
+    })();
+  </script>
+
   <% if (data.insights && data.insights.length > 0) { %>
     <h2 class="section-title">Insights / Conflicts</h2>
     <div class="insights">

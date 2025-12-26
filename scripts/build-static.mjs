@@ -58,8 +58,10 @@ async function main() {
     sourceKind = "artifact";
     console.log(`Loaded observatory data from artifact: ${artifactPath}`);
   } catch (artifactError) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error(`FATAL: Observatory artifact failed in Production: ${artifactError}`);
+    const strict = process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+
+    if (strict) {
+      console.error(`FATAL: Observatory artifact failed in Production/Strict: ${artifactError}`);
       process.exit(1);
     }
 
@@ -74,12 +76,17 @@ async function main() {
     sourceKind = "fixture";
   }
 
+  const observatoryUrl = process.env.OBSERVATORY_URL || "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
+
   await mkdir(join(OUT, "observatory"), { recursive: true });
   await renderTo(
     join(OUT, "observatory", "index.html"),
     "observatory",
     { data: observatoryData },
-    { view_meta: { source_kind: sourceKind } }
+    {
+      view_meta: { source_kind: sourceKind },
+      observatoryUrl: observatoryUrl
+    }
   );
 
   // 3) Intent (Fixture)
