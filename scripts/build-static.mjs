@@ -58,28 +58,20 @@ async function main() {
     sourceKind = "artifact";
     console.log(`Loaded observatory data from artifact: ${artifactPath}`);
   } catch (artifactError) {
-    if (artifactError.code === 'ENOENT') {
-      if (process.env.NODE_ENV === 'production') {
-        console.error(`FATAL: Observatory artifact missing at ${artifactPath} in Production environment.`);
-        process.exit(1);
-      }
-      // Fallback to fixture only if artifact is missing
-      console.warn(`Artifact not found at ${artifactPath}, falling back to fixture.`);
-      const fixtureContent = await readFile(fixturePath, 'utf-8');
-      observatoryData = JSON.parse(fixtureContent);
-      sourceKind = "fixture";
-    } else if (artifactError instanceof SyntaxError || artifactError.name === 'SyntaxError') {
-       console.error('Observatory artifact contains invalid JSON:', artifactError.message);
-       throw new Error('Artifact file contains invalid JSON');
-    } else if (artifactError instanceof EmptyFileError || artifactError.code === 'EMPTY_FILE') {
-       console.warn('Observatory artifact file is empty (fallback to fixture)');
-       const fixtureContent = await readFile(fixturePath, 'utf-8');
-       observatoryData = JSON.parse(fixtureContent);
-       sourceKind = "fixture";
-    } else {
-       console.error('Error reading observatory artifact:', artifactError.message);
-       throw artifactError;
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`FATAL: Observatory artifact failed in Production: ${artifactError}`);
+      process.exit(1);
     }
+
+    if (artifactError.code === 'ENOENT') {
+      console.warn(`Artifact not found at ${artifactPath}, falling back to fixture.`);
+    } else {
+      console.warn(`Artifact invalid at ${artifactPath}, falling back to fixture: ${artifactError}`);
+    }
+
+    const fixtureContent = await readFile(fixturePath, 'utf-8');
+    observatoryData = JSON.parse(fixtureContent);
+    sourceKind = "fixture";
   }
 
   await mkdir(join(OUT, "observatory"), { recursive: true });
