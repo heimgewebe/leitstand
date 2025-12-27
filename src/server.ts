@@ -28,6 +28,7 @@ app.get('/observatory', async (_req, res) => {
     const defaultArtifactPath = join(process.cwd(), 'artifacts', 'knowledge.observatory.json');
     const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
     const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
+    const isStrict = process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
 
     let data;
     let sourceKind;
@@ -41,6 +42,12 @@ app.get('/observatory', async (_req, res) => {
       sourceKind = 'artifact';
       console.log('Observatory loaded from artifact');
     } catch (artifactError) {
+      // If strict mode is enabled, re-throw immediately to fail the request
+      if (isStrict) {
+        console.error('[STRICT MODE] Artifact load failed:', artifactError);
+        throw artifactError;
+      }
+
       // Type guards
       const isEnoent = (err: unknown): boolean =>
         typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'ENOENT';
