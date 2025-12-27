@@ -3,16 +3,23 @@ import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 
-const URL =
-  process.env.OBSERVATORY_ARTIFACT_URL ||
-  process.env.OBSERVATORY_URL ||
-  "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
+let URL = process.env.OBSERVATORY_URL;
+
+if (process.env.OBSERVATORY_ARTIFACT_URL) {
+    console.warn("[leitstand] DEPRECATED: OBSERVATORY_ARTIFACT_URL is set; use OBSERVATORY_URL instead.");
+    if (!URL) URL = process.env.OBSERVATORY_ARTIFACT_URL;
+}
+
+if (!URL) {
+    URL = "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
+}
 
 const OUT = "artifacts/knowledge.observatory.json";
 const strict = process.env.NODE_ENV === "production" || process.env.OBSERVATORY_STRICT === "1";
 
 await mkdir("artifacts", { recursive: true });
-console.log(`[leitstand] Fetching observatory from: ${URL} (strict=${strict})`);
+console.log(`[leitstand] Fetch source: ${URL}`);
+console.log(`[leitstand] strict=${strict}`);
 
 try {
   const res = await fetch(URL);

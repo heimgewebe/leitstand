@@ -24,10 +24,12 @@ In a production/CI environment (e.g., Cloudflare Pages build), this artifact is 
 
 | Variable | Description | Default / Required |
 | :--- | :--- | :--- |
-| `NODE_ENV` | Set to `production` in live environments to enforce fail-loud behavior. | `production` (in Prod) |
-| `OBSERVATORY_URL` | URL to fetch the artifact from (Build & Runtime). | `https://github.com/...` (Release Asset) |
-| `OBSERVATORY_ARTIFACT_PATH` | Local path to expect the artifact (Build time). | `artifacts/knowledge.observatory.json` |
+| `OBSERVATORY_URL` | Canonical URL to fetch the artifact from (Build & Runtime). | `https://github.com/...` (Release Asset) |
+| `OBSERVATORY_ARTIFACT_PATH` | Local filesystem path to expect/write the artifact (Build time). | `artifacts/knowledge.observatory.json` |
 | `OBSERVATORY_STRICT` | If `1`, enforces strict fetch validation (fail on 404/invalid). | `0` (Dev), `1` (Prod) |
+| `NODE_ENV` | Set to `production` in live environments to enforce fail-loud behavior. | `production` (in Prod) |
+
+> **Note:** `OBSERVATORY_URL` is the single source of truth for the artifact's origin. `OBSERVATORY_ARTIFACT_PATH` is purely for local filesystem handling during the build.
 
 **Fallback Mechanism:**
 In **Production** environments (`NODE_ENV=production` or `OBSERVATORY_STRICT=1`), the build will **fail** if the artifact is missing, empty, or invalid. This ensures no stale or dummy data is deployed silently as the "Initial State".

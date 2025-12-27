@@ -84,23 +84,45 @@
         // Update Topics
         const topicsContainer = document.getElementById("obs-topics-container");
         if (topicsContainer) {
-          if (data.topics && data.topics.length > 0) {
-            topicsContainer.innerHTML = data.topics.map(t => `
-              <div class="topic">
-                <h3>${t.title}</h3>
-                ${t.summary ? `<p>${t.summary}</p>` : ''}
-                <p><strong>Sources:</strong> ${t.sources ? t.sources.length : 0}</p>
-              </div>
-            `).join('');
+          topicsContainer.textContent = ""; // Clear existing content
+
+          if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
+            data.topics.forEach(t => {
+              const topicDiv = document.createElement("div");
+              topicDiv.className = "topic";
+
+              const h3 = document.createElement("h3");
+              h3.textContent = t.title || "Untitled topic";
+              topicDiv.appendChild(h3);
+
+              if (t.summary) {
+                const pSummary = document.createElement("p");
+                pSummary.textContent = t.summary;
+                topicDiv.appendChild(pSummary);
+              }
+
+              const pSources = document.createElement("p");
+              const strong = document.createElement("strong");
+              strong.textContent = "Sources: ";
+              pSources.appendChild(strong);
+              pSources.appendChild(document.createTextNode(t.sources ? t.sources.length : 0));
+              topicDiv.appendChild(pSources);
+
+              topicsContainer.appendChild(topicDiv);
+            });
           } else {
-            topicsContainer.innerHTML = '<p>No topics available.</p>';
+            const p = document.createElement("p");
+            p.textContent = "No topics available.";
+            topicsContainer.appendChild(p);
           }
         }
 
         // Debug Output
         statusEl.innerHTML = "<strong>Live data loaded!</strong>";
         statusEl.style.color = "green";
-        preEl.textContent = JSON.stringify(data, null, 2);
+        if (isDebug) {
+          preEl.textContent = JSON.stringify(data, null, 2);
+        }
       } catch (e) {
         statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
         statusEl.style.color = "red";
