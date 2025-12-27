@@ -45,12 +45,18 @@
       <% if (locals.view_meta && locals.view_meta.source_kind === 'artifact') { %>
         Artefakt (knowledge.observatory.json)
       <% } else if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
-        Fixture (Fallback)
+        <span style="color: #d9534f; font-weight: bold;">Fixture (Fallback) - Live Data Missing</span>
       <% } else { %>
         unknown
       <% } %>
     </div>
   </div>
+
+  <% if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
+    <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+      <strong>⚠️ Warning:</strong> This view is running in fallback mode using static fixture data. The live knowledge artifact could not be loaded.
+    </div>
+  <% } %>
 
   <div id="runtime-observatory" style="margin-top: 20px; padding: 15px; background: #eef; border: 1px solid #ccd; border-radius: 5px; display: none;">
     <h3>Debug: Runtime Fetch</h3>
