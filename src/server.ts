@@ -25,7 +25,7 @@ app.get('/', (_req, res) => {
 
 app.get('/observatory', async (_req, res) => {
   try {
-    const defaultArtifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
+    const defaultArtifactPath = join(process.cwd(), 'artifacts', 'knowledge.observatory.json');
     const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
     const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
 
