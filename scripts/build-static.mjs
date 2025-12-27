@@ -43,7 +43,14 @@ async function main() {
 
   // 2) Observatory (Artefakt -> Fallback Fixture)
   const defaultArtifactPath = join(ROOT, "artifacts", "knowledge.observatory.json");
-  const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
+  const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH ||
+                       process.env.OBSERVATORY_OUT_PATH ||
+                       defaultArtifactPath;
+
+  if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) {
+    console.warn("[leitstand] WARN: OBSERVATORY_OUT_PATH is deprecated. Use OBSERVATORY_ARTIFACT_PATH.");
+  }
+
   const fixturePath = join(ROOT, "src", "fixtures", "observatory.json");
 
   let observatoryData;

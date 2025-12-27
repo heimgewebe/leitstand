@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
@@ -14,11 +15,17 @@ if (!URL) {
     URL = "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
 }
 
-const OUT = "artifacts/knowledge.observatory.json";
+let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_PATH || "artifacts/knowledge.observatory.json";
+
+if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) {
+    console.warn("[leitstand] WARN: OBSERVATORY_OUT_PATH is deprecated. Use OBSERVATORY_ARTIFACT_PATH.");
+}
+
 const strict = process.env.NODE_ENV === "production" || process.env.OBSERVATORY_STRICT === "1";
 
-await mkdir("artifacts", { recursive: true });
+await mkdir(path.dirname(OUT), { recursive: true });
 console.log(`[leitstand] Fetch source: ${URL}`);
+console.log(`[leitstand] Output path: ${OUT}`);
 console.log(`[leitstand] strict=${strict}`);
 
 try {
