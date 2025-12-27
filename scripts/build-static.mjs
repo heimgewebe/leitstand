@@ -42,8 +42,15 @@ async function main() {
   await renderTo(join(OUT, "index.html"), "index");
 
   // 2) Observatory (Artefakt -> Fallback Fixture)
-  const defaultArtifactPath = join(ROOT, "artifacts", "insights.daily.json");
-  const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
+  const defaultArtifactPath = join(ROOT, "artifacts", "knowledge.observatory.json");
+  const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH ||
+                       process.env.OBSERVATORY_OUT_PATH ||
+                       defaultArtifactPath;
+
+  if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) {
+    console.warn("[leitstand] WARN: OBSERVATORY_OUT_PATH is deprecated. Use OBSERVATORY_ARTIFACT_PATH.");
+  }
+
   const fixturePath = join(ROOT, "src", "fixtures", "observatory.json");
 
   let observatoryData;
@@ -58,32 +65,35 @@ async function main() {
     sourceKind = "artifact";
     console.log(`Loaded observatory data from artifact: ${artifactPath}`);
   } catch (artifactError) {
-    if (artifactError.code === 'ENOENT') {
-      // Fallback to fixture only if artifact is missing
-      console.warn(`Artifact not found at ${artifactPath}, falling back to fixture.`);
-      const fixtureContent = await readFile(fixturePath, 'utf-8');
-      observatoryData = JSON.parse(fixtureContent);
-      sourceKind = "fixture";
-    } else if (artifactError instanceof SyntaxError || artifactError.name === 'SyntaxError') {
-       console.error('Observatory artifact contains invalid JSON:', artifactError.message);
-       throw new Error('Artifact file contains invalid JSON');
-    } else if (artifactError instanceof EmptyFileError || artifactError.code === 'EMPTY_FILE') {
-       console.warn('Observatory artifact file is empty (fallback to fixture)');
-       const fixtureContent = await readFile(fixturePath, 'utf-8');
-       observatoryData = JSON.parse(fixtureContent);
-       sourceKind = "fixture";
-    } else {
-       console.error('Error reading observatory artifact:', artifactError.message);
-       throw artifactError;
+    const strict = process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+
+    if (strict) {
+      console.error(`FATAL: Observatory artifact failed in Production/Strict: ${artifactError}`);
+      process.exit(1);
     }
+
+    if (artifactError.code === 'ENOENT') {
+      console.warn(`Artifact not found at ${artifactPath}, falling back to fixture.`);
+    } else {
+      console.warn(`Artifact invalid at ${artifactPath}, falling back to fixture: ${artifactError}`);
+    }
+
+    const fixtureContent = await readFile(fixturePath, 'utf-8');
+    observatoryData = JSON.parse(fixtureContent);
+    sourceKind = "fixture";
   }
+
+  const observatoryUrl = process.env.OBSERVATORY_URL || "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
 
   await mkdir(join(OUT, "observatory"), { recursive: true });
   await renderTo(
     join(OUT, "observatory", "index.html"),
     "observatory",
     { data: observatoryData },
-    { view_meta: { source_kind: sourceKind } }
+    {
+      view_meta: { source_kind: sourceKind },
+      observatoryUrl: observatoryUrl
+    }
   );
 
   // 3) Intent (Fixture)
