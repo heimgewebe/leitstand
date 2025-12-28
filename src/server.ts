@@ -82,9 +82,12 @@ app.get('/observatory', async (_req, res) => {
     // Load insights.daily.json (Compressed/Published Knowledge)
     const insightsArtifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
     const insightsFixturePath = join(process.cwd(), 'src', 'fixtures', 'insights.daily.json');
+    const insightsDailyUrl = process.env.INSIGHTS_DAILY_URL;
+
     let insightsDaily = null;
     let insightsDailySource = null;
 
+    // 1. Try local artifact
     try {
       const content = await readFile(insightsArtifactPath, 'utf-8');
       if (content.trim()) {
@@ -92,8 +95,21 @@ app.get('/observatory', async (_req, res) => {
         insightsDailySource = 'artifact';
       }
     } catch (e) {
-      // Fallback to fixture if not strict
-      if (!isStrict) {
+      // 2. Try URL fetch (Live) if not strict and URL provided
+      if (!isStrict && insightsDailyUrl) {
+         try {
+           const response = await fetch(insightsDailyUrl);
+           if (response.ok) {
+             insightsDaily = await response.json();
+             insightsDailySource = 'fetch';
+           }
+         } catch (fetchErr) {
+            console.warn('Runtime fetch for insights.daily failed:', fetchErr instanceof Error ? fetchErr.message : String(fetchErr));
+         }
+      }
+
+      // 3. Fallback to fixture
+      if (!insightsDaily && !isStrict) {
          try {
            const content = await readFile(insightsFixturePath, 'utf-8');
            insightsDaily = JSON.parse(content);

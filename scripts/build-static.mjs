@@ -85,14 +85,16 @@ async function main() {
 
   const observatoryUrl = process.env.OBSERVATORY_URL || "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
 
-  await mkdir(join(OUT, "observatory"), { recursive: true });
   // Load insights.daily.json for static build
   const insightsArtifactPath = join(ROOT, 'artifacts', 'insights.daily.json');
   const insightsFixturePath = join(ROOT, 'src', 'fixtures', 'insights.daily.json');
+  const insightsDailyUrl = process.env.INSIGHTS_DAILY_URL; // e.g. from semantAH release
+
   let insightsDaily = null;
   let insightsDailySource = null;
   const isStrict = process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
 
+  // 1. Try local artifact
   try {
     const content = await readFile(insightsArtifactPath, 'utf-8');
     if (content.trim()) {
@@ -101,17 +103,39 @@ async function main() {
       console.log(`Loaded insights daily from artifact: ${insightsArtifactPath}`);
     }
   } catch (e) {
-    if (!isStrict) {
-       try {
-         const content = await readFile(insightsFixturePath, 'utf-8');
-         insightsDaily = JSON.parse(content);
-         insightsDailySource = 'fixture';
-         console.warn('Loaded insights daily from fixture (fallback)');
-       } catch (e2) {
-         console.warn('Could not load insights.daily fixture:', e2.message);
-       }
-    } else {
-        console.warn('Insights daily artifact missing in strict mode (optional but noted).');
+    // 2. Try URL fetch if no artifact and URL is provided (Live Fetch during build)
+    if (insightsDailyUrl) {
+      try {
+        console.log(`Fetching insights daily from URL: ${insightsDailyUrl}`);
+        const response = await fetch(insightsDailyUrl);
+        if (response.ok) {
+           insightsDaily = await response.json();
+           insightsDailySource = 'fetch';
+           // Optionally write to artifact path to cache it?
+           // await writeFile(insightsArtifactPath, JSON.stringify(insightsDaily, null, 2));
+           console.log('Loaded insights daily from URL');
+        } else {
+           console.warn(`Failed to fetch insights daily from ${insightsDailyUrl}: ${response.status} ${response.statusText}`);
+        }
+      } catch (fetchErr) {
+        console.warn(`Error fetching insights daily: ${fetchErr.message}`);
+      }
+    }
+
+    // 3. Fallback to fixture
+    if (!insightsDaily) {
+        if (!isStrict) {
+           try {
+             const content = await readFile(insightsFixturePath, 'utf-8');
+             insightsDaily = JSON.parse(content);
+             insightsDailySource = 'fixture';
+             console.warn('Loaded insights daily from fixture (fallback)');
+           } catch (e2) {
+             console.warn('Could not load insights.daily fixture:', e2.message);
+           }
+        } else {
+            console.warn('Insights daily artifact missing in strict mode (optional but noted).');
+        }
     }
   }
 
