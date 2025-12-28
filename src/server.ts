@@ -45,7 +45,7 @@ app.get('/observatory', async (_req, res) => {
       // If strict mode is enabled, re-throw immediately to fail the request
       if (isStrict) {
         console.error('[STRICT MODE] Artifact load failed:', artifactError);
-        throw artifactError;
+        throw new Error("Strict Mode: Observatory artifact missing or invalid.");
       }
 
       // Type guards

@@ -5,6 +5,10 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Artifacts (Runtime Data)
+artifacts/*.json
+artifacts/_meta.json
+
 # Test output
 coverage/
 

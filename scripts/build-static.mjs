@@ -47,19 +47,23 @@ async function main() {
       const rawPath = process.env.OBSERVATORY_ARTIFACT_PATH || join(ROOT, "artifacts", "knowledge.observatory.json");
       const dailyPath = join(ROOT, "artifacts", "insights.daily.json");
 
-      let fail = false;
-      try {
-          const s1 = await readFile(rawPath);
-          if (s1.length < 10) fail = true;
-      } catch(e) { fail = true; }
+      const checkArtifact = async (label, p) => {
+          try {
+              const content = await readFile(p, 'utf-8');
+              if (!content || !content.trim()) throw new Error("Empty file");
+              JSON.parse(content);
+          } catch (e) {
+              console.error(`STRICT FAIL: ${label} artifact invalid/missing at ${p}. Error: ${e.message}`);
+              return false;
+          }
+          return true;
+      };
 
-      try {
-          const s2 = await readFile(dailyPath);
-          if (s2.length < 10) fail = true;
-      } catch(e) { fail = true; }
+      const rawOk = await checkArtifact("Raw Observatory", rawPath);
+      const dailyOk = await checkArtifact("Daily Insights", dailyPath);
 
-      if (fail) {
-          console.error("Strict build requires BOTH artifacts (raw + daily). Run: pnpm build:cf (fetch first).");
+      if (!rawOk || !dailyOk) {
+          console.error("Strict build requires BOTH valid artifacts (Raw + Daily). Run: pnpm build:cf (fetch first).");
           process.exit(1);
       }
   }

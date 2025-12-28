@@ -71,7 +71,8 @@ try {
     try { meta = JSON.parse(fs.readFileSync(META_PATH, "utf8")); } catch (e) {}
   }
 
-  // meta.fetched_at is already set by observatory fetch if run sequentially, but update is fine.
+  // Ensure strict flag is set
+  meta.strict = strict;
   if (!meta.fetched_at) meta.fetched_at = new Date().toISOString();
 
   const fileExists = fs.existsSync(OUT);
@@ -80,6 +81,7 @@ try {
   let ts = null;
   let observatory_ref = null;
   let uncertainty = null;
+  let missing = !fileExists;
 
   if (fileExists) {
     const s = fs.readFileSync(OUT, "utf8");
@@ -92,7 +94,9 @@ try {
             observatory_ref = obj.metadata.observatory_ref;
             uncertainty = obj.metadata.uncertainty;
         }
-    } catch (e) {}
+    } catch (e) {
+        parsed = false;
+    }
   }
 
   meta.insights_daily = {
@@ -100,6 +104,7 @@ try {
     bytes: bytes,
     source_url: URL,
     parsed: parsed,
+    missing: missing,
     ts: ts,
     observatory_ref: observatory_ref,
     uncertainty: uncertainty
