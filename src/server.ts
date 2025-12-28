@@ -85,8 +85,7 @@ app.get('/observatory', async (_req, res) => {
 
     let insightsDaily = null;
     let insightsDailySource = null;
-    // Server logic also respects strict env
-    const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+    // Server logic also respects strict env (already defined above)
 
     // 1. Try local artifact
     try {
