@@ -71,27 +71,47 @@
          <% } %>
        </div>
        <div style="margin-bottom: 10px;">
-         <strong>Uncertainty Score:</strong> <%= locals.insightsDaily.uncertainty_score || 'n/a' %>
-       </div>
-       <div style="margin-bottom: 10px;">
-         <strong>Observatory Ref:</strong> <%= locals.insightsDaily.observatory_ref || 'n/a' %>
+         <strong>Date:</strong> <%= locals.insightsDaily.ts || 'n/a' %>
        </div>
 
-       <% if (locals.insightsDaily.top_signals && locals.insightsDaily.top_signals.length > 0) { %>
-         <h4>Top Signals (Published)</h4>
-         <div class="insights">
-           <% locals.insightsDaily.top_signals.forEach(function(signal) { %>
-             <div class="insight-card" style="border-left: 5px solid #28a745;">
-               <h4><%= signal.type || 'Signal' %></h4>
-               <div class="insight-meta">ID: <%= signal.id %></div>
-               <% if (signal.verdict) { %>
-                 <div class="verdict" style="color: #28a745;">Verdict: <%= signal.verdict %></div>
-               <% } %>
-             </div>
+       <% if (locals.insightsDaily.metadata) { %>
+         <% if (locals.insightsDaily.metadata.observatory_ref) { %>
+            <div style="margin-bottom: 10px;">
+              <strong>Observatory Ref:</strong> <%= locals.insightsDaily.metadata.observatory_ref %>
+            </div>
+         <% } %>
+         <% if (typeof locals.insightsDaily.metadata.uncertainty !== 'undefined') { %>
+            <div style="margin-bottom: 10px;">
+              <strong>Uncertainty:</strong> <%= locals.insightsDaily.metadata.uncertainty %>
+            </div>
+         <% } %>
+       <% } %>
+
+       <% if (locals.insightsDaily.topics && locals.insightsDaily.topics.length > 0) { %>
+         <h4>Topics (Weighted)</h4>
+         <ul style="margin-top: 5px; margin-bottom: 15px;">
+           <% locals.insightsDaily.topics.forEach(function(t) { %>
+             <li><%= t[0] %> <span style="color:#666; font-size:0.9em;">(<%= t[1] %>)</span></li>
            <% }); %>
-         </div>
-       <% } else { %>
-         <p>No top signals in daily digest.</p>
+         </ul>
+       <% } %>
+
+       <% if (locals.insightsDaily.questions && locals.insightsDaily.questions.length > 0) { %>
+         <h4>Open Questions</h4>
+         <ul style="margin-top: 5px; margin-bottom: 15px;">
+           <% locals.insightsDaily.questions.forEach(function(q) { %>
+             <li><%= q %></li>
+           <% }); %>
+         </ul>
+       <% } %>
+
+       <% if (locals.insightsDaily.deltas && locals.insightsDaily.deltas.length > 0) { %>
+         <h4>Deltas (Changes)</h4>
+         <ul style="margin-top: 5px; margin-bottom: 15px;">
+           <% locals.insightsDaily.deltas.forEach(function(d) { %>
+             <li><%= d %></li>
+           <% }); %>
+         </ul>
        <% } %>
 
     <% } else { %>

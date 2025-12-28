@@ -1,19 +1,21 @@
 {
-  "id": "daily-insight-fixture",
-  "generated_at": "2023-10-27T10:00:00Z",
-  "source": "semantAH",
-  "uncertainty_score": 0.06,
-  "top_signals": [
-    {
-      "id": "ins-1",
-      "type": "insight.negation",
-      "verdict": "conflict",
-      "score": 0.95,
-      "relation": {
-        "thesis": "A",
-        "antithesis": "B"
-      }
-    }
+  "ts": "2025-12-28",
+  "topics": [
+    ["observatory", 0.9],
+    ["insights.daily", 0.7],
+    ["leitstand-ui", 0.5]
   ],
-  "observatory_ref": "obs-hash-123"
+  "questions": [
+    "Welche Topics aus knowledge.observatory sind stabil über 3 Tage?",
+    "Welche Deltas sind echte Trendwechsel und welche Rauschen?"
+  ],
+  "deltas": [
+    "Neue Observatory-Quelle verfügbar (Artifact statt Fixture).",
+    "UI trennt Raw Observatory und Published Daily klarer."
+  ],
+  "source": "semantAH.daily",
+  "metadata": {
+    "observatory_ref": "obs-example-001",
+    "uncertainty": 0.12
+  }
 }
