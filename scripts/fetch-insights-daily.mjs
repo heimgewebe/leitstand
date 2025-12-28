@@ -12,7 +12,7 @@ if (!URL) {
 
 let OUT = process.env.INSIGHTS_DAILY_ARTIFACT_PATH || "artifacts/insights.daily.json";
 
-const strict = process.env.NODE_ENV === "production" || process.env.INSIGHTS_STRICT === "1";
+const strict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === "production" || process.env.INSIGHTS_STRICT === "1";
 
 await mkdir(path.dirname(OUT), { recursive: true });
 console.log(`[leitstand] Fetch source: ${URL}`);

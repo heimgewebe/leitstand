@@ -28,7 +28,7 @@ app.get('/observatory', async (_req, res) => {
     const defaultArtifactPath = join(process.cwd(), 'artifacts', 'knowledge.observatory.json');
     const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
     const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
-    const isStrict = process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+    const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
 
     let data;
     let sourceKind;
@@ -82,10 +82,11 @@ app.get('/observatory', async (_req, res) => {
     // Load insights.daily.json (Compressed/Published Knowledge)
     const insightsArtifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
     const insightsFixturePath = join(process.cwd(), 'src', 'fixtures', 'insights.daily.json');
-    const insightsDailyUrl = process.env.INSIGHTS_DAILY_URL;
 
     let insightsDaily = null;
     let insightsDailySource = null;
+    // Server logic also respects strict env
+    const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
 
     // 1. Try local artifact
     try {
@@ -95,20 +96,7 @@ app.get('/observatory', async (_req, res) => {
         insightsDailySource = 'artifact';
       }
     } catch (e) {
-      // 2. Try URL fetch (Live) if not strict and URL provided
-      if (!isStrict && insightsDailyUrl) {
-         try {
-           const response = await fetch(insightsDailyUrl);
-           if (response.ok) {
-             insightsDaily = await response.json();
-             insightsDailySource = 'fetch';
-           }
-         } catch (fetchErr) {
-            console.warn('Runtime fetch for insights.daily failed:', fetchErr instanceof Error ? fetchErr.message : String(fetchErr));
-         }
-      }
-
-      // 3. Fallback to fixture
+      // 2. Fallback to fixture (only in non-strict mode, no runtime fetch)
       if (!insightsDaily && !isStrict) {
          try {
            const content = await readFile(insightsFixturePath, 'utf-8');

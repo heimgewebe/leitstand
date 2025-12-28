@@ -74,7 +74,18 @@
          <strong>Date:</strong> <%= locals.insightsDaily.ts || 'n/a' %>
        </div>
 
+       <% if (locals.insightsDaily.source) { %>
+         <div style="margin-bottom: 10px;">
+           <strong>Source ID:</strong> <%= locals.insightsDaily.source %>
+         </div>
+       <% } %>
+
        <% if (locals.insightsDaily.metadata) { %>
+         <% if (locals.insightsDaily.metadata.generated_at) { %>
+            <div style="margin-bottom: 10px;">
+              <strong>Generated:</strong> <%= locals.insightsDaily.metadata.generated_at %>
+            </div>
+         <% } %>
          <% if (locals.insightsDaily.metadata.observatory_ref) { %>
             <div style="margin-bottom: 10px;">
               <strong>Observatory Ref:</strong> <%= locals.insightsDaily.metadata.observatory_ref %>

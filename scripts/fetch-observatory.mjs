@@ -21,7 +21,7 @@ if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) 
     console.warn("[leitstand] WARN: OBSERVATORY_OUT_PATH is deprecated. Use OBSERVATORY_ARTIFACT_PATH.");
 }
 
-const strict = process.env.NODE_ENV === "production" || process.env.OBSERVATORY_STRICT === "1";
+const strict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === "production" || process.env.OBSERVATORY_STRICT === "1";
 
 await mkdir(path.dirname(OUT), { recursive: true });
 console.log(`[leitstand] Fetch source: ${URL}`);
