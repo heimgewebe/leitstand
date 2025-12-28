@@ -1,0 +1,21 @@
+{
+  "ts": "2025-12-28",
+  "topics": [
+    ["observatory", 0.9],
+    ["insights.daily", 0.7],
+    ["leitstand-ui", 0.5]
+  ],
+  "questions": [
+    "Welche Topics aus knowledge.observatory sind stabil über 3 Tage?",
+    "Welche Deltas sind echte Trendwechsel und welche Rauschen?"
+  ],
+  "deltas": [
+    "Neue Observatory-Quelle verfügbar (Artifact statt Fixture).",
+    "UI trennt Raw Observatory und Published Daily klarer."
+  ],
+  "source": "semantAH.daily",
+  "metadata": {
+    "observatory_ref": "obs-example-001",
+    "uncertainty": 0.12
+  }
+}

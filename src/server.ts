@@ -28,7 +28,7 @@ app.get('/observatory', async (_req, res) => {
     const defaultArtifactPath = join(process.cwd(), 'artifacts', 'knowledge.observatory.json');
     const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
     const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
-    const isStrict = process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+    const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
 
     let data;
     let sourceKind;
@@ -79,10 +79,42 @@ app.get('/observatory', async (_req, res) => {
       }
     }
 
+    // Load insights.daily.json (Compressed/Published Knowledge)
+    const insightsArtifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
+    const insightsFixturePath = join(process.cwd(), 'src', 'fixtures', 'insights.daily.json');
+
+    let insightsDaily = null;
+    let insightsDailySource = null;
+    // Server logic also respects strict env (already defined above)
+
+    // 1. Try local artifact
+    try {
+      const content = await readFile(insightsArtifactPath, 'utf-8');
+      if (content.trim()) {
+        insightsDaily = JSON.parse(content);
+        insightsDailySource = 'artifact';
+      }
+    } catch (e) {
+      // 2. Fallback to fixture (only in non-strict mode, no runtime fetch)
+      if (!insightsDaily && !isStrict) {
+         try {
+           const content = await readFile(insightsFixturePath, 'utf-8');
+           insightsDaily = JSON.parse(content);
+           insightsDailySource = 'fixture';
+           console.warn('Insights Daily loaded from fixture (fallback)');
+         } catch (e2) {
+           console.warn('Could not load insights.daily fixture:', e2 instanceof Error ? e2.message : String(e2));
+         }
+      }
+    }
+
     res.render('observatory', {
       data,
+      insightsDaily,
       view_meta: {
-        source_kind: sourceKind
+        source_kind: sourceKind,
+        insights_source_kind: insightsDailySource,
+        is_strict: isStrict
       }
     });
   } catch (error) {

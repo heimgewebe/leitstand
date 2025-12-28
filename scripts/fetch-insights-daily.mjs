@@ -4,24 +4,15 @@ import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 
-let URL = process.env.OBSERVATORY_URL;
-
-if (process.env.OBSERVATORY_ARTIFACT_URL) {
-    console.warn("[leitstand] DEPRECATED: OBSERVATORY_ARTIFACT_URL is set; use OBSERVATORY_URL instead.");
-    if (!URL) URL = process.env.OBSERVATORY_ARTIFACT_URL;
-}
+let URL = process.env.INSIGHTS_DAILY_URL;
 
 if (!URL) {
-    URL = "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
+    URL = "https://github.com/heimgewebe/semantAH/releases/download/insights-daily/insights.daily.json";
 }
 
-let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_PATH || "artifacts/knowledge.observatory.json";
+let OUT = process.env.INSIGHTS_DAILY_ARTIFACT_PATH || "artifacts/insights.daily.json";
 
-if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) {
-    console.warn("[leitstand] WARN: OBSERVATORY_OUT_PATH is deprecated. Use OBSERVATORY_ARTIFACT_PATH.");
-}
-
-const strict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === "production" || process.env.OBSERVATORY_STRICT === "1";
+const strict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === "production" || process.env.INSIGHTS_STRICT === "1";
 
 await mkdir(path.dirname(OUT), { recursive: true });
 console.log(`[leitstand] Fetch source: ${URL}`);
@@ -56,11 +47,13 @@ if (fs.existsSync(OUT)) {
   try {
     const obj = JSON.parse(s);
     if (!obj || typeof obj !== "object") throw new Error("Artifact JSON is not an object.");
-    if (!obj.generated_at) throw new Error("Artifact missing generated_at.");
-    if (!obj.source) throw new Error("Artifact missing source.");
+    // Basic schema check for Daily Insights
+    if (!obj.ts) throw new Error("Artifact missing ts.");
     if (!Array.isArray(obj.topics)) throw new Error("Artifact topics must be an array.");
+    if (!Array.isArray(obj.questions)) throw new Error("Artifact questions must be an array.");
+    if (!Array.isArray(obj.deltas)) throw new Error("Artifact deltas must be an array.");
 
-    console.log(`[leitstand] Artifact valid. bytes=${Buffer.byteLength(s, "utf8")} generated_at=${obj.generated_at} topics=${obj.topics.length}`);
+    console.log(`[leitstand] Artifact valid. bytes=${Buffer.byteLength(s, "utf8")} ts=${obj.ts} topics=${obj.topics.length}`);
   } catch (e) {
     if (strict) {
         console.error(`[leitstand] FATAL: Artifact is not valid JSON/Schema: ${e.message}`);

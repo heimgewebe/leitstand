@@ -7,7 +7,8 @@
   "license": "MIT",
   "scripts": {
     "fetch:observatory": "node scripts/fetch-observatory.mjs",
-    "build:cf": "pnpm fetch:observatory && pnpm build:static",
+    "fetch:insights": "node scripts/fetch-insights-daily.mjs",
+    "build:cf": "pnpm fetch:observatory && pnpm fetch:insights && pnpm build:static",
     "build": "tsc",
     "build:static": "node scripts/build-static.mjs",
     "test": "vitest run",

@@ -17,6 +17,14 @@ export interface DailyInsights {
   questions: string[];
   /** Delta/changes detected */
   deltas: string[];
+  /** Optional source identifier */
+  source?: string;
+  /** Optional metadata */
+  metadata?: {
+    observatory_ref?: string;
+    uncertainty?: number;
+    [key: string]: unknown;
+  };
 }
 
 /**
@@ -50,6 +58,8 @@ export async function loadDailyInsights(path: string): Promise<DailyInsights> {
       topics,
       questions: Array.isArray(data.questions) ? data.questions.filter((q: unknown): q is string => typeof q === 'string') : [],
       deltas: Array.isArray(data.deltas) ? data.deltas.filter((d: unknown): d is string => typeof d === 'string') : [],
+      source: typeof data.source === 'string' ? data.source : undefined,
+      metadata: typeof data.metadata === 'object' && data.metadata !== null ? data.metadata : undefined,
     };
   } catch (error) {
     if (error instanceof SyntaxError) {

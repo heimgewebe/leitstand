@@ -85,13 +85,46 @@ async function main() {
 
   const observatoryUrl = process.env.OBSERVATORY_URL || "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
 
+  // Load insights.daily.json for static build
+  const insightsArtifactPath = join(ROOT, 'artifacts', 'insights.daily.json');
+  const insightsFixturePath = join(ROOT, 'src', 'fixtures', 'insights.daily.json');
+
+  let insightsDaily = null;
+  let insightsDailySource = null;
+  const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+
+  // 1. Try local artifact (deterministic build)
+  try {
+    const content = await readFile(insightsArtifactPath, 'utf-8');
+    if (content.trim()) {
+      insightsDaily = JSON.parse(content);
+      insightsDailySource = 'artifact';
+      console.log(`Loaded insights daily from artifact: ${insightsArtifactPath}`);
+    }
+  } catch (e) {
+    // 2. Fallback to fixture or fail
+    if (isStrict) {
+        console.error("Strict: insights.daily.json missing. Run pnpm build:cf (fetch artifacts first).");
+        process.exit(1);
+    } else {
+        try {
+          const content = await readFile(insightsFixturePath, 'utf-8');
+          insightsDaily = JSON.parse(content);
+          insightsDailySource = 'fixture';
+          console.warn('Loaded insights daily from fixture (fallback)');
+        } catch (e2) {
+          console.warn('Could not load insights.daily fixture:', e2.message);
+        }
+    }
+  }
+
   await mkdir(join(OUT, "observatory"), { recursive: true });
   await renderTo(
     join(OUT, "observatory", "index.html"),
     "observatory",
-    { data: observatoryData },
+    { data: observatoryData, insightsDaily },
     {
-      view_meta: { source_kind: sourceKind },
+      view_meta: { source_kind: sourceKind, insights_source_kind: insightsDailySource, is_strict: isStrict },
       observatoryUrl: observatoryUrl
     }
   );
