@@ -69,3 +69,37 @@ if (fs.existsSync(OUT)) {
     console.warn(`[leitstand] Artifact is not valid JSON: ${e.message}; build may fallback.`);
   }
 }
+
+// Update _meta.json
+try {
+  const META_PATH = "artifacts/_meta.json";
+  let meta = {};
+  if (fs.existsSync(META_PATH)) {
+    try { meta = JSON.parse(fs.readFileSync(META_PATH, "utf8")); } catch (e) {}
+  }
+
+  meta.fetched_at = new Date().toISOString();
+  meta.strict = strict;
+
+  const fileExists = fs.existsSync(OUT);
+  let bytes = 0;
+  let parsed = false;
+
+  if (fileExists) {
+    const s = fs.readFileSync(OUT, "utf8");
+    bytes = Buffer.byteLength(s, "utf8");
+    try { JSON.parse(s); parsed = true; } catch (e) {}
+  }
+
+  meta.observatory = {
+    path: OUT,
+    bytes: bytes,
+    source_url: URL,
+    parsed: parsed
+  };
+
+  fs.writeFileSync(META_PATH, JSON.stringify(meta, null, 2));
+} catch (e) {
+  console.warn("[leitstand] Failed to update _meta.json", e);
+  if (strict) process.exit(1);
+}

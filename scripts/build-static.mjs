@@ -41,6 +41,33 @@ async function main() {
   // 1) Home
   await renderTo(join(OUT, "index.html"), "index");
 
+  // Strict Symmetry Check
+  const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+  if (isStrict) {
+      const rawPath = process.env.OBSERVATORY_ARTIFACT_PATH || join(ROOT, "artifacts", "knowledge.observatory.json");
+      const dailyPath = join(ROOT, "artifacts", "insights.daily.json");
+
+      const checkArtifact = async (label, p) => {
+          try {
+              const content = await readFile(p, 'utf-8');
+              if (!content || !content.trim()) throw new Error("Empty file");
+              JSON.parse(content);
+          } catch (e) {
+              console.error(`STRICT FAIL: ${label} artifact invalid/missing at ${p}. Error: ${e.message}`);
+              return false;
+          }
+          return true;
+      };
+
+      const rawOk = await checkArtifact("Raw Observatory", rawPath);
+      const dailyOk = await checkArtifact("Daily Insights", dailyPath);
+
+      if (!rawOk || !dailyOk) {
+          console.error("Strict build requires BOTH valid artifacts (Raw + Daily). Run: pnpm build:cf (fetch first).");
+          process.exit(1);
+      }
+  }
+
   // 2) Observatory (Artefakt -> Fallback Fixture)
   const defaultArtifactPath = join(ROOT, "artifacts", "knowledge.observatory.json");
   const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH ||
@@ -91,20 +118,19 @@ async function main() {
 
   let insightsDaily = null;
   let insightsDailySource = null;
-  const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+  // isStrict already defined above
 
   // 1. Try local artifact (deterministic build)
   try {
     const content = await readFile(insightsArtifactPath, 'utf-8');
-    if (content.trim()) {
-      insightsDaily = JSON.parse(content);
-      insightsDailySource = 'artifact';
-      console.log(`Loaded insights daily from artifact: ${insightsArtifactPath}`);
-    }
+    if (!content.trim()) throw new Error("Empty insights file");
+    insightsDaily = JSON.parse(content);
+    insightsDailySource = 'artifact';
+    console.log(`Loaded insights daily from artifact: ${insightsArtifactPath}`);
   } catch (e) {
     // 2. Fallback to fixture or fail
     if (isStrict) {
-        console.error("Strict: insights.daily.json missing. Run pnpm build:cf (fetch artifacts first).");
+        console.error("Strict build requires BOTH artifacts (raw + daily). Run: pnpm build:cf (fetch first).");
         process.exit(1);
     } else {
         try {
@@ -118,13 +144,26 @@ async function main() {
     }
   }
 
+  // Load _meta.json forensic trail
+  let metaForensics = {};
+  try {
+      const metaPath = join(ROOT, "artifacts", "_meta.json");
+      const metaContent = await readFile(metaPath, 'utf-8');
+      metaForensics = JSON.parse(metaContent);
+  } catch (e) { /* ignore in static build if missing, but pass if exists */ }
+
   await mkdir(join(OUT, "observatory"), { recursive: true });
   await renderTo(
     join(OUT, "observatory", "index.html"),
     "observatory",
     { data: observatoryData, insightsDaily },
     {
-      view_meta: { source_kind: sourceKind, insights_source_kind: insightsDailySource, is_strict: isStrict },
+      view_meta: {
+          source_kind: sourceKind,
+          insights_source_kind: insightsDailySource,
+          is_strict: isStrict,
+          forensics: metaForensics
+      },
       observatoryUrl: observatoryUrl
     }
   );
