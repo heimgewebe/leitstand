@@ -42,40 +42,45 @@ app.get('/observatory', async (_req, res) => {
       sourceKind = 'artifact';
       console.log('Observatory loaded from artifact');
     } catch (artifactError) {
-      // If strict mode is enabled, re-throw immediately to fail the request
+      // If strict mode is enabled, we DO NOT fall back to fixtures.
+      // Instead, we treat data as missing (Empty State).
       if (isStrict) {
-        console.error('[STRICT MODE] Artifact load failed:', artifactError);
-        throw new Error("Strict Mode: Observatory artifact missing or invalid.");
-      }
-
-      // Type guards
-      const isEnoent = (err: unknown): boolean =>
-        typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'ENOENT';
+        console.error('[STRICT MODE] Artifact load failed (expected if missing):', artifactError instanceof Error ? artifactError.message : String(artifactError));
+        data = null;
+        sourceKind = 'missing';
+      } else {
+        // Type guards
+        const isEnoent = (err: unknown): boolean =>
+          typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'ENOENT';
       const isSyntaxError = (err: unknown): err is SyntaxError =>
         err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
 
-      if (isEnoent(artifactError)) {
-        // Fallback to fixture only if artifact is missing
-        const fixtureContent = await readFile(fixturePath, 'utf-8');
-        data = JSON.parse(fixtureContent);
-        sourceKind = 'fixture';
-        console.warn('Observatory loaded from fixture (fallback) - artifact not found');
-      } else if (isSyntaxError(artifactError)) {
-        // Invalid JSON in artifact (dual check handles bundling/transpilation edge cases)
-        const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
-        console.error('Observatory artifact contains invalid JSON:', msg);
-        throw new Error('Artifact file contains invalid JSON');
-      } else if (artifactError instanceof EmptyFileError) {
-        // Empty artifact file - treat as missing to trigger fallback
-        console.warn('Observatory artifact file is empty (fallback to fixture)');
-        const fixtureContent = await readFile(fixturePath, 'utf-8');
-        data = JSON.parse(fixtureContent);
-        sourceKind = 'fixture';
-      } else {
-        // Other errors (e.g. permission denied)
-        const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
-        console.error('Error reading observatory artifact:', msg);
-        throw artifactError;
+        const isSyntaxError = (err: unknown): err is SyntaxError =>
+          err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
+
+        if (isEnoent(artifactError)) {
+          // Fallback to fixture only if artifact is missing
+          const fixtureContent = await readFile(fixturePath, 'utf-8');
+          data = JSON.parse(fixtureContent);
+          sourceKind = 'fixture';
+          console.warn('Observatory loaded from fixture (fallback) - artifact not found');
+        } else if (isSyntaxError(artifactError)) {
+          // Invalid JSON in artifact (dual check handles bundling/transpilation edge cases)
+          const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
+          console.error('Observatory artifact contains invalid JSON:', msg);
+          throw new Error('Artifact file contains invalid JSON');
+        } else if (artifactError instanceof EmptyFileError) {
+          // Empty artifact file - treat as missing to trigger fallback
+          console.warn('Observatory artifact file is empty (fallback to fixture)');
+          const fixtureContent = await readFile(fixturePath, 'utf-8');
+          data = JSON.parse(fixtureContent);
+          sourceKind = 'fixture';
+        } else {
+          // Other errors (e.g. permission denied)
+          const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
+          console.error('Error reading observatory artifact:', msg);
+          throw artifactError;
+        }
       }
     }
 
@@ -97,8 +102,9 @@ app.get('/observatory', async (_req, res) => {
     } catch (e) {
       // 2. Fallback to fixture (only in non-strict mode, no runtime fetch)
       if (isStrict) {
-        console.error('[STRICT MODE] Insights artifact load failed:', e);
-        throw new Error("Strict requires Raw + Daily. Insights missing.");
+        console.error('[STRICT MODE] Insights artifact load failed (expected if missing):', e instanceof Error ? e.message : String(e));
+        // Do not throw, just leave insightsDaily as null
+        insightsDaily = null;
       } else if (!insightsDaily) {
          try {
            const content = await readFile(insightsFixturePath, 'utf-8');

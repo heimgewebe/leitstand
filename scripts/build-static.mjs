@@ -63,8 +63,8 @@ async function main() {
       const dailyOk = await checkArtifact("Daily Insights", dailyPath);
 
       if (!rawOk || !dailyOk) {
-          console.error("Strict build requires BOTH valid artifacts (Raw + Daily). Run: pnpm build:cf (fetch first).");
-          process.exit(1);
+          console.error("Strict build: One or more artifacts missing. Proceeding with EMPTY STATE (Production Safe Mode).");
+          // process.exit(1); // REMOVED: We allow building the empty state
       }
   }
 
@@ -92,22 +92,22 @@ async function main() {
     sourceKind = "artifact";
     console.log(`Loaded observatory data from artifact: ${artifactPath}`);
   } catch (artifactError) {
-    const strict = process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
-
-    if (strict) {
-      console.error(`FATAL: Observatory artifact failed in Production/Strict: ${artifactError}`);
-      process.exit(1);
-    }
-
-    if (artifactError.code === 'ENOENT') {
-      console.warn(`Artifact not found at ${artifactPath}, falling back to fixture.`);
+    if (isStrict) {
+      console.error(`WARN: Observatory artifact failed in Production/Strict: ${artifactError instanceof Error ? artifactError.message : String(artifactError)}`);
+      console.error("Proceeding with EMPTY STATE.");
+      observatoryData = null;
+      sourceKind = "missing";
     } else {
-      console.warn(`Artifact invalid at ${artifactPath}, falling back to fixture: ${artifactError}`);
-    }
+        if (artifactError.code === 'ENOENT') {
+          console.warn(`Artifact not found at ${artifactPath}, falling back to fixture.`);
+        } else {
+          console.warn(`Artifact invalid at ${artifactPath}, falling back to fixture: ${artifactError}`);
+        }
 
-    const fixtureContent = await readFile(fixturePath, 'utf-8');
-    observatoryData = JSON.parse(fixtureContent);
-    sourceKind = "fixture";
+        const fixtureContent = await readFile(fixturePath, 'utf-8');
+        observatoryData = JSON.parse(fixtureContent);
+        sourceKind = "fixture";
+    }
   }
 
   const observatoryUrl = process.env.OBSERVATORY_URL || "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
@@ -130,8 +130,9 @@ async function main() {
   } catch (e) {
     // 2. Fallback to fixture or fail
     if (isStrict) {
-        console.error("Strict build requires BOTH artifacts (raw + daily). Run: pnpm build:cf (fetch first).");
-        process.exit(1);
+        console.error("Strict build: Insights artifact missing. Proceeding with EMPTY STATE.");
+        // process.exit(1); // REMOVED
+        insightsDaily = null;
     } else {
         try {
           const content = await readFile(insightsFixturePath, 'utf-8');
