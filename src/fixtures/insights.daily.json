@@ -1,0 +1,19 @@
+{
+  "id": "daily-insight-fixture",
+  "generated_at": "2023-10-27T10:00:00Z",
+  "source": "semantAH",
+  "uncertainty_score": 0.06,
+  "top_signals": [
+    {
+      "id": "ins-1",
+      "type": "insight.negation",
+      "verdict": "conflict",
+      "score": 0.95,
+      "relation": {
+        "thesis": "A",
+        "antithesis": "B"
+      }
+    }
+  ],
+  "observatory_ref": "obs-hash-123"
+}

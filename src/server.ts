@@ -79,10 +79,38 @@ app.get('/observatory', async (_req, res) => {
       }
     }
 
+    // Load insights.daily.json (Compressed/Published Knowledge)
+    const insightsArtifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
+    const insightsFixturePath = join(process.cwd(), 'src', 'fixtures', 'insights.daily.json');
+    let insightsDaily = null;
+    let insightsDailySource = null;
+
+    try {
+      const content = await readFile(insightsArtifactPath, 'utf-8');
+      if (content.trim()) {
+        insightsDaily = JSON.parse(content);
+        insightsDailySource = 'artifact';
+      }
+    } catch (e) {
+      // Fallback to fixture if not strict
+      if (!isStrict) {
+         try {
+           const content = await readFile(insightsFixturePath, 'utf-8');
+           insightsDaily = JSON.parse(content);
+           insightsDailySource = 'fixture';
+           console.warn('Insights Daily loaded from fixture (fallback)');
+         } catch (e2) {
+           console.warn('Could not load insights.daily fixture:', e2 instanceof Error ? e2.message : String(e2));
+         }
+      }
+    }
+
     res.render('observatory', {
       data,
+      insightsDaily,
       view_meta: {
-        source_kind: sourceKind
+        source_kind: sourceKind,
+        insights_source_kind: insightsDailySource
       }
     });
   } catch (error) {
