@@ -102,8 +102,11 @@ async function main() {
       console.log(`Loaded insights daily from artifact: ${insightsArtifactPath}`);
     }
   } catch (e) {
-    // 2. Fallback to fixture
-    if (!isStrict) {
+    // 2. Fallback to fixture or fail
+    if (isStrict) {
+        console.error("Strict: insights.daily.json missing. Run pnpm build:cf (fetch artifacts first).");
+        process.exit(1);
+    } else {
         try {
           const content = await readFile(insightsFixturePath, 'utf-8');
           insightsDaily = JSON.parse(content);
@@ -112,8 +115,6 @@ async function main() {
         } catch (e2) {
           console.warn('Could not load insights.daily fixture:', e2.message);
         }
-    } else {
-        console.warn('Insights daily artifact missing in strict mode (optional but noted).');
     }
   }
 
@@ -123,7 +124,7 @@ async function main() {
     "observatory",
     { data: observatoryData, insightsDaily },
     {
-      view_meta: { source_kind: sourceKind, insights_source_kind: insightsDailySource },
+      view_meta: { source_kind: sourceKind, insights_source_kind: insightsDailySource, is_strict: isStrict },
       observatoryUrl: observatoryUrl
     }
   );

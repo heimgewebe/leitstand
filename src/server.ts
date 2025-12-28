@@ -114,7 +114,8 @@ app.get('/observatory', async (_req, res) => {
       insightsDaily,
       view_meta: {
         source_kind: sourceKind,
-        insights_source_kind: insightsDailySource
+        insights_source_kind: insightsDailySource,
+        is_strict: isStrict
       }
     });
   } catch (error) {

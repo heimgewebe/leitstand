@@ -11,6 +11,8 @@ Set these in your Cloudflare Pages project settings:
 *   **`OBSERVATORY_URL`**: URL to the raw knowledge artifact (e.g., from semantAH release).
 *   **`INSIGHTS_DAILY_URL`**: URL to the published insights artifact (e.g., from semantAH release).
 
+> Note: `OBSERVATORY_STRICT` and `INSIGHTS_STRICT` are deprecated. Use `LEITSTAND_STRICT`.
+
 ## Build Command
 
 The build command must explicitly fetch both artifacts before generating the static site:
@@ -28,3 +30,8 @@ If `LEITSTAND_STRICT=1` (or `NODE_ENV=production`), the build will **fail** if:
 2.  Fetched artifacts are invalid or empty.
 
 This ensures that the deployed site never relies on fallback test fixtures in production.
+
+## Common Misconfigurations
+
+1.  **Strict Mode without Fetch**: Setting `LEITSTAND_STRICT=1` but running only `pnpm build:static` (skipping fetch). This will cause the build to fail because artifacts are missing. **Always use `pnpm build:cf`**.
+2.  **Missing URLs**: If `OBSERVATORY_URL` or `INSIGHTS_DAILY_URL` are not set, the fetch step will fallback to defaults (GitHub Releases), which might not be desired for private setups.

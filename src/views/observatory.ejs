@@ -126,7 +126,11 @@
        <% } %>
 
     <% } else { %>
-       <p style="color: #666; font-style: italic;">No daily insights published yet.</p>
+       <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+          <p style="color: #d9534f; font-weight: bold;">No published insights available (Strict Mode - Artifact missing).</p>
+       <% } else { %>
+          <p style="color: #666; font-style: italic;">No daily insights published yet (Dev Fallback).</p>
+       <% } %>
     <% } %>
   </div>
 
