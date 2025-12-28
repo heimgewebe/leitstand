@@ -28,8 +28,11 @@ This command runs `fetch:observatory` and `fetch:insights` (populating the `arti
 If `LEITSTAND_STRICT=1` (or `NODE_ENV=production`), the build will **fail** if:
 1.  Artifacts cannot be fetched from the configured URLs.
 2.  Fetched artifacts are invalid or empty.
+3.  **Strict Symmetry Rule**: Both `knowledge.observatory.json` (Raw) and `insights.daily.json` (Published) MUST be present. If one is missing, the build fails.
 
 This ensures that the deployed site never relies on fallback test fixtures in production.
+
+A `_meta.json` file is also generated in `artifacts/` to provide a forensic trail of what was fetched (size, timestamp, source). This is purely informational and not a source of truth for the build logic.
 
 ## Common Misconfigurations
 

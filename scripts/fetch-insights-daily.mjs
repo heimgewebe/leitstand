@@ -62,3 +62,50 @@ if (fs.existsSync(OUT)) {
     console.warn(`[leitstand] Artifact is not valid JSON: ${e.message}; build may fallback.`);
   }
 }
+
+// Update _meta.json
+try {
+  const META_PATH = "artifacts/_meta.json";
+  let meta = {};
+  if (fs.existsSync(META_PATH)) {
+    try { meta = JSON.parse(fs.readFileSync(META_PATH, "utf8")); } catch (e) {}
+  }
+
+  // meta.fetched_at is already set by observatory fetch if run sequentially, but update is fine.
+  if (!meta.fetched_at) meta.fetched_at = new Date().toISOString();
+
+  const fileExists = fs.existsSync(OUT);
+  let bytes = 0;
+  let parsed = false;
+  let ts = null;
+  let observatory_ref = null;
+  let uncertainty = null;
+
+  if (fileExists) {
+    const s = fs.readFileSync(OUT, "utf8");
+    bytes = Buffer.byteLength(s, "utf8");
+    try {
+        const obj = JSON.parse(s);
+        parsed = true;
+        ts = obj.ts;
+        if (obj.metadata) {
+            observatory_ref = obj.metadata.observatory_ref;
+            uncertainty = obj.metadata.uncertainty;
+        }
+    } catch (e) {}
+  }
+
+  meta.insights_daily = {
+    path: OUT,
+    bytes: bytes,
+    source_url: URL,
+    parsed: parsed,
+    ts: ts,
+    observatory_ref: observatory_ref,
+    uncertainty: uncertainty
+  };
+
+  fs.writeFileSync(META_PATH, JSON.stringify(meta, null, 2));
+} catch (e) {
+  console.warn("[leitstand] Failed to update _meta.json", e);
+}

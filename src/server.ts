@@ -96,7 +96,10 @@ app.get('/observatory', async (_req, res) => {
       }
     } catch (e) {
       // 2. Fallback to fixture (only in non-strict mode, no runtime fetch)
-      if (!insightsDaily && !isStrict) {
+      if (isStrict) {
+        console.error('[STRICT MODE] Insights artifact load failed:', e);
+        throw new Error("Strict requires Raw + Daily. Insights missing.");
+      } else if (!insightsDaily) {
          try {
            const content = await readFile(insightsFixturePath, 'utf-8');
            insightsDaily = JSON.parse(content);
@@ -108,13 +111,22 @@ app.get('/observatory', async (_req, res) => {
       }
     }
 
+    // Load forensic metadata if available
+    let forensics = {};
+    try {
+      const metaPath = join(process.cwd(), 'artifacts', '_meta.json');
+      const metaContent = await readFile(metaPath, 'utf-8');
+      forensics = JSON.parse(metaContent);
+    } catch (e) { /* ignore */ }
+
     res.render('observatory', {
       data,
       insightsDaily,
       view_meta: {
         source_kind: sourceKind,
         insights_source_kind: insightsDailySource,
-        is_strict: isStrict
+        is_strict: isStrict,
+        forensics: forensics
       }
     });
   } catch (error) {
@@ -123,7 +135,12 @@ app.get('/observatory', async (_req, res) => {
     // However, keeping it for unexpected errors is good practice.
     if (!res.headersSent) {
        console.error('Final error handler:', error);
-       res.status(500).send('Error loading observatory data');
+       const msg = error instanceof Error ? error.message : String(error);
+       if (msg.includes('Strict requires Raw + Daily') || msg.includes('Strict Mode')) {
+          res.status(503).send(msg);
+       } else {
+          res.status(500).send('Error loading observatory data');
+       }
     }
   }
 });
