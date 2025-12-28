@@ -101,4 +101,5 @@ try {
   fs.writeFileSync(META_PATH, JSON.stringify(meta, null, 2));
 } catch (e) {
   console.warn("[leitstand] Failed to update _meta.json", e);
+  if (strict) process.exit(1);
 }

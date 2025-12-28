@@ -6,8 +6,7 @@ dist/
 *.tsbuildinfo
 
 # Artifacts (Runtime Data)
-artifacts/*.json
-artifacts/_meta.json
+artifacts/**
 
 # Test output
 coverage/
