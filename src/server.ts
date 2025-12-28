@@ -29,6 +29,7 @@ app.get('/observatory', async (_req, res) => {
     const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
     const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
     const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+    const isStrictFail = process.env.OBSERVATORY_STRICT_FAIL === '1';
 
     let data;
     let sourceKind;
@@ -42,22 +43,30 @@ app.get('/observatory', async (_req, res) => {
       sourceKind = 'artifact';
       console.log('Observatory loaded from artifact');
     } catch (artifactError) {
-      // If strict mode is enabled, we DO NOT fall back to fixtures.
-      // Instead, we treat data as missing (Empty State).
-      if (isStrict) {
-        console.error('[STRICT MODE] Artifact load failed (expected if missing):', artifactError instanceof Error ? artifactError.message : String(artifactError));
-        data = null;
-        sourceKind = 'missing';
-      } else {
-        // Type guards
-        const isEnoent = (err: unknown): boolean =>
-          typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'ENOENT';
+      if (isStrictFail) {
+         console.error('[STRICT FAIL] Artifact load failed. Aborting request.', artifactError);
+         throw new Error("Strict Fail: Observatory artifact missing or invalid.");
+      }
+
+      // Type guards
+      const isEnoent = (err: unknown): boolean =>
+        typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'ENOENT';
       const isSyntaxError = (err: unknown): err is SyntaxError =>
         err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
 
-        const isSyntaxError = (err: unknown): err is SyntaxError =>
-          err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
-
+      // If strict mode is enabled (but not fail), we treat missing artifacts as Empty State.
+      // BUT we still fail on corruption (SyntaxError).
+      if (isStrict) {
+        if (isSyntaxError(artifactError)) {
+             console.error('[STRICT] Artifact corrupted (SyntaxError). Failing.', artifactError);
+             throw new Error("Strict: Artifact file contains invalid JSON");
+        }
+        // For missing/empty files, we allow Empty State
+        console.warn('[STRICT] Artifact missing/empty. Proceeding with Empty State.', artifactError instanceof Error ? artifactError.message : String(artifactError));
+        data = null;
+        sourceKind = 'missing';
+      } else {
+        // Dev / Fallback Mode
         if (isEnoent(artifactError)) {
           // Fallback to fixture only if artifact is missing
           const fixtureContent = await readFile(fixturePath, 'utf-8');
@@ -65,7 +74,7 @@ app.get('/observatory', async (_req, res) => {
           sourceKind = 'fixture';
           console.warn('Observatory loaded from fixture (fallback) - artifact not found');
         } else if (isSyntaxError(artifactError)) {
-          // Invalid JSON in artifact (dual check handles bundling/transpilation edge cases)
+          // Invalid JSON in artifact
           const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
           console.error('Observatory artifact contains invalid JSON:', msg);
           throw new Error('Artifact file contains invalid JSON');
@@ -101,8 +110,18 @@ app.get('/observatory', async (_req, res) => {
       }
     } catch (e) {
       // 2. Fallback to fixture (only in non-strict mode, no runtime fetch)
+      if (isStrictFail) {
+         throw new Error("Strict Fail: Insights artifact missing or invalid.");
+      }
+
+      const isSyntaxError = (err: unknown): err is SyntaxError =>
+        err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
+
       if (isStrict) {
-        console.error('[STRICT MODE] Insights artifact load failed (expected if missing):', e instanceof Error ? e.message : String(e));
+        if (isSyntaxError(e)) {
+             throw new Error("Strict: Insights artifact contains invalid JSON");
+        }
+        console.warn('[STRICT] Insights artifact missing/empty. Proceeding with Empty State.', e instanceof Error ? e.message : String(e));
         // Do not throw, just leave insightsDaily as null
         insightsDaily = null;
       } else if (!insightsDaily) {

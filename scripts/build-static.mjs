@@ -43,7 +43,9 @@ async function main() {
 
   // Strict Symmetry Check
   const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
-  if (isStrict) {
+  const isStrictFail = process.env.OBSERVATORY_STRICT_FAIL === '1';
+
+  if (isStrict || isStrictFail) {
       const rawPath = process.env.OBSERVATORY_ARTIFACT_PATH || join(ROOT, "artifacts", "knowledge.observatory.json");
       const dailyPath = join(ROOT, "artifacts", "insights.daily.json");
 
@@ -53,18 +55,28 @@ async function main() {
               if (!content || !content.trim()) throw new Error("Empty file");
               JSON.parse(content);
           } catch (e) {
-              console.error(`STRICT FAIL: ${label} artifact invalid/missing at ${p}. Error: ${e.message}`);
-              return false;
+              console.error(`STRICT CHECK: ${label} artifact issue at ${p}. Error: ${e.message}`);
+              if (e instanceof SyntaxError) return 'corrupt';
+              return 'missing';
           }
-          return true;
+          return 'ok';
       };
 
-      const rawOk = await checkArtifact("Raw Observatory", rawPath);
-      const dailyOk = await checkArtifact("Daily Insights", dailyPath);
+      const rawStatus = await checkArtifact("Raw Observatory", rawPath);
+      const dailyStatus = await checkArtifact("Daily Insights", dailyPath);
 
-      if (!rawOk || !dailyOk) {
-          console.error("Strict build: One or more artifacts missing. Proceeding with EMPTY STATE (Production Safe Mode).");
-          // process.exit(1); // REMOVED: We allow building the empty state
+      if (rawStatus === 'corrupt' || dailyStatus === 'corrupt') {
+          console.error("FATAL: Artifact corruption detected in Strict Mode.");
+          process.exit(1);
+      }
+
+      if (isStrictFail && (rawStatus === 'missing' || dailyStatus === 'missing')) {
+          console.error("FATAL: Artifacts missing in STRICT_FAIL mode.");
+          process.exit(1);
+      }
+
+      if (rawStatus === 'missing' || dailyStatus === 'missing') {
+          console.warn("WARN: One or more artifacts missing. Proceeding with EMPTY STATE (Strict Empty Mode).");
       }
   }
 
@@ -92,9 +104,17 @@ async function main() {
     sourceKind = "artifact";
     console.log(`Loaded observatory data from artifact: ${artifactPath}`);
   } catch (artifactError) {
+    if (isStrictFail) {
+        console.error(`FATAL: Observatory artifact failed in STRICT_FAIL: ${artifactError}`);
+        process.exit(1);
+    }
+
     if (isStrict) {
-      console.error(`WARN: Observatory artifact failed in Production/Strict: ${artifactError instanceof Error ? artifactError.message : String(artifactError)}`);
-      console.error("Proceeding with EMPTY STATE.");
+      if (artifactError instanceof SyntaxError) {
+          console.error(`FATAL: Observatory artifact corrupt in Strict Mode: ${artifactError}`);
+          process.exit(1);
+      }
+      console.warn(`WARN: Observatory artifact missing in Strict Mode. Proceeding with EMPTY STATE.`);
       observatoryData = null;
       sourceKind = "missing";
     } else {
@@ -129,9 +149,16 @@ async function main() {
     console.log(`Loaded insights daily from artifact: ${insightsArtifactPath}`);
   } catch (e) {
     // 2. Fallback to fixture or fail
+    if (isStrictFail) {
+        console.error(`FATAL: Insights artifact failed in STRICT_FAIL: ${e}`);
+        process.exit(1);
+    }
     if (isStrict) {
-        console.error("Strict build: Insights artifact missing. Proceeding with EMPTY STATE.");
-        // process.exit(1); // REMOVED
+        if (e instanceof SyntaxError) {
+            console.error(`FATAL: Insights artifact corrupt in Strict Mode: ${e}`);
+            process.exit(1);
+        }
+        console.warn("Strict build: Insights artifact missing. Proceeding with EMPTY STATE.");
         insightsDaily = null;
     } else {
         try {

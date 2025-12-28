@@ -54,238 +54,239 @@
   </div>
 
   <% if (data) { %>
-    <!-- DATA AVAILABLE -->
-    <div class="meta">
-        <div><strong>Generated:</strong> <span id="obs-generated-at"><%= data.generated_at || "n/a" %></span></div>
-        <div><strong>Source:</strong> <span id="obs-source-desc">
-        <% if (typeof data.source === 'string') { %>
-            <%= data.source %>
-        <% } else if (data.source && typeof data.source === 'object') { %>
-            <%= data.source.source_type %>: <%= data.source.ref %>
-        <% } else { %>
-            n/a
-        <% } %>
-        </span></div>
-        <div><strong>ID:</strong> <%= data.observatory_id || "n/a" %></div>
-        <div>
-        <strong>Quelle:</strong>
-        <% if (locals.view_meta && locals.view_meta.source_kind === 'artifact') { %>
-            Artefakt (knowledge.observatory.json)
-        <% } else if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
-            <span style="color: #d9534f; font-weight: bold;">Fixture (Fallback) - Live Data Missing</span>
-        <% } else { %>
-            unknown
-        <% } %>
-        </div>
+  <div class="meta">
+    <div><strong>Generated:</strong> <span id="obs-generated-at"><%= data.generated_at || "n/a" %></span></div>
+    <div><strong>Source:</strong> <span id="obs-source-desc">
+      <% if (typeof data.source === 'string') { %>
+        <%= data.source %>
+      <% } else if (data.source && typeof data.source === 'object') { %>
+        <%= data.source.source_type %>: <%= data.source.ref %>
+      <% } else { %>
+        n/a
+      <% } %>
+    </span></div>
+    <div><strong>ID:</strong> <%= data.observatory_id || "n/a" %></div>
+    <div>
+      <strong>Quelle:</strong>
+      <% if (locals.view_meta && locals.view_meta.source_kind === 'artifact') { %>
+        Artefakt (knowledge.observatory.json)
+      <% } else if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
+        <span style="color: #d9534f; font-weight: bold;">Fixture (Fallback) - Live Data Missing</span>
+      <% } else { %>
+        unknown
+      <% } %>
     </div>
+  </div>
 
-    <% if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
-        <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
-        <strong>⚠️ Warning:</strong> This view is running in fallback mode using static fixture data. The live knowledge artifact could not be loaded.
-        </div>
-    <% } %>
+  <% if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
+    <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+      <strong>⚠️ Warning:</strong> This view is running in fallback mode using static fixture data. The live knowledge artifact could not be loaded.
+    </div>
+  <% } %>
 
-    <!-- PUBLISHED KNOWLEDGE SECTION -->
-    <h2 class="section-title">Verdichtete Erkenntnis (Published Daily)</h2>
-    <div style="background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
-        <% if (locals.insightsDaily) { %>
-        <div style="margin-bottom: 10px;">
-            <strong>Source:</strong>
-            <% if (locals.view_meta && locals.view_meta.insights_source_kind === 'artifact') { %>
-                insights.daily.json (Artifact)
-            <% } else { %>
-                insights.daily.json (Fixture)
-            <% } %>
-        </div>
-        <div style="margin-bottom: 10px;">
-            <strong>Date:</strong> <%= locals.insightsDaily.ts || 'n/a' %>
-        </div>
+  <!-- PUBLISHED KNOWLEDGE SECTION -->
+  <h2 class="section-title">Verdichtete Erkenntnis (Published Daily)</h2>
+  <div style="background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
+    <% if (locals.insightsDaily) { %>
+       <div style="margin-bottom: 10px;">
+         <strong>Source:</strong>
+         <% if (locals.view_meta && locals.view_meta.insights_source_kind === 'artifact') { %>
+            insights.daily.json (Artifact)
+         <% } else { %>
+            insights.daily.json (Fixture)
+         <% } %>
+       </div>
+       <div style="margin-bottom: 10px;">
+         <strong>Date:</strong> <%= locals.insightsDaily.ts || 'n/a' %>
+       </div>
 
-        <% if (locals.insightsDaily.source) { %>
+       <% if (locals.insightsDaily.source) { %>
+         <div style="margin-bottom: 10px;">
+           <strong>Source ID:</strong> <%= locals.insightsDaily.source %>
+         </div>
+       <% } %>
+
+       <% if (locals.insightsDaily.metadata) { %>
+         <% if (locals.insightsDaily.metadata.generated_at) { %>
             <div style="margin-bottom: 10px;">
-            <strong>Source ID:</strong> <%= locals.insightsDaily.source %>
+              <strong>Generated:</strong> <%= locals.insightsDaily.metadata.generated_at %>
             </div>
-        <% } %>
-
-        <% if (locals.insightsDaily.metadata) { %>
-            <% if (locals.insightsDaily.metadata.generated_at) { %>
-                <div style="margin-bottom: 10px;">
-                <strong>Generated:</strong> <%= locals.insightsDaily.metadata.generated_at %>
-                </div>
-            <% } %>
-            <% if (locals.insightsDaily.metadata.observatory_ref) { %>
-                <div style="margin-bottom: 10px;">
-                <strong>Observatory Ref:</strong> <%= locals.insightsDaily.metadata.observatory_ref %>
-                </div>
-            <% } %>
-            <% if (typeof locals.insightsDaily.metadata.uncertainty !== 'undefined') { %>
-                <div style="margin-bottom: 10px;">
-                <strong>Uncertainty:</strong> <%= locals.insightsDaily.metadata.uncertainty %>
-                </div>
-            <% } %>
-        <% } %>
-
-        <% if (locals.insightsDaily.topics && locals.insightsDaily.topics.length > 0) { %>
-            <h4>Topics (Weighted)</h4>
-            <ul style="margin-top: 5px; margin-bottom: 15px;">
-            <% locals.insightsDaily.topics.forEach(function(t) { %>
-                <li><%= t[0] %> <span style="color:#666; font-size:0.9em;">(<%= t[1] %>)</span></li>
-            <% }); %>
-            </ul>
-        <% } %>
-
-        <% if (locals.insightsDaily.questions && locals.insightsDaily.questions.length > 0) { %>
-            <h4>Open Questions</h4>
-            <ul style="margin-top: 5px; margin-bottom: 15px;">
-            <% locals.insightsDaily.questions.forEach(function(q) { %>
-                <li><%= q %></li>
-            <% }); %>
-            </ul>
-        <% } %>
-
-        <% if (locals.insightsDaily.deltas && locals.insightsDaily.deltas.length > 0) { %>
-            <h4>Deltas (Changes)</h4>
-            <ul style="margin-top: 5px; margin-bottom: 15px;">
-            <% locals.insightsDaily.deltas.forEach(function(d) { %>
-                <li><%= d %></li>
-            <% }); %>
-            </ul>
-        <% } %>
-
-        <% } else { %>
-        <% if (locals.view_meta && locals.view_meta.is_strict) { %>
-            <p style="color: #d9534f; font-weight: bold;">No published insights available (Strict Mode - Artifact missing).</p>
-        <% } else { %>
-            <p style="color: #666; font-style: italic;">No daily insights published yet (Dev Fallback).</p>
-        <% } %>
-        <% } %>
-    </div>
-
-    <!-- RAW KNOWLEDGE SECTION -->
-    <h2 class="section-title">Erkenntnisraum (Raw Observatory)</h2>
-
-    <div id="runtime-observatory" style="margin-top: 20px; padding: 15px; background: #eef; border: 1px solid #ccd; border-radius: 5px; display: none;">
-        <h3>Debug: Runtime Fetch</h3>
-        <div id="obs-runtime-status">Initializing...</div>
-        <pre id="obs-runtime-json" style="max-height: 200px; overflow: auto; background: #fff; padding: 10px; border: 1px solid #ddd;"></pre>
-    </div>
-
-    <script>
-        (async function() {
-        const URL = "<%= locals.observatoryUrl %>";
-        const debugContainer = document.getElementById("runtime-observatory");
-        const statusEl = document.getElementById("obs-runtime-status");
-        const preEl = document.getElementById("obs-runtime-json");
-
-        const isDebug = new URLSearchParams(window.location.search).get("debug") === "1";
-        if (isDebug) debugContainer.style.display = "block";
-
-        statusEl.textContent = "Fetching live data from: " + URL;
-
-        try {
-            const r = await fetch(URL, { cache: "no-store" });
-            if (!r.ok) throw new Error("HTTP " + r.status);
-            const data = await r.json();
-
-            // Update Metadata
-            const genEl = document.getElementById("obs-generated-at");
-            if (genEl) genEl.textContent = (data.generated_at || "n/a") + " (Live)";
-            const srcEl = document.getElementById("obs-source-desc");
-            if (srcEl) srcEl.textContent = "Live from Release Asset";
-
-            // Update Topics
-            const topicsContainer = document.getElementById("obs-topics-container");
-            if (topicsContainer) {
-            topicsContainer.textContent = ""; // Clear existing content
-
-            if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
-                data.topics.forEach(t => {
-                const topicDiv = document.createElement("div");
-                topicDiv.className = "topic";
-
-                const h3 = document.createElement("h3");
-                h3.textContent = t.title || "Untitled topic";
-                topicDiv.appendChild(h3);
-
-                if (t.summary) {
-                    const pSummary = document.createElement("p");
-                    pSummary.textContent = t.summary;
-                    topicDiv.appendChild(pSummary);
-                }
-
-                const pSources = document.createElement("p");
-                const strong = document.createElement("strong");
-                strong.textContent = "Sources: ";
-                pSources.appendChild(strong);
-                pSources.appendChild(document.createTextNode(t.sources ? t.sources.length : 0));
-                topicDiv.appendChild(pSources);
-
-                topicsContainer.appendChild(topicDiv);
-                });
-            } else {
-                const p = document.createElement("p");
-                p.textContent = "No topics available.";
-                topicsContainer.appendChild(p);
-            }
-            }
-
-            // Debug Output
-            statusEl.innerHTML = "<strong>Live data loaded!</strong>";
-            statusEl.style.color = "green";
-            if (isDebug) {
-            preEl.textContent = JSON.stringify(data, null, 2);
-            }
-        } catch (e) {
-            statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
-            statusEl.style.color = "red";
-            if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
-        }
-        })();
-    </script>
-
-    <% if (data.insights && data.insights.length > 0) { %>
-        <h2 class="section-title">Insights / Conflicts</h2>
-        <div class="insights">
-        <% data.insights.forEach(function(insight) { %>
-            <% if (insight.type === 'insight.negation') { %>
-            <div class="insight-card negation">
-                <h4>Conflict Detected</h4>
-                <div class="insight-meta">ID: <%= insight.id %></div>
-                <div class="verdict">Verdict: <%= insight.verdict %></div>
-                <div class="relation">
-                <% if (insight.relation) { %>
-                    <span class="relation-item">Thesis: <%= insight.relation.thesis %></span>
-                    <span class="relation-item">Antithesis: <%= insight.relation.antithesis %></span>
-                <% } %>
-                </div>
+         <% } %>
+         <% if (locals.insightsDaily.metadata.observatory_ref) { %>
+            <div style="margin-bottom: 10px;">
+              <strong>Observatory Ref:</strong> <%= locals.insightsDaily.metadata.observatory_ref %>
             </div>
-            <% } else { %>
-            <!-- Generic insight fallback -->
-            <div class="insight-card">
-                <h4><%= insight.type || 'Generic Insight' %></h4>
-                <div class="insight-meta">ID: <%= insight.id %></div>
+         <% } %>
+         <% if (typeof locals.insightsDaily.metadata.uncertainty !== 'undefined') { %>
+            <div style="margin-bottom: 10px;">
+              <strong>Uncertainty:</strong> <%= locals.insightsDaily.metadata.uncertainty %>
             </div>
-            <% } %>
-        <% }); %>
-        </div>
+         <% } %>
+       <% } %>
+
+       <% if (locals.insightsDaily.topics && locals.insightsDaily.topics.length > 0) { %>
+         <h4>Topics (Weighted)</h4>
+         <ul style="margin-top: 5px; margin-bottom: 15px;">
+           <% locals.insightsDaily.topics.forEach(function(t) { %>
+             <li><%= t[0] %> <span style="color:#666; font-size:0.9em;">(<%= t[1] %>)</span></li>
+           <% }); %>
+         </ul>
+       <% } %>
+
+       <% if (locals.insightsDaily.questions && locals.insightsDaily.questions.length > 0) { %>
+         <h4>Open Questions</h4>
+         <ul style="margin-top: 5px; margin-bottom: 15px;">
+           <% locals.insightsDaily.questions.forEach(function(q) { %>
+             <li><%= q %></li>
+           <% }); %>
+         </ul>
+       <% } %>
+
+       <% if (locals.insightsDaily.deltas && locals.insightsDaily.deltas.length > 0) { %>
+         <h4>Deltas (Changes)</h4>
+         <ul style="margin-top: 5px; margin-bottom: 15px;">
+           <% locals.insightsDaily.deltas.forEach(function(d) { %>
+             <li><%= d %></li>
+           <% }); %>
+         </ul>
+       <% } %>
+
+    <% } else { %>
+       <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+          <p style="color: #d9534f; font-weight: bold;">No published insights available (Strict Mode - Artifact missing).</p>
+       <% } else { %>
+          <p style="color: #666; font-style: italic;">No daily insights published yet (Dev Fallback).</p>
+       <% } %>
     <% } %>
+  </div>
 
-    <h2 class="section-title">Topics</h2>
-    <div class="topics" id="obs-topics-container">
-        <% if (data.topics && data.topics.length > 0) { %>
-        <% data.topics.forEach(function(topic) { %>
-            <div class="topic">
-            <h3><%= topic.title %></h3>
-            <% if (topic.summary) { %>
-                <p><%= topic.summary %></p>
-            <% } %>
-            <p><strong>Sources:</strong> <%= topic.sources ? topic.sources.length : 0 %></p>
+  <!-- RAW KNOWLEDGE SECTION -->
+  <h2 class="section-title">Erkenntnisraum (Raw Observatory)</h2>
+
+  <div id="runtime-observatory" style="margin-top: 20px; padding: 15px; background: #eef; border: 1px solid #ccd; border-radius: 5px; display: none;">
+    <h3>Debug: Runtime Fetch</h3>
+    <div id="obs-runtime-status">Initializing...</div>
+    <pre id="obs-runtime-json" style="max-height: 200px; overflow: auto; background: #fff; padding: 10px; border: 1px solid #ddd;"></pre>
+  </div>
+
+  <script>
+    (async function() {
+      const URL = "<%= locals.observatoryUrl %>";
+      const debugContainer = document.getElementById("runtime-observatory");
+      const statusEl = document.getElementById("obs-runtime-status");
+      const preEl = document.getElementById("obs-runtime-json");
+
+      const isDebug = new URLSearchParams(window.location.search).get("debug") === "1";
+      if (isDebug) debugContainer.style.display = "block";
+
+      statusEl.textContent = "Fetching live data from: " + URL;
+
+      try {
+        const r = await fetch(URL, { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const data = await r.json();
+
+        // Update Metadata
+        const genEl = document.getElementById("obs-generated-at");
+        if (genEl) genEl.textContent = (data.generated_at || "n/a") + " (Live)";
+        const srcEl = document.getElementById("obs-source-desc");
+        if (srcEl) srcEl.textContent = "Live from Release Asset";
+
+        // Update Topics
+        const topicsContainer = document.getElementById("obs-topics-container");
+        if (topicsContainer) {
+          topicsContainer.textContent = ""; // Clear existing content
+
+          if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
+            data.topics.forEach(t => {
+              const topicDiv = document.createElement("div");
+              topicDiv.className = "topic";
+
+              const h3 = document.createElement("h3");
+              h3.textContent = t.title || "Untitled topic";
+              topicDiv.appendChild(h3);
+
+              if (t.summary) {
+                const pSummary = document.createElement("p");
+                pSummary.textContent = t.summary;
+                topicDiv.appendChild(pSummary);
+              }
+
+              const pSources = document.createElement("p");
+              const strong = document.createElement("strong");
+              strong.textContent = "Sources: ";
+              pSources.appendChild(strong);
+              pSources.appendChild(document.createTextNode(t.sources ? t.sources.length : 0));
+              topicDiv.appendChild(pSources);
+
+              topicsContainer.appendChild(topicDiv);
+            });
+          } else {
+            const p = document.createElement("p");
+            p.textContent = "No topics available.";
+            topicsContainer.appendChild(p);
+          }
+        }
+
+        // Debug Output
+        statusEl.innerHTML = "<strong>Live data loaded!</strong>";
+        statusEl.style.color = "green";
+        if (isDebug) {
+          preEl.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (e) {
+        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
+        statusEl.style.color = "red";
+        if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
+      }
+    })();
+  </script>
+
+  <% if (data.insights && data.insights.length > 0) { %>
+    <h2 class="section-title">Insights / Conflicts</h2>
+    <div class="insights">
+      <% data.insights.forEach(function(insight) { %>
+        <% if (insight.type === 'insight.negation') { %>
+          <div class="insight-card negation">
+            <h4>Conflict Detected</h4>
+            <div class="insight-meta">ID: <%= insight.id %></div>
+            <div class="verdict">Verdict: <%= insight.verdict %></div>
+            <div class="relation">
+              <% if (insight.relation) { %>
+                <span class="relation-item">Thesis: <%= insight.relation.thesis %></span>
+                <span class="relation-item">Antithesis: <%= insight.relation.antithesis %></span>
+              <% } %>
             </div>
-        <% }); %>
+            <!-- Optional: Link to thesis detail if we had a route for it -->
+          </div>
         <% } else { %>
-        <p>No topics available.</p>
+          <!-- Generic insight fallback -->
+          <div class="insight-card">
+            <h4><%= insight.type || 'Generic Insight' %></h4>
+            <div class="insight-meta">ID: <%= insight.id %></div>
+          </div>
         <% } %>
+      <% }); %>
     </div>
+  <% } %>
+
+  <h2 class="section-title">Topics</h2>
+  <div class="topics" id="obs-topics-container">
+    <% if (data.topics && data.topics.length > 0) { %>
+      <% data.topics.forEach(function(topic) { %>
+        <div class="topic">
+          <h3><%= topic.title %></h3>
+          <% if (topic.summary) { %>
+            <p><%= topic.summary %></p>
+          <% } %>
+          <p><strong>Sources:</strong> <%= topic.sources ? topic.sources.length : 0 %></p>
+        </div>
+      <% }); %>
+    <% } else { %>
+      <p>No topics available.</p>
+    <% } %>
+  </div>
+
   <% } else { %>
     <!-- EMPTY STATE -->
     <div class="empty-state">
