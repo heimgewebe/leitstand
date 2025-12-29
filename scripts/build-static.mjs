@@ -116,9 +116,14 @@ async function main() {
           console.error(`FATAL: Observatory artifact corrupt in Strict Mode: ${artifactError}`);
           process.exit(1);
       }
-      // classify missing vs empty (best-effort)
-      const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
-      missingReason = msg.includes("Empty file") ? "empty" : "enoent";
+      // Robust classification
+      if (artifactError instanceof EmptyFileError || (artifactError instanceof Error && artifactError.message === 'Empty file')) {
+          missingReason = "empty";
+      } else if (artifactError.code === 'ENOENT') {
+          missingReason = "enoent";
+      } else {
+          missingReason = "unknown";
+      }
 
       console.warn(`WARN: Observatory artifact missing in Strict Mode. Proceeding with EMPTY STATE.`);
       observatoryData = null;
@@ -166,8 +171,13 @@ async function main() {
             console.error(`FATAL: Insights artifact corrupt in Strict Mode: ${e}`);
             process.exit(1);
         }
-        const msg = e instanceof Error ? e.message : String(e);
-        insightsMissingReason = msg.includes("Empty") ? "empty" : "enoent";
+        if (e instanceof Error && e.message.includes("Empty")) {
+             insightsMissingReason = "empty";
+        } else if (e.code === 'ENOENT') {
+             insightsMissingReason = "enoent";
+        } else {
+             insightsMissingReason = "unknown";
+        }
 
         console.warn("Strict build: Insights artifact missing. Proceeding with EMPTY STATE.");
         insightsDaily = null;

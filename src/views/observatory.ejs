@@ -53,6 +53,80 @@
     <% } %>
   </div>
 
+  <!-- RUNTIME DEBUG (Always Available) -->
+  <div id="runtime-observatory" style="margin-top: 10px; padding: 10px; background: #eef; border: 1px solid #ccd; border-radius: 5px; display: none; font-size: 0.9em;">
+    <h3 style="margin-top:0;">Debug: Runtime Fetch</h3>
+    <div id="obs-runtime-status">Initializing...</div>
+    <pre id="obs-runtime-json" style="max-height: 200px; overflow: auto; background: #fff; padding: 10px; border: 1px solid #ddd;"></pre>
+  </div>
+  <script>
+    (async function() {
+      const URL = "<%= locals.observatoryUrl %>";
+      const debugContainer = document.getElementById("runtime-observatory");
+      const statusEl = document.getElementById("obs-runtime-status");
+      const preEl = document.getElementById("obs-runtime-json");
+
+      const isDebug = new URLSearchParams(window.location.search).get("debug") === "1";
+      if (isDebug) debugContainer.style.display = "block";
+
+      statusEl.textContent = "Fetching live data from: " + URL;
+
+      try {
+        const r = await fetch(URL, { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const data = await r.json();
+
+        // Update Metadata
+        const genEl = document.getElementById("obs-generated-at");
+        if (genEl) genEl.textContent = (data.generated_at || "n/a") + " (Live)";
+        const srcEl = document.getElementById("obs-source-desc");
+        if (srcEl) srcEl.textContent = "Live from Release Asset";
+
+        // Update Topics (only if container exists - i.e. not empty state)
+        const topicsContainer = document.getElementById("obs-topics-container");
+        if (topicsContainer) {
+          topicsContainer.textContent = ""; // Clear existing content
+          if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
+            data.topics.forEach(t => {
+              const topicDiv = document.createElement("div");
+              topicDiv.className = "topic";
+              const h3 = document.createElement("h3");
+              h3.textContent = t.title || "Untitled topic";
+              topicDiv.appendChild(h3);
+              if (t.summary) {
+                const pSummary = document.createElement("p");
+                pSummary.textContent = t.summary;
+                topicDiv.appendChild(pSummary);
+              }
+              const pSources = document.createElement("p");
+              const strong = document.createElement("strong");
+              strong.textContent = "Sources: ";
+              pSources.appendChild(strong);
+              pSources.appendChild(document.createTextNode(t.sources ? t.sources.length : 0));
+              topicDiv.appendChild(pSources);
+              topicsContainer.appendChild(topicDiv);
+            });
+          } else {
+            const p = document.createElement("p");
+            p.textContent = "No topics available.";
+            topicsContainer.appendChild(p);
+          }
+        }
+
+        // Debug Output
+        statusEl.innerHTML = "<strong>Live data loaded!</strong>";
+        statusEl.style.color = "green";
+        if (isDebug) {
+          preEl.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (e) {
+        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
+        statusEl.style.color = "red";
+        if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
+      }
+    })();
+  </script>
+
   <% if (data) { %>
   <div class="meta">
     <div><strong>Generated:</strong> <span id="obs-generated-at"><%= data.generated_at || "n/a" %></span></div>
@@ -162,85 +236,6 @@
 
   <!-- RAW KNOWLEDGE SECTION -->
   <h2 class="section-title">Erkenntnisraum (Raw Observatory)</h2>
-
-  <div id="runtime-observatory" style="margin-top: 20px; padding: 15px; background: #eef; border: 1px solid #ccd; border-radius: 5px; display: none;">
-    <h3>Debug: Runtime Fetch</h3>
-    <div id="obs-runtime-status">Initializing...</div>
-    <pre id="obs-runtime-json" style="max-height: 200px; overflow: auto; background: #fff; padding: 10px; border: 1px solid #ddd;"></pre>
-  </div>
-
-  <script>
-    (async function() {
-      const URL = "<%= locals.observatoryUrl %>";
-      const debugContainer = document.getElementById("runtime-observatory");
-      const statusEl = document.getElementById("obs-runtime-status");
-      const preEl = document.getElementById("obs-runtime-json");
-
-      const isDebug = new URLSearchParams(window.location.search).get("debug") === "1";
-      if (isDebug) debugContainer.style.display = "block";
-
-      statusEl.textContent = "Fetching live data from: " + URL;
-
-      try {
-        const r = await fetch(URL, { cache: "no-store" });
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const data = await r.json();
-
-        // Update Metadata
-        const genEl = document.getElementById("obs-generated-at");
-        if (genEl) genEl.textContent = (data.generated_at || "n/a") + " (Live)";
-        const srcEl = document.getElementById("obs-source-desc");
-        if (srcEl) srcEl.textContent = "Live from Release Asset";
-
-        // Update Topics
-        const topicsContainer = document.getElementById("obs-topics-container");
-        if (topicsContainer) {
-          topicsContainer.textContent = ""; // Clear existing content
-
-          if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
-            data.topics.forEach(t => {
-              const topicDiv = document.createElement("div");
-              topicDiv.className = "topic";
-
-              const h3 = document.createElement("h3");
-              h3.textContent = t.title || "Untitled topic";
-              topicDiv.appendChild(h3);
-
-              if (t.summary) {
-                const pSummary = document.createElement("p");
-                pSummary.textContent = t.summary;
-                topicDiv.appendChild(pSummary);
-              }
-
-              const pSources = document.createElement("p");
-              const strong = document.createElement("strong");
-              strong.textContent = "Sources: ";
-              pSources.appendChild(strong);
-              pSources.appendChild(document.createTextNode(t.sources ? t.sources.length : 0));
-              topicDiv.appendChild(pSources);
-
-              topicsContainer.appendChild(topicDiv);
-            });
-          } else {
-            const p = document.createElement("p");
-            p.textContent = "No topics available.";
-            topicsContainer.appendChild(p);
-          }
-        }
-
-        // Debug Output
-        statusEl.innerHTML = "<strong>Live data loaded!</strong>";
-        statusEl.style.color = "green";
-        if (isDebug) {
-          preEl.textContent = JSON.stringify(data, null, 2);
-        }
-      } catch (e) {
-        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
-        statusEl.style.color = "red";
-        if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
-      }
-    })();
-  </script>
 
   <% if (data.insights && data.insights.length > 0) { %>
     <h2 class="section-title">Insights / Conflicts</h2>

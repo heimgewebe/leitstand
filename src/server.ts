@@ -30,6 +30,7 @@ app.get('/observatory', async (_req, res) => {
     const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
     const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
     const isStrictFail = process.env.OBSERVATORY_STRICT_FAIL === '1';
+    const observatoryUrl = process.env.OBSERVATORY_URL || "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
 
     let data;
     let sourceKind;
@@ -165,6 +166,7 @@ app.get('/observatory', async (_req, res) => {
     res.render('observatory', {
       data,
       insightsDaily,
+      observatoryUrl,
       view_meta: {
         source_kind: sourceKind,
         insights_source_kind: insightsDailySource,
