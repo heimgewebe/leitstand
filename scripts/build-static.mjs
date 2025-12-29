@@ -43,7 +43,9 @@ async function main() {
 
   // Strict Symmetry Check
   const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
-  if (isStrict) {
+  const isStrictFail = process.env.OBSERVATORY_STRICT_FAIL === '1';
+
+  if (isStrict || isStrictFail) {
       const rawPath = process.env.OBSERVATORY_ARTIFACT_PATH || join(ROOT, "artifacts", "knowledge.observatory.json");
       const dailyPath = join(ROOT, "artifacts", "insights.daily.json");
 
@@ -53,18 +55,28 @@ async function main() {
               if (!content || !content.trim()) throw new Error("Empty file");
               JSON.parse(content);
           } catch (e) {
-              console.error(`STRICT FAIL: ${label} artifact invalid/missing at ${p}. Error: ${e.message}`);
-              return false;
+              console.error(`STRICT CHECK: ${label} artifact issue at ${p}. Error: ${e.message}`);
+              if (e instanceof SyntaxError) return 'corrupt';
+              return 'missing';
           }
-          return true;
+          return 'ok';
       };
 
-      const rawOk = await checkArtifact("Raw Observatory", rawPath);
-      const dailyOk = await checkArtifact("Daily Insights", dailyPath);
+      const rawStatus = await checkArtifact("Raw Observatory", rawPath);
+      const dailyStatus = await checkArtifact("Daily Insights", dailyPath);
 
-      if (!rawOk || !dailyOk) {
-          console.error("Strict build requires BOTH valid artifacts (Raw + Daily). Run: pnpm build:cf (fetch first).");
+      if (rawStatus === 'corrupt' || dailyStatus === 'corrupt') {
+          console.error("FATAL: Artifact corruption detected in Strict Mode.");
           process.exit(1);
+      }
+
+      if (isStrictFail && (rawStatus === 'missing' || dailyStatus === 'missing')) {
+          console.error("FATAL: Artifacts missing in STRICT_FAIL mode.");
+          process.exit(1);
+      }
+
+      if (rawStatus === 'missing' || dailyStatus === 'missing') {
+          console.warn("WARN: One or more artifacts missing. Proceeding with EMPTY STATE (Strict Empty Mode).");
       }
   }
 
@@ -82,6 +94,7 @@ async function main() {
 
   let observatoryData;
   let sourceKind;
+  let missingReason = "unknown";
 
   try {
     const artifactContent = await readFile(artifactPath, 'utf-8');
@@ -90,24 +103,42 @@ async function main() {
     }
     observatoryData = JSON.parse(artifactContent);
     sourceKind = "artifact";
+    missingReason = "ok";
     console.log(`Loaded observatory data from artifact: ${artifactPath}`);
   } catch (artifactError) {
-    const strict = process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
-
-    if (strict) {
-      console.error(`FATAL: Observatory artifact failed in Production/Strict: ${artifactError}`);
-      process.exit(1);
+    if (isStrictFail) {
+        console.error(`FATAL: Observatory artifact failed in STRICT_FAIL: ${artifactError}`);
+        process.exit(1);
     }
 
-    if (artifactError.code === 'ENOENT') {
-      console.warn(`Artifact not found at ${artifactPath}, falling back to fixture.`);
+    if (isStrict) {
+      if (artifactError instanceof SyntaxError) {
+          console.error(`FATAL: Observatory artifact corrupt in Strict Mode: ${artifactError}`);
+          process.exit(1);
+      }
+      // Robust classification
+      if (artifactError instanceof EmptyFileError || (artifactError instanceof Error && artifactError.message === 'Empty file')) {
+          missingReason = "empty";
+      } else if (artifactError.code === 'ENOENT') {
+          missingReason = "enoent";
+      } else {
+          missingReason = "unknown";
+      }
+
+      console.warn(`WARN: Observatory artifact missing in Strict Mode. Proceeding with EMPTY STATE.`);
+      observatoryData = null;
+      sourceKind = "missing";
     } else {
-      console.warn(`Artifact invalid at ${artifactPath}, falling back to fixture: ${artifactError}`);
-    }
+        if (artifactError.code === 'ENOENT') {
+          console.warn(`Artifact not found at ${artifactPath}, falling back to fixture.`);
+        } else {
+          console.warn(`Artifact invalid at ${artifactPath}, falling back to fixture: ${artifactError}`);
+        }
 
-    const fixtureContent = await readFile(fixturePath, 'utf-8');
-    observatoryData = JSON.parse(fixtureContent);
-    sourceKind = "fixture";
+        const fixtureContent = await readFile(fixturePath, 'utf-8');
+        observatoryData = JSON.parse(fixtureContent);
+        sourceKind = "fixture";
+    }
   }
 
   const observatoryUrl = process.env.OBSERVATORY_URL || "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
@@ -118,6 +149,7 @@ async function main() {
 
   let insightsDaily = null;
   let insightsDailySource = null;
+  let insightsMissingReason = "unknown";
   // isStrict already defined above
 
   // 1. Try local artifact (deterministic build)
@@ -126,17 +158,36 @@ async function main() {
     if (!content.trim()) throw new Error("Empty insights file");
     insightsDaily = JSON.parse(content);
     insightsDailySource = 'artifact';
+    insightsMissingReason = "ok";
     console.log(`Loaded insights daily from artifact: ${insightsArtifactPath}`);
   } catch (e) {
     // 2. Fallback to fixture or fail
-    if (isStrict) {
-        console.error("Strict build requires BOTH artifacts (raw + daily). Run: pnpm build:cf (fetch first).");
+    if (isStrictFail) {
+        console.error(`FATAL: Insights artifact failed in STRICT_FAIL: ${e}`);
         process.exit(1);
+    }
+    if (isStrict) {
+        if (e instanceof SyntaxError) {
+            console.error(`FATAL: Insights artifact corrupt in Strict Mode: ${e}`);
+            process.exit(1);
+        }
+        if (e instanceof Error && e.message.includes("Empty")) {
+             insightsMissingReason = "empty";
+        } else if (e.code === 'ENOENT') {
+             insightsMissingReason = "enoent";
+        } else {
+             insightsMissingReason = "unknown";
+        }
+
+        console.warn("Strict build: Insights artifact missing. Proceeding with EMPTY STATE.");
+        insightsDaily = null;
+        insightsDailySource = "missing";
     } else {
         try {
           const content = await readFile(insightsFixturePath, 'utf-8');
           insightsDaily = JSON.parse(content);
           insightsDailySource = 'fixture';
+          insightsMissingReason = 'fallback';
           console.warn('Loaded insights daily from fixture (fallback)');
         } catch (e2) {
           console.warn('Could not load insights.daily fixture:', e2.message);
@@ -160,7 +211,9 @@ async function main() {
     {
       view_meta: {
           source_kind: sourceKind,
+          missing_reason: missingReason,
           insights_source_kind: insightsDailySource,
+          insights_missing_reason: insightsMissingReason,
           is_strict: isStrict,
           forensics: metaForensics
       },

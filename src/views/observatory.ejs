@@ -10,6 +10,7 @@
     .topic { margin-bottom: 20px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
     .topic h3 { margin-top: 0; }
     .meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
+    .empty-state { padding: 40px; background: #f9f9f9; border: 2px dashed #ccc; text-align: center; color: #666; margin-top: 20px; border-radius: 8px; }
 
     /* Insights & Negations */
     .section-title { margin-top: 30px; border-bottom: 2px solid #333; padding-bottom: 5px; }
@@ -28,6 +29,106 @@
     <a href="/observatory">Observatorium</a>
   </nav>
   <h1>Observatorium</h1>
+
+  <!-- STRICT MODE & FORENSICS (Always Visible) -->
+  <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background: #fff; font-size: 0.85em; color: #555;">
+    <div><strong>Strict Mode:</strong>
+        <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+            <span style="color: #d9534f; font-weight: bold;">ON</span>
+        <% } else { %>
+            <span style="color: #666;">OFF</span>
+        <% } %>
+    </div>
+    <% if (locals.view_meta && locals.view_meta.forensics && locals.view_meta.forensics.fetched_at) { %>
+      <div style="margin-top: 5px; border-top: 1px dashed #ddd; padding-top: 5px;">
+        <strong>Forensics:</strong><br>
+        Fetched At: <%= locals.view_meta.forensics.fetched_at %><br>
+        <% if (locals.view_meta.forensics.observatory) { %>
+           Raw Bytes: <%= locals.view_meta.forensics.observatory.bytes %> | Source: <%= locals.view_meta.forensics.observatory.source_url %><br>
+        <% } %>
+        <% if (locals.view_meta.forensics.insights_daily) { %>
+           Daily Bytes: <%= locals.view_meta.forensics.insights_daily.bytes %> | Source: <%= locals.view_meta.forensics.insights_daily.source_url %>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- RUNTIME DEBUG (Always Available) -->
+  <div id="runtime-observatory" style="margin-top: 10px; padding: 10px; background: #eef; border: 1px solid #ccd; border-radius: 5px; display: none; font-size: 0.9em;">
+    <h3 style="margin-top:0;">Debug: Runtime Fetch</h3>
+    <p style="margin-top:0; color:#666; font-size:0.9em;">Checks connectivity to upstream Release Asset. Does <strong>not</strong> verify local build artifacts.</p>
+    <div id="obs-runtime-status">Initializing...</div>
+    <pre id="obs-runtime-json" style="max-height: 200px; overflow: auto; background: #fff; padding: 10px; border: 1px solid #ddd;"></pre>
+  </div>
+  <script>
+    (async function() {
+      const URL = "<%= locals.observatoryUrl %>";
+      const debugContainer = document.getElementById("runtime-observatory");
+      const statusEl = document.getElementById("obs-runtime-status");
+      const preEl = document.getElementById("obs-runtime-json");
+
+      const isDebug = new URLSearchParams(window.location.search).get("debug") === "1";
+      if (isDebug) debugContainer.style.display = "block";
+
+      statusEl.textContent = "Fetching live data from: " + URL;
+
+      try {
+        const r = await fetch(URL, { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const data = await r.json();
+
+        // Update Metadata
+        const genEl = document.getElementById("obs-generated-at");
+        if (genEl) genEl.textContent = (data.generated_at || "n/a") + " (Live)";
+        const srcEl = document.getElementById("obs-source-desc");
+        if (srcEl) srcEl.textContent = "Live from Release Asset";
+
+        // Update Topics (only if container exists - i.e. not empty state)
+        const topicsContainer = document.getElementById("obs-topics-container");
+        if (topicsContainer) {
+          topicsContainer.textContent = ""; // Clear existing content
+          if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
+            data.topics.forEach(t => {
+              const topicDiv = document.createElement("div");
+              topicDiv.className = "topic";
+              const h3 = document.createElement("h3");
+              h3.textContent = t.title || "Untitled topic";
+              topicDiv.appendChild(h3);
+              if (t.summary) {
+                const pSummary = document.createElement("p");
+                pSummary.textContent = t.summary;
+                topicDiv.appendChild(pSummary);
+              }
+              const pSources = document.createElement("p");
+              const strong = document.createElement("strong");
+              strong.textContent = "Sources: ";
+              pSources.appendChild(strong);
+              pSources.appendChild(document.createTextNode(t.sources ? t.sources.length : 0));
+              topicDiv.appendChild(pSources);
+              topicsContainer.appendChild(topicDiv);
+            });
+          } else {
+            const p = document.createElement("p");
+            p.textContent = "No topics available.";
+            topicsContainer.appendChild(p);
+          }
+        }
+
+        // Debug Output
+        statusEl.innerHTML = "<strong>Live data loaded!</strong>";
+        statusEl.style.color = "green";
+        if (isDebug) {
+          preEl.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (e) {
+        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
+        statusEl.style.color = "red";
+        if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
+      }
+    })();
+  </script>
+
+  <% if (data) { %>
   <div class="meta">
     <div><strong>Generated:</strong> <span id="obs-generated-at"><%= data.generated_at || "n/a" %></span></div>
     <div><strong>Source:</strong> <span id="obs-source-desc">
@@ -57,29 +158,6 @@
       <strong>⚠️ Warning:</strong> This view is running in fallback mode using static fixture data. The live knowledge artifact could not be loaded.
     </div>
   <% } %>
-
-  <!-- STRICT MODE & FORENSICS -->
-  <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background: #fff; font-size: 0.85em; color: #555;">
-    <div><strong>Strict Mode:</strong>
-        <% if (locals.view_meta && locals.view_meta.is_strict) { %>
-            <span style="color: #d9534f; font-weight: bold;">ON</span>
-        <% } else { %>
-            <span style="color: #666;">OFF</span>
-        <% } %>
-    </div>
-    <% if (locals.view_meta && locals.view_meta.forensics && locals.view_meta.forensics.fetched_at) { %>
-      <div style="margin-top: 5px; border-top: 1px dashed #ddd; padding-top: 5px;">
-        <strong>Forensics:</strong><br>
-        Fetched At: <%= locals.view_meta.forensics.fetched_at %><br>
-        <% if (locals.view_meta.forensics.observatory) { %>
-           Raw Bytes: <%= locals.view_meta.forensics.observatory.bytes %> | Source: <%= locals.view_meta.forensics.observatory.source_url %><br>
-        <% } %>
-        <% if (locals.view_meta.forensics.insights_daily) { %>
-           Daily Bytes: <%= locals.view_meta.forensics.insights_daily.bytes %> | Source: <%= locals.view_meta.forensics.insights_daily.source_url %>
-        <% } %>
-      </div>
-    <% } %>
-  </div>
 
   <!-- PUBLISHED KNOWLEDGE SECTION -->
   <h2 class="section-title">Verdichtete Erkenntnis (Published Daily)</h2>
@@ -160,85 +238,6 @@
   <!-- RAW KNOWLEDGE SECTION -->
   <h2 class="section-title">Erkenntnisraum (Raw Observatory)</h2>
 
-  <div id="runtime-observatory" style="margin-top: 20px; padding: 15px; background: #eef; border: 1px solid #ccd; border-radius: 5px; display: none;">
-    <h3>Debug: Runtime Fetch</h3>
-    <div id="obs-runtime-status">Initializing...</div>
-    <pre id="obs-runtime-json" style="max-height: 200px; overflow: auto; background: #fff; padding: 10px; border: 1px solid #ddd;"></pre>
-  </div>
-
-  <script>
-    (async function() {
-      const URL = "<%= locals.observatoryUrl %>";
-      const debugContainer = document.getElementById("runtime-observatory");
-      const statusEl = document.getElementById("obs-runtime-status");
-      const preEl = document.getElementById("obs-runtime-json");
-
-      const isDebug = new URLSearchParams(window.location.search).get("debug") === "1";
-      if (isDebug) debugContainer.style.display = "block";
-
-      statusEl.textContent = "Fetching live data from: " + URL;
-
-      try {
-        const r = await fetch(URL, { cache: "no-store" });
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const data = await r.json();
-
-        // Update Metadata
-        const genEl = document.getElementById("obs-generated-at");
-        if (genEl) genEl.textContent = (data.generated_at || "n/a") + " (Live)";
-        const srcEl = document.getElementById("obs-source-desc");
-        if (srcEl) srcEl.textContent = "Live from Release Asset";
-
-        // Update Topics
-        const topicsContainer = document.getElementById("obs-topics-container");
-        if (topicsContainer) {
-          topicsContainer.textContent = ""; // Clear existing content
-
-          if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
-            data.topics.forEach(t => {
-              const topicDiv = document.createElement("div");
-              topicDiv.className = "topic";
-
-              const h3 = document.createElement("h3");
-              h3.textContent = t.title || "Untitled topic";
-              topicDiv.appendChild(h3);
-
-              if (t.summary) {
-                const pSummary = document.createElement("p");
-                pSummary.textContent = t.summary;
-                topicDiv.appendChild(pSummary);
-              }
-
-              const pSources = document.createElement("p");
-              const strong = document.createElement("strong");
-              strong.textContent = "Sources: ";
-              pSources.appendChild(strong);
-              pSources.appendChild(document.createTextNode(t.sources ? t.sources.length : 0));
-              topicDiv.appendChild(pSources);
-
-              topicsContainer.appendChild(topicDiv);
-            });
-          } else {
-            const p = document.createElement("p");
-            p.textContent = "No topics available.";
-            topicsContainer.appendChild(p);
-          }
-        }
-
-        // Debug Output
-        statusEl.innerHTML = "<strong>Live data loaded!</strong>";
-        statusEl.style.color = "green";
-        if (isDebug) {
-          preEl.textContent = JSON.stringify(data, null, 2);
-        }
-      } catch (e) {
-        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
-        statusEl.style.color = "red";
-        if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
-      }
-    })();
-  </script>
-
   <% if (data.insights && data.insights.length > 0) { %>
     <h2 class="section-title">Insights / Conflicts</h2>
     <div class="insights">
@@ -283,5 +282,29 @@
       <p>No topics available.</p>
     <% } %>
   </div>
+
+  <% } else { %>
+    <!-- EMPTY STATE -->
+    <div class="empty-state">
+        <h3>Leitstand: No Observation Data</h3>
+        <p>
+            <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+                Strict Mode is ON. Artifacts are missing, and fixture fallback is disabled.
+            <% } else { %>
+                No data available.
+            <% } %>
+        </p>
+        <% if (locals.view_meta && locals.view_meta.missing_reason) { %>
+          <p style="margin-top:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
+            raw_reason: <strong><%= locals.view_meta.missing_reason %></strong>
+          </p>
+        <% } %>
+        <% if (locals.view_meta && locals.view_meta.insights_missing_reason) { %>
+          <p style="margin-top:5px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
+            daily_reason: <strong><%= locals.view_meta.insights_missing_reason %></strong>
+          </p>
+        <% } %>
+    </div>
+  <% } %>
 </body>
 </html>

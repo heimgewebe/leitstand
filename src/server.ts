@@ -29,9 +29,12 @@ app.get('/observatory', async (_req, res) => {
     const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
     const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
     const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
+    const isStrictFail = process.env.OBSERVATORY_STRICT_FAIL === '1';
+    const observatoryUrl = process.env.OBSERVATORY_URL || "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
 
     let data;
     let sourceKind;
+    let missingReason = 'unknown';
 
     try {
       const artifactContent = await readFile(artifactPath, 'utf-8');
@@ -40,12 +43,12 @@ app.get('/observatory', async (_req, res) => {
       }
       data = JSON.parse(artifactContent);
       sourceKind = 'artifact';
+      missingReason = 'ok';
       console.log('Observatory loaded from artifact');
     } catch (artifactError) {
-      // If strict mode is enabled, re-throw immediately to fail the request
-      if (isStrict) {
-        console.error('[STRICT MODE] Artifact load failed:', artifactError);
-        throw new Error("Strict Mode: Observatory artifact missing or invalid.");
+      if (isStrictFail) {
+         console.error('[STRICT FAIL] Artifact load failed. Aborting request.', artifactError);
+         throw new Error("Strict Fail: Observatory artifact missing or invalid.");
       }
 
       // Type guards
@@ -54,28 +57,50 @@ app.get('/observatory', async (_req, res) => {
       const isSyntaxError = (err: unknown): err is SyntaxError =>
         err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
 
-      if (isEnoent(artifactError)) {
-        // Fallback to fixture only if artifact is missing
-        const fixtureContent = await readFile(fixturePath, 'utf-8');
-        data = JSON.parse(fixtureContent);
-        sourceKind = 'fixture';
-        console.warn('Observatory loaded from fixture (fallback) - artifact not found');
-      } else if (isSyntaxError(artifactError)) {
-        // Invalid JSON in artifact (dual check handles bundling/transpilation edge cases)
-        const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
-        console.error('Observatory artifact contains invalid JSON:', msg);
-        throw new Error('Artifact file contains invalid JSON');
-      } else if (artifactError instanceof EmptyFileError) {
-        // Empty artifact file - treat as missing to trigger fallback
-        console.warn('Observatory artifact file is empty (fallback to fixture)');
-        const fixtureContent = await readFile(fixturePath, 'utf-8');
-        data = JSON.parse(fixtureContent);
-        sourceKind = 'fixture';
+      // If strict mode is enabled (but not fail), we treat missing artifacts as Empty State.
+      // BUT we still fail on corruption (SyntaxError).
+      if (isStrict) {
+        if (isSyntaxError(artifactError)) {
+             console.error('[STRICT] Artifact corrupted (SyntaxError). Failing.', artifactError);
+             missingReason = 'corrupt';
+             throw new Error("Strict: Artifact file contains invalid JSON");
+        }
+        if (artifactError instanceof EmptyFileError) missingReason = 'empty';
+        else if (isEnoent(artifactError)) missingReason = 'enoent';
+        else missingReason = 'unknown';
+        // For missing/empty files, we allow Empty State
+        console.warn('[STRICT] Artifact missing/empty. Proceeding with Empty State.', artifactError instanceof Error ? artifactError.message : String(artifactError));
+        data = null;
+        sourceKind = 'missing';
       } else {
-        // Other errors (e.g. permission denied)
-        const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
-        console.error('Error reading observatory artifact:', msg);
-        throw artifactError;
+        // Dev / Fallback Mode
+        if (isEnoent(artifactError)) {
+          // Fallback to fixture only if artifact is missing
+          const fixtureContent = await readFile(fixturePath, 'utf-8');
+          data = JSON.parse(fixtureContent);
+          sourceKind = 'fixture';
+          missingReason = 'enoent';
+          console.warn('Observatory loaded from fixture (fallback) - artifact not found');
+        } else if (isSyntaxError(artifactError)) {
+          // Invalid JSON in artifact
+          const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
+          missingReason = 'corrupt';
+          console.error('Observatory artifact contains invalid JSON:', msg);
+          throw new Error('Artifact file contains invalid JSON');
+        } else if (artifactError instanceof EmptyFileError) {
+          // Empty artifact file - treat as missing to trigger fallback
+          console.warn('Observatory artifact file is empty (fallback to fixture)');
+          const fixtureContent = await readFile(fixturePath, 'utf-8');
+          data = JSON.parse(fixtureContent);
+          sourceKind = 'fixture';
+          missingReason = 'empty';
+        } else {
+          // Other errors (e.g. permission denied)
+          const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
+          missingReason = 'unknown';
+          console.error('Error reading observatory artifact:', msg);
+          throw artifactError;
+        }
       }
     }
 
@@ -85,6 +110,8 @@ app.get('/observatory', async (_req, res) => {
 
     let insightsDaily = null;
     let insightsDailySource = null;
+    let insightsMissingReason = 'unknown';
+
     // Server logic also respects strict env (already defined above)
 
     // 1. Try local artifact
@@ -93,17 +120,34 @@ app.get('/observatory', async (_req, res) => {
       if (content.trim()) {
         insightsDaily = JSON.parse(content);
         insightsDailySource = 'artifact';
+        insightsMissingReason = 'ok';
       }
     } catch (e) {
       // 2. Fallback to fixture (only in non-strict mode, no runtime fetch)
+      if (isStrictFail) {
+         throw new Error("Strict Fail: Insights artifact missing or invalid.");
+      }
+
+      const isSyntaxError = (err: unknown): err is SyntaxError =>
+        err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
+
       if (isStrict) {
-        console.error('[STRICT MODE] Insights artifact load failed:', e);
-        throw new Error("Strict requires Raw + Daily. Insights missing.");
+        if (isSyntaxError(e)) {
+             throw new Error("Strict: Insights artifact contains invalid JSON");
+        }
+        const msg = e instanceof Error ? e.message : String(e);
+        insightsMissingReason = msg.includes('Empty file') ? 'empty' : 'enoent';
+
+        console.warn('[STRICT] Insights artifact missing/empty. Proceeding with Empty State.', e instanceof Error ? e.message : String(e));
+        // Do not throw, just leave insightsDaily as null
+        insightsDaily = null;
+        insightsDailySource = 'missing';
       } else if (!insightsDaily) {
          try {
            const content = await readFile(insightsFixturePath, 'utf-8');
            insightsDaily = JSON.parse(content);
            insightsDailySource = 'fixture';
+           insightsMissingReason = 'fallback';
            console.warn('Insights Daily loaded from fixture (fallback)');
          } catch (e2) {
            console.warn('Could not load insights.daily fixture:', e2 instanceof Error ? e2.message : String(e2));
@@ -122,9 +166,12 @@ app.get('/observatory', async (_req, res) => {
     res.render('observatory', {
       data,
       insightsDaily,
+      observatoryUrl,
       view_meta: {
         source_kind: sourceKind,
         insights_source_kind: insightsDailySource,
+        missing_reason: missingReason,
+        insights_missing_reason: insightsMissingReason,
         is_strict: isStrict,
         forensics: forensics
       }
