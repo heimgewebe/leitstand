@@ -194,10 +194,40 @@ app.get('/observatory', async (_req, res) => {
 
 app.get('/intent', async (_req, res) => {
   try {
-    const dataPath = join(process.cwd(), 'src', 'fixtures', 'intent.json');
-    const dataContent = await readFile(dataPath, 'utf-8');
-    const data = JSON.parse(dataContent);
-    res.render('intent', { data });
+    const artifactPath = join(process.cwd(), 'artifacts', 'intent.json');
+    const fixturePath = join(process.cwd(), 'src', 'fixtures', 'intent.json');
+
+    let data;
+    let sourceKind;
+
+    try {
+      const artifactContent = await readFile(artifactPath, 'utf-8');
+      if (!artifactContent.trim()) {
+        throw new EmptyFileError('Intent artifact file is empty');
+      }
+      data = JSON.parse(artifactContent);
+      sourceKind = 'artifact';
+    } catch (e) {
+      // Fallback to fixture
+      const fixtureContent = await readFile(fixturePath, 'utf-8');
+      data = JSON.parse(fixtureContent);
+      sourceKind = 'fixture';
+
+      // If strict mode fail is enabled, we might want to throw here,
+      // but intent is currently secondary, so we just log warning unless it's strictly enforced.
+      // For now, mirroring the "safe fallback" approach unless explicit strict fail.
+      const isStrictFail = process.env.OBSERVATORY_STRICT_FAIL === '1';
+      if (isStrictFail) {
+        throw new Error('Strict Fail: Intent artifact missing or invalid.');
+      }
+
+      console.warn('Intent loaded from fixture (fallback) - artifact not found or invalid', e instanceof Error ? e.message : String(e));
+    }
+
+    res.render('intent', {
+      data,
+      view_meta: { source_kind: sourceKind }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send('Error loading intent data');

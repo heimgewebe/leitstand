@@ -20,11 +20,15 @@
     <a href="/observatory">Observatorium</a>
     <a href="/intent">Intent</a>
   </nav>
-  <h1>Aktueller Intent</h1>
+  <h1>Aktueller Intent
+    <% if (view_meta && view_meta.source_kind === 'fixture') { %>
+      <span style="color: orange; font-size: 0.6em; vertical-align: middle;">(Fixture)</span>
+    <% } %>
+  </h1>
   <p class="meta">Generated at: <%= data.generated_at %></p>
 
   <div class="card">
-    <h2><%= data.intent_type %></h2>
+    <h2><%= data.intent || data.intent_type %></h2>
     <p>Confidence: <span class="confidence"><%= (data.confidence * 100).toFixed(0) %>%</span></p>
 
     <h3>Signals</h3>

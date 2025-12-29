@@ -1,5 +1,5 @@
 {
-  "intent_type": "OptimizeCacheStrategy",
+  "intent": "OptimizeCacheStrategy",
   "confidence": 0.92,
   "signals": [
     { "kind": "PerformanceMetric", "ref": "latency-spike-2023-11" },
