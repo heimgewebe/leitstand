@@ -94,6 +94,7 @@ async function main() {
 
   let observatoryData;
   let sourceKind;
+  let missingReason = "unknown";
 
   try {
     const artifactContent = await readFile(artifactPath, 'utf-8');
@@ -102,6 +103,7 @@ async function main() {
     }
     observatoryData = JSON.parse(artifactContent);
     sourceKind = "artifact";
+    missingReason = "ok";
     console.log(`Loaded observatory data from artifact: ${artifactPath}`);
   } catch (artifactError) {
     if (isStrictFail) {
@@ -114,6 +116,10 @@ async function main() {
           console.error(`FATAL: Observatory artifact corrupt in Strict Mode: ${artifactError}`);
           process.exit(1);
       }
+      // classify missing vs empty (best-effort)
+      const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
+      missingReason = msg.includes("Empty file") ? "empty" : "enoent";
+
       console.warn(`WARN: Observatory artifact missing in Strict Mode. Proceeding with EMPTY STATE.`);
       observatoryData = null;
       sourceKind = "missing";
@@ -138,6 +144,7 @@ async function main() {
 
   let insightsDaily = null;
   let insightsDailySource = null;
+  let insightsMissingReason = "unknown";
   // isStrict already defined above
 
   // 1. Try local artifact (deterministic build)
@@ -146,6 +153,7 @@ async function main() {
     if (!content.trim()) throw new Error("Empty insights file");
     insightsDaily = JSON.parse(content);
     insightsDailySource = 'artifact';
+    insightsMissingReason = "ok";
     console.log(`Loaded insights daily from artifact: ${insightsArtifactPath}`);
   } catch (e) {
     // 2. Fallback to fixture or fail
@@ -158,8 +166,12 @@ async function main() {
             console.error(`FATAL: Insights artifact corrupt in Strict Mode: ${e}`);
             process.exit(1);
         }
+        const msg = e instanceof Error ? e.message : String(e);
+        insightsMissingReason = msg.includes("Empty") ? "empty" : "enoent";
+
         console.warn("Strict build: Insights artifact missing. Proceeding with EMPTY STATE.");
         insightsDaily = null;
+        insightsDailySource = "missing";
     } else {
         try {
           const content = await readFile(insightsFixturePath, 'utf-8');
@@ -188,7 +200,9 @@ async function main() {
     {
       view_meta: {
           source_kind: sourceKind,
+          missing_reason: missingReason,
           insights_source_kind: insightsDailySource,
+          insights_missing_reason: insightsMissingReason,
           is_strict: isStrict,
           forensics: metaForensics
       },

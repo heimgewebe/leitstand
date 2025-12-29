@@ -33,6 +33,7 @@ app.get('/observatory', async (_req, res) => {
 
     let data;
     let sourceKind;
+    let missingReason = 'unknown';
 
     try {
       const artifactContent = await readFile(artifactPath, 'utf-8');
@@ -41,6 +42,7 @@ app.get('/observatory', async (_req, res) => {
       }
       data = JSON.parse(artifactContent);
       sourceKind = 'artifact';
+      missingReason = 'ok';
       console.log('Observatory loaded from artifact');
     } catch (artifactError) {
       if (isStrictFail) {
@@ -59,8 +61,12 @@ app.get('/observatory', async (_req, res) => {
       if (isStrict) {
         if (isSyntaxError(artifactError)) {
              console.error('[STRICT] Artifact corrupted (SyntaxError). Failing.', artifactError);
+             missingReason = 'corrupt';
              throw new Error("Strict: Artifact file contains invalid JSON");
         }
+        if (artifactError instanceof EmptyFileError) missingReason = 'empty';
+        else if (isEnoent(artifactError)) missingReason = 'enoent';
+        else missingReason = 'unknown';
         // For missing/empty files, we allow Empty State
         console.warn('[STRICT] Artifact missing/empty. Proceeding with Empty State.', artifactError instanceof Error ? artifactError.message : String(artifactError));
         data = null;
@@ -72,10 +78,12 @@ app.get('/observatory', async (_req, res) => {
           const fixtureContent = await readFile(fixturePath, 'utf-8');
           data = JSON.parse(fixtureContent);
           sourceKind = 'fixture';
+          missingReason = 'enoent';
           console.warn('Observatory loaded from fixture (fallback) - artifact not found');
         } else if (isSyntaxError(artifactError)) {
           // Invalid JSON in artifact
           const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
+          missingReason = 'corrupt';
           console.error('Observatory artifact contains invalid JSON:', msg);
           throw new Error('Artifact file contains invalid JSON');
         } else if (artifactError instanceof EmptyFileError) {
@@ -84,9 +92,11 @@ app.get('/observatory', async (_req, res) => {
           const fixtureContent = await readFile(fixturePath, 'utf-8');
           data = JSON.parse(fixtureContent);
           sourceKind = 'fixture';
+          missingReason = 'empty';
         } else {
           // Other errors (e.g. permission denied)
           const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
+          missingReason = 'unknown';
           console.error('Error reading observatory artifact:', msg);
           throw artifactError;
         }
@@ -99,6 +109,8 @@ app.get('/observatory', async (_req, res) => {
 
     let insightsDaily = null;
     let insightsDailySource = null;
+    let insightsMissingReason = 'unknown';
+
     // Server logic also respects strict env (already defined above)
 
     // 1. Try local artifact
@@ -107,6 +119,7 @@ app.get('/observatory', async (_req, res) => {
       if (content.trim()) {
         insightsDaily = JSON.parse(content);
         insightsDailySource = 'artifact';
+        insightsMissingReason = 'ok';
       }
     } catch (e) {
       // 2. Fallback to fixture (only in non-strict mode, no runtime fetch)
@@ -121,14 +134,19 @@ app.get('/observatory', async (_req, res) => {
         if (isSyntaxError(e)) {
              throw new Error("Strict: Insights artifact contains invalid JSON");
         }
+        const msg = e instanceof Error ? e.message : String(e);
+        insightsMissingReason = msg.includes('Empty file') ? 'empty' : 'enoent';
+
         console.warn('[STRICT] Insights artifact missing/empty. Proceeding with Empty State.', e instanceof Error ? e.message : String(e));
         // Do not throw, just leave insightsDaily as null
         insightsDaily = null;
+        insightsDailySource = 'missing';
       } else if (!insightsDaily) {
          try {
            const content = await readFile(insightsFixturePath, 'utf-8');
            insightsDaily = JSON.parse(content);
            insightsDailySource = 'fixture';
+           insightsMissingReason = 'enoent'; // Implicitly assuming missing if we are falling back
            console.warn('Insights Daily loaded from fixture (fallback)');
          } catch (e2) {
            console.warn('Could not load insights.daily fixture:', e2 instanceof Error ? e2.message : String(e2));
@@ -150,6 +168,8 @@ app.get('/observatory', async (_req, res) => {
       view_meta: {
         source_kind: sourceKind,
         insights_source_kind: insightsDailySource,
+        missing_reason: missingReason,
+        insights_missing_reason: insightsMissingReason,
         is_strict: isStrict,
         forensics: forensics
       }
