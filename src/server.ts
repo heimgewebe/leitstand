@@ -146,7 +146,7 @@ app.get('/observatory', async (_req, res) => {
            const content = await readFile(insightsFixturePath, 'utf-8');
            insightsDaily = JSON.parse(content);
            insightsDailySource = 'fixture';
-           insightsMissingReason = 'enoent'; // Implicitly assuming missing if we are falling back
+           insightsMissingReason = 'fallback';
            console.warn('Insights Daily loaded from fixture (fallback)');
          } catch (e2) {
            console.warn('Could not load insights.daily fixture:', e2 instanceof Error ? e2.message : String(e2));

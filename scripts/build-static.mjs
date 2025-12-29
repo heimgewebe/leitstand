@@ -177,6 +177,7 @@ async function main() {
           const content = await readFile(insightsFixturePath, 'utf-8');
           insightsDaily = JSON.parse(content);
           insightsDailySource = 'fixture';
+          insightsMissingReason = 'fallback';
           console.warn('Loaded insights daily from fixture (fallback)');
         } catch (e2) {
           console.warn('Could not load insights.daily fixture:', e2.message);
