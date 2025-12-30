@@ -26,6 +26,21 @@ app.set('view engine', 'ejs');
 app.set('views', join(process.cwd(), 'src', 'views'));
 
 app.post('/events', async (req, res) => {
+  // 1. Authorization
+  const token = process.env.LEITSTAND_EVENTS_TOKEN;
+  if (!token) {
+    console.warn('[Event] LEITSTAND_EVENTS_TOKEN not configured. Endpoint disabled.');
+    res.status(403).send('Events endpoint disabled');
+    return;
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || authHeader !== `Bearer ${token}`) {
+    console.warn('[Event] Unauthorized access attempt');
+    res.status(401).send('Unauthorized');
+    return;
+  }
+
   const event = req.body;
   if (!event || typeof event !== 'object') {
     res.status(400).send('Invalid event format');
@@ -36,12 +51,41 @@ app.post('/events', async (req, res) => {
   const eventType = event.type || event.kind;
 
   if (eventType === 'knowledge.observatory.published.v1') {
-    const { url } = event.payload || {};
+    const { url, generated_at } = event.payload || {};
 
     if (!url) {
       console.warn('Received observatory published event without URL');
       res.status(400).send('Missing payload.url');
       return;
+    }
+
+    // 2. URL Validation
+    try {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.protocol !== 'https:' || parsedUrl.hostname !== 'github.com') {
+        console.warn(`[Event] Blocked unsafe URL: ${url}`);
+        res.status(400).send('Invalid URL domain or protocol');
+        return;
+      }
+    } catch (e) {
+      res.status(400).send('Invalid URL format');
+      return;
+    }
+
+    // 3. Idempotency Check
+    if (generated_at) {
+      try {
+        const artifactPath = join(process.cwd(), 'artifacts', 'knowledge.observatory.json');
+        const content = await readFile(artifactPath, 'utf-8');
+        const currentData = JSON.parse(content);
+        if (currentData.generated_at === generated_at) {
+          console.log(`[Event] Skipping duplicate event for generated_at=${generated_at}`);
+          res.status(200).send({ status: 'skipped', reason: 'idempotent' });
+          return;
+        }
+      } catch (e) {
+        // Artifact missing or invalid - proceed with fetch
+      }
     }
 
     console.log(`[Event] Received knowledge.observatory.published.v1. Fetching from ${url}`);
