@@ -1,6 +1,10 @@
 import express from 'express';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execPromise = promisify(exec);
 
 class EmptyFileError extends Error {
   code = 'EMPTY_FILE';
@@ -13,11 +17,54 @@ class EmptyFileError extends Error {
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.use(express.json());
+
 // Set up EJS
 app.set('view engine', 'ejs');
 // We point to src/views for the MVP to avoid build complexity of copying assets
 // This assumes the process is run from the root of the repo
 app.set('views', join(process.cwd(), 'src', 'views'));
+
+app.post('/events', async (req, res) => {
+  const event = req.body;
+  if (!event || typeof event !== 'object') {
+    res.status(400).send('Invalid event format');
+    return;
+  }
+
+  // "Filter: type == knowledge.observatory.published.v1"
+  const eventType = event.type || event.kind;
+
+  if (eventType === 'knowledge.observatory.published.v1') {
+    const { url } = event.payload || {};
+
+    if (!url) {
+      console.warn('Received observatory published event without URL');
+      res.status(400).send('Missing payload.url');
+      return;
+    }
+
+    console.log(`[Event] Received knowledge.observatory.published.v1. Fetching from ${url}`);
+
+    try {
+      // Execute the fetch script with the provided URL
+      await execPromise('node scripts/fetch-observatory.mjs', {
+        env: { ...process.env, OBSERVATORY_URL: url }
+      });
+
+      console.log('[Event] Observatory refresh complete.');
+      res.status(200).send({ status: 'refreshed', url });
+    } catch (error) {
+      console.error('[Event] Failed to refresh observatory:', error);
+      res.status(500).send({
+        error: 'Refresh failed',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  } else {
+    res.status(200).send({ status: 'ignored' });
+  }
+});
 
 app.get('/', (_req, res) => {
   res.render('index');
