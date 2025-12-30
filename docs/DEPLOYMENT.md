@@ -43,3 +43,28 @@ In **Preview/Development** environments, if `artifacts/knowledge.observatory.jso
 The UI explicitly indicates the source of the data:
 - **"Artefakt (knowledge.observatory.json)"**: Data loaded successfully from `artifacts/knowledge.observatory.json`.
 - **"Fixture (Fallback)"**: Data loaded from `src/fixtures/observatory.json`.
+
+## Events Ingestion
+
+Leitstand can ingest events (e.g., `knowledge.observatory.published.v1`) via the `/events` endpoint.
+
+**Security & Authorization:**
+
+The endpoint is protected to prevent unauthorized triggers.
+
+*   **Production:** Authorization is **required**. The endpoint is disabled (403) if no token is configured.
+*   **Dev/Preview:** Authorization is **optional**. If no token is configured, the endpoint is open (permissive).
+
+**Configuration:**
+
+| Variable | Description | Default / Required |
+| :--- | :--- | :--- |
+| `LEITSTAND_EVENTS_TOKEN` | Secret token to authorize event ingestion. | **Required in Prod** |
+| `LEITSTAND_STRICT` | If `1`, enables strict mode (fail-loud). Also enforces token requirement on `/events`. | `0` (Dev), `1` (Prod) |
+
+**Usage:**
+
+Requests must include the token in headers:
+
+*   `Authorization: Bearer <token>`
+*   `X-Events-Token: <token>`

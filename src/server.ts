@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Express } from 'express';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { fileURLToPath } from 'url';
 
 const execPromise = promisify(exec);
 
@@ -14,7 +15,7 @@ class EmptyFileError extends Error {
   }
 }
 
-const app = express();
+const app: Express = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -28,17 +29,33 @@ app.set('views', join(process.cwd(), 'src', 'views'));
 app.post('/events', async (req, res) => {
   // 1. Authorization
   const token = process.env.LEITSTAND_EVENTS_TOKEN;
-  if (!token) {
-    console.warn('[Event] LEITSTAND_EVENTS_TOKEN not configured. Endpoint disabled.');
-    res.status(403).send('Events endpoint disabled');
-    return;
-  }
+  const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production';
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${token}`) {
-    console.warn('[Event] Unauthorized access attempt');
-    res.status(401).send('Unauthorized');
-    return;
+  if (token) {
+    // Token configured: Strict check (Bearer or X-Header)
+    const authHeader = req.headers.authorization;
+    const xToken = req.headers['x-events-token'];
+
+    let providedToken;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      providedToken = authHeader.slice(7);
+    } else if (typeof xToken === 'string') {
+      providedToken = xToken;
+    }
+
+    if (providedToken !== token) {
+      console.warn('[Event] Unauthorized access attempt');
+      res.status(401).send('Unauthorized');
+      return;
+    }
+  } else {
+    // No token: Check environment
+    if (isStrict) {
+      console.warn('[Event] LEITSTAND_EVENTS_TOKEN not configured in strict mode. Endpoint disabled.');
+      res.status(403).send('Events endpoint disabled');
+      return;
+    }
+    // Dev/Preview: Permissive (no token required)
   }
 
   const event = req.body;
@@ -295,6 +312,10 @@ app.get('/intent', async (_req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Leitstand server running at http://localhost:${port}`);
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  app.listen(port, () => {
+    console.log(`Leitstand server running at http://localhost:${port}`);
+  });
+}
+
+export { app };
