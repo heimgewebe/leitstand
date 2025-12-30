@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Express } from 'express';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { exec } from 'child_process';
@@ -15,7 +15,7 @@ class EmptyFileError extends Error {
   }
 }
 
-const app = express();
+const app: Express = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
