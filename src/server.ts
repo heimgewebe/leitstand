@@ -236,9 +236,10 @@ app.get('/observatory', async (_req, res) => {
          throw new Error("Strict Fail: Insights artifact missing or invalid.");
       }
 
-      const isSyntaxError = (err: unknown): err is SyntaxError =>
-        err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
+      // const isSyntaxError = (err: unknown): err is SyntaxError =>
+      //   err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
 
+      // Use isSyntaxError even if we are not strictly checking it in strict mode yet, or just check e directly for now to satisfy linter if logic is simpler
       if (isStrict) {
         if (isSyntaxError(e)) {
              throw new Error("Strict: Insights artifact contains invalid JSON");
@@ -263,6 +264,55 @@ app.get('/observatory', async (_req, res) => {
       }
     }
 
+    // Load integrity.summary.json (System Integrity)
+    const integrityArtifactPath = join(process.cwd(), 'artifacts', 'integrity.summary.json');
+    const integrityFixturePath = join(process.cwd(), 'src', 'fixtures', 'integrity.summary.json');
+
+    let integritySummary = null;
+    let integritySource = null;
+    let integrityMissingReason = 'unknown';
+
+    try {
+      const content = await readFile(integrityArtifactPath, 'utf-8');
+      if (content.trim()) {
+        integritySummary = JSON.parse(content);
+        integritySource = 'artifact';
+        integrityMissingReason = 'ok';
+      }
+    } catch (e) {
+      if (isStrictFail) {
+        // Integrity is strictly diagnostic, so we might want to relax strict failure even in strict mode?
+        // But adhering to the pattern:
+        // "This schema is observation artifact, no decision input." -> So maybe it shouldn't fail the build?
+        // Prompt says: "No CI-Fail". So we should catch errors gracefully even in strict fail mode?
+        // "Kein CI-Fail" -> implies we should NOT throw Error even if missing.
+        console.warn('Integrity artifact missing in Strict Fail mode. Ignoring per instruction (No CI-Fail).');
+      }
+
+      // const isSyntaxError = (err: unknown): err is SyntaxError =>
+      //   err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
+
+      if (isStrict) {
+        // In strict mode (production), if missing, just show missing.
+        const msg = e instanceof Error ? e.message : String(e);
+        integrityMissingReason = msg.includes('Empty file') ? 'empty' : 'enoent';
+        integritySummary = null;
+        integritySource = 'missing';
+      } else {
+        // Dev / Fallback
+        try {
+          const content = await readFile(integrityFixturePath, 'utf-8');
+          integritySummary = JSON.parse(content);
+          integritySource = 'fixture';
+          integrityMissingReason = 'fallback';
+        } catch (e2) {
+          integritySummary = null;
+          integritySource = 'missing';
+          integrityMissingReason = 'enoent';
+        }
+      }
+    }
+
     // Load forensic metadata if available
     let forensics = {};
     try {
@@ -274,12 +324,15 @@ app.get('/observatory', async (_req, res) => {
     res.render('observatory', {
       data,
       insightsDaily,
+      integritySummary,
       observatoryUrl,
       view_meta: {
         source_kind: sourceKind,
         insights_source_kind: insightsDailySource,
+        integrity_source_kind: integritySource,
         missing_reason: missingReason,
         insights_missing_reason: insightsMissingReason,
+        integrity_missing_reason: integrityMissingReason,
         is_strict: isStrict,
         forensics: forensics
       }

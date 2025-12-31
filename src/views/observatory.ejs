@@ -159,6 +159,78 @@
     </div>
   <% } %>
 
+  <!-- INTEGRITY SECTION (New Panel) -->
+  <h2 class="section-title">System Integrity</h2>
+  <div style="background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
+    <% if (locals.integritySummary) { %>
+      <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+         <div>
+             <strong>Source:</strong>
+             <% if (locals.view_meta && locals.view_meta.integrity_source_kind === 'artifact') { %>
+                integrity.summary.json (Artifact)
+             <% } else { %>
+                integrity.summary.json (Fixture)
+             <% } %>
+         </div>
+         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px;
+            <% if (locals.integritySummary.counts.loop_gaps > 0) { %> background-color: #ffccbc; color: #bf360c; /* GAP */
+            <% } else if (locals.integritySummary.counts.unclear > 0) { %> background-color: #fff9c4; color: #f57f17; /* UNCLEAR */
+            <% } else { %> background-color: #c8e6c9; color: #1b5e20; /* OK */ <% } %>">
+            Status:
+            <% if (locals.integritySummary.counts.loop_gaps > 0) { %> GAP
+            <% } else if (locals.integritySummary.counts.unclear > 0) { %> UNCLEAR
+            <% } else { %> OK <% } %>
+         </div>
+      </div>
+
+      <div style="margin-bottom: 10px;">
+         <strong>Generated:</strong> <%= locals.integritySummary.generated_at || 'n/a' %>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 15px;">
+         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
+            <div style="font-size: 2em; font-weight: bold; color: #333;"><%= locals.integritySummary.counts.claims || 0 %></div>
+            <div style="color: #666; font-size: 0.85em;">Claims</div>
+         </div>
+         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
+            <div style="font-size: 2em; font-weight: bold; color: #333;"><%= locals.integritySummary.counts.artifacts || 0 %></div>
+            <div style="color: #666; font-size: 0.85em;">Artifacts</div>
+         </div>
+         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
+            <div style="font-size: 2em; font-weight: bold; color: #d9534f;"><%= locals.integritySummary.counts.loop_gaps || 0 %></div>
+            <div style="color: #666; font-size: 0.85em;">Loop Gaps</div>
+         </div>
+         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
+            <div style="font-size: 2em; font-weight: bold; color: #f0ad4e;"><%= locals.integritySummary.counts.unclear || 0 %></div>
+            <div style="color: #666; font-size: 0.85em;">Unclear</div>
+         </div>
+      </div>
+
+      <% if (locals.integritySummary.summary_url) { %>
+        <div style="margin-top: 15px; text-align: right;">
+            <a href="<%= locals.integritySummary.summary_url %>" target="_blank" style="color: #1976d2; text-decoration: none; font-size: 0.9em;">View Detailed Report &rarr;</a>
+        </div>
+      <% } %>
+
+    <% } else { %>
+       <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+         <div>
+             <strong>Source:</strong> MISSING
+         </div>
+         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px; background-color: #eceff1; color: #455a64;">
+            Status: MISSING
+         </div>
+       </div>
+       <p style="color: #666; font-style: italic;">
+         <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+            Integrity summary not found (Strict Mode).
+         <% } else { %>
+            Integrity summary not found.
+         <% } %>
+       </p>
+    <% } %>
+  </div>
+
   <!-- PUBLISHED KNOWLEDGE SECTION -->
   <h2 class="section-title">Verdichtete Erkenntnis (Published Daily)</h2>
   <div style="background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
