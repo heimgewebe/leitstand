@@ -195,6 +195,49 @@ async function main() {
     }
   }
 
+  // Load integrity.summary.json (System Integrity)
+  const integrityArtifactPath = join(ROOT, 'artifacts', 'integrity.summary.json');
+  const integrityFixturePath = join(ROOT, 'src', 'fixtures', 'integrity.summary.json');
+
+  let integritySummary = null;
+  let integritySource = null;
+  let integrityMissingReason = 'unknown';
+
+  try {
+    const content = await readFile(integrityArtifactPath, 'utf-8');
+    if (content.trim()) {
+      integritySummary = JSON.parse(content);
+      integritySource = 'artifact';
+      integrityMissingReason = 'ok';
+      console.log(`Loaded integrity summary from artifact: ${integrityArtifactPath}`);
+    }
+  } catch (e) {
+    if (isStrictFail) {
+      console.warn('Integrity artifact missing in Strict Fail mode. Ignoring per instruction (No CI-Fail).');
+    }
+
+    if (isStrict) {
+      const msg = e instanceof Error ? e.message : String(e);
+      integrityMissingReason = msg.includes('Empty file') ? 'empty' : 'enoent';
+      integritySummary = null;
+      integritySource = 'missing';
+      console.warn("Strict build: Integrity artifact missing. Proceeding with EMPTY STATE.");
+    } else {
+      try {
+        const content = await readFile(integrityFixturePath, 'utf-8');
+        integritySummary = JSON.parse(content);
+        integritySource = 'fixture';
+        integrityMissingReason = 'fallback';
+        console.warn('Loaded integrity summary from fixture (fallback)');
+      } catch (e2) {
+        integritySummary = null;
+        integritySource = 'missing';
+        integrityMissingReason = 'enoent';
+        console.warn('Could not load integrity.summary fixture:', e2.message);
+      }
+    }
+  }
+
   // Load _meta.json forensic trail
   let metaForensics = {};
   try {
@@ -207,13 +250,15 @@ async function main() {
   await renderTo(
     join(OUT, "observatory", "index.html"),
     "observatory",
-    { data: observatoryData, insightsDaily },
+    { data: observatoryData, insightsDaily, integritySummary },
     {
       view_meta: {
           source_kind: sourceKind,
           missing_reason: missingReason,
           insights_source_kind: insightsDailySource,
+          integrity_source_kind: integritySource,
           insights_missing_reason: insightsMissingReason,
+          integrity_missing_reason: integrityMissingReason,
           is_strict: isStrict,
           forensics: metaForensics
       },

@@ -1,0 +1,17 @@
+{
+  "repo": "semantAH",
+  "generated_at": "2023-10-27T10:00:00Z",
+  "summary_url": "https://example.com/reports/integrity/summary.json",
+  "counts": {
+    "claims": 12,
+    "artifacts": 5,
+    "loop_gaps": 3,
+    "unclear": 2
+  },
+  "details": {
+    "claims": ["schema-1", "schema-2"],
+    "artifacts": ["artifact-1", "artifact-2"],
+    "loop_gaps": ["gap-1", "gap-2"],
+    "unclear": []
+  }
+}
