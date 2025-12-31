@@ -236,8 +236,8 @@ app.get('/observatory', async (_req, res) => {
          throw new Error("Strict Fail: Insights artifact missing or invalid.");
       }
 
-      // const isSyntaxError = (err: unknown): err is SyntaxError =>
-      //   err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
+      const isSyntaxError = (err: unknown): err is SyntaxError =>
+        err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
 
       // Use isSyntaxError even if we are not strictly checking it in strict mode yet, or just check e directly for now to satisfy linter if logic is simpler
       if (isStrict) {
@@ -289,13 +289,22 @@ app.get('/observatory', async (_req, res) => {
         console.warn('Integrity artifact missing in Strict Fail mode. Ignoring per instruction (No CI-Fail).');
       }
 
-      // const isSyntaxError = (err: unknown): err is SyntaxError =>
-      //   err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
+      const isSyntaxErrorIntegrity = (err: unknown): err is SyntaxError =>
+        err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
 
       if (isStrict) {
-        // In strict mode (production), if missing, just show missing.
-        const msg = e instanceof Error ? e.message : String(e);
-        integrityMissingReason = msg.includes('Empty file') ? 'empty' : 'enoent';
+        if (isSyntaxErrorIntegrity(e)) {
+             console.error('[STRICT] Integrity artifact corrupted. Treating as missing.', e);
+             integrityMissingReason = 'corrupt';
+             integritySummary = null;
+             integritySource = 'missing';
+        } else {
+            // In strict mode (production), if missing, just show missing.
+            const msg = e instanceof Error ? e.message : String(e);
+            integrityMissingReason = msg.includes('Empty file') ? 'empty' : 'enoent';
+            integritySummary = null;
+            integritySource = 'missing';
+        }
         integritySummary = null;
         integritySource = 'missing';
       } else {
