@@ -280,8 +280,7 @@
           <tr style="background: #f5f5f5; text-align: left; border-bottom: 2px solid #ddd;">
             <th style="padding: 10px;">Repo</th>
             <th style="padding: 10px;">Status</th>
-            <th style="padding: 10px; text-align: center;">Gaps</th>
-            <th style="padding: 10px; text-align: center;">Unclear</th>
+            <th style="padding: 10px;">Counts / Details</th>
             <th style="padding: 10px;">Generated At</th>
             <th style="padding: 10px;"></th>
           </tr>
@@ -292,6 +291,7 @@
                  // Ensure name is set for display
                  s.name = s.name || s.repo || 'unknown';
 
+                 // Strict status source: default to UNKNOWN if missing, never assume OK
                  let status = s.status || 'UNKNOWN';
                  let color = 'gray';
 
@@ -308,11 +308,16 @@
           <tr style="border-bottom: 1px solid #eee;">
             <td style="padding: 10px; font-weight: bold;"><%= s.name || 'unknown' %></td>
             <td style="padding: 10px; color: <%= color %>; font-weight: bold;"><%= status %></td>
-            <td style="padding: 10px; text-align: center; color: <%= (s.counts?.loop_gaps || 0) > 0 ? 'red' : '#ccc' %>">
-               <%= s.counts?.loop_gaps || 0 %>
-            </td>
-            <td style="padding: 10px; text-align: center; color: <%= (s.counts?.unclear || 0) > 0 ? 'orange' : '#ccc' %>">
-               <%= s.counts?.unclear || 0 %>
+            <td style="padding: 10px; font-size: 0.85em; color: #555;">
+               <% if (s.counts && typeof s.counts === 'object') { %>
+                  <% Object.keys(s.counts).sort().forEach(function(key, index, arr) { %>
+                     <span style="white-space: nowrap;">
+                       <%= key %>: <strong><%= s.counts[key] %></strong><%= index < arr.length - 1 ? ', ' : '' %>
+                     </span>
+                  <% }); %>
+               <% } else { %>
+                  <span style="color: #ccc;">-</span>
+               <% } %>
             </td>
             <td style="padding: 10px; color: #666;"><%= s.generated_at || '' %></td>
             <td style="padding: 10px; text-align: right;">
