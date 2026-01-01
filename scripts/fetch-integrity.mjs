@@ -12,7 +12,8 @@ if (!URL) {
   process.exit(0); // Exit gracefully, as this is diagnostic only
 }
 
-const OUT = process.env.INTEGRITY_ARTIFACT_PATH || "artifacts/integrity.summary.json";
+// Default output path (can be overridden, but we also try to use repo-specific path)
+let OUT = process.env.INTEGRITY_ARTIFACT_PATH || "artifacts/integrity.summary.json";
 const META_PATH = "artifacts/_meta.json";
 
 // Strict mode in integrity context:
@@ -20,14 +21,13 @@ const META_PATH = "artifacts/_meta.json";
 // However, we might want to log strictly if the artifact *exists* but is corrupt.
 const strict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === "production";
 
-await mkdir(path.dirname(OUT), { recursive: true });
 console.log(`[leitstand] Fetch integrity source: ${URL}`);
-console.log(`[leitstand] Output path: ${OUT}`);
 
 let success = false;
 let bytes = 0;
 let parsed = false;
 let counts = null;
+let finalPath = OUT;
 
 try {
   const res = await fetch(URL);
@@ -35,12 +35,15 @@ try {
      throw new Error(`HTTP ${res.status} ${res.statusText}`);
   }
 
-  // Write to temp file first for atomicity
-  const tempPath = OUT + ".tmp";
+  // We need to parse the JSON to know the repo name
+  // To keep it atomic, we download to a generic temp file first
+  const tempPath = "artifacts/integrity.temp.json";
+  await mkdir(path.dirname(tempPath), { recursive: true });
+
   const fileStream = fs.createWriteStream(tempPath);
   await finished(Readable.fromWeb(res.body).pipe(fileStream));
 
-  // Validate
+  // Validate and Extract Repo Name
   const s = fs.readFileSync(tempPath, "utf8");
   bytes = Buffer.byteLength(s, "utf8");
 
@@ -54,8 +57,22 @@ try {
 
   counts = obj.counts;
 
+  // Determine final path based on repo name if available
+  if (obj.repo && typeof obj.repo === 'string') {
+    // Create artifacts/integrity/ directory
+    const repoDir = "artifacts/integrity";
+    await mkdir(repoDir, { recursive: true });
+    finalPath = path.join(repoDir, `${obj.repo}.summary.json`);
+  } else {
+    // Fallback to OUT (integrity.summary.json)
+    await mkdir(path.dirname(OUT), { recursive: true });
+    finalPath = OUT;
+  }
+
+  console.log(`[leitstand] Output path: ${finalPath}`);
+
   // Move to final location
-  fs.renameSync(tempPath, OUT);
+  fs.renameSync(tempPath, finalPath);
   success = true;
   console.log(`[leitstand] Integrity fetch complete. bytes=${bytes}`);
 
@@ -73,8 +90,12 @@ try {
 
   meta.fetched_at = new Date().toISOString();
 
+  // If we have multiple integrity files, we might want to store a map or list.
+  // For now, let's store the last fetched one, or update a map if we want to be fancy.
+  // Let's stick to simple "last fetched" for the _meta log to avoid complexity,
+  // but maybe include the path so we know which one it was.
   meta.integrity = {
-    path: OUT,
+    path: finalPath,
     bytes: bytes,
     source_url: URL,
     parsed: parsed,

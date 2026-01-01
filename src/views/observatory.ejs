@@ -162,55 +162,117 @@
   <!-- INTEGRITY SECTION (New Panel) -->
   <h2 class="section-title">System Integrity</h2>
   <div style="background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
-    <% if (locals.integritySummary) { %>
+    <% if (locals.integritySummaries && locals.integritySummaries.length > 0) { %>
+      <%
+         // Calculate Aggregate Status
+         // Worst case: FAIL > MISSING > GAP > UNCLEAR > OK
+         // Actually, MISSING might be separate.
+         // Logic: If ANY has GAP -> GAP. If ANY has UNCLEAR -> UNCLEAR (if no GAP).
+         // Status per repo:
+         // GAP (loop_gaps > 0)
+         // UNCLEAR (unclear > 0)
+         // OK (else)
+         // MISSING (handled by not being in list, or explicit status if provided)
+
+         let aggGap = 0;
+         let aggUnclear = 0;
+         let aggClaims = 0;
+         let aggArtifacts = 0;
+
+         locals.integritySummaries.forEach(s => {
+             aggGap += (s.counts?.loop_gaps || 0);
+             aggUnclear += (s.counts?.unclear || 0);
+             aggClaims += (s.counts?.claims || 0);
+             aggArtifacts += (s.counts?.artifacts || 0);
+         });
+
+         let aggStatus = 'OK';
+         let aggColor = '#1b5e20';
+         let aggBg = '#c8e6c9';
+
+         if (aggGap > 0) {
+            aggStatus = 'GAP';
+            aggColor = '#bf360c';
+            aggBg = '#ffccbc';
+         } else if (aggUnclear > 0) {
+            aggStatus = 'UNCLEAR';
+            aggColor = '#f57f17';
+            aggBg = '#fff9c4';
+         }
+      %>
+
       <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
          <div>
              <strong>Source:</strong>
              <% if (locals.view_meta && locals.view_meta.integrity_source_kind === 'artifact') { %>
-                integrity.summary.json (Artifact)
+                integrity/*.json (Artifact)
              <% } else { %>
-                integrity.summary.json (Fixture)
+                integrity/*.json (Fixture)
              <% } %>
          </div>
-         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px;
-            <% if (locals.integritySummary.counts.loop_gaps > 0) { %> background-color: #ffccbc; color: #bf360c; /* GAP */
-            <% } else if (locals.integritySummary.counts.unclear > 0) { %> background-color: #fff9c4; color: #f57f17; /* UNCLEAR */
-            <% } else { %> background-color: #c8e6c9; color: #1b5e20; /* OK */ <% } %>">
-            Status:
-            <% if (locals.integritySummary.counts.loop_gaps > 0) { %> GAP
-            <% } else if (locals.integritySummary.counts.unclear > 0) { %> UNCLEAR
-            <% } else { %> OK <% } %>
+         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px; background-color: <%= aggBg %>; color: <%= aggColor %>;">
+            Overall Status: <%= aggStatus %>
          </div>
       </div>
 
-      <div style="margin-bottom: 10px;">
-         <strong>Generated:</strong> <%= locals.integritySummary.generated_at || 'n/a' %>
-      </div>
+      <!-- Repo Table -->
+      <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; border-radius: 4px; overflow: hidden; font-size: 0.9em;">
+        <thead>
+          <tr style="background: #f5f5f5; text-align: left; border-bottom: 2px solid #ddd;">
+            <th style="padding: 10px;">Repo</th>
+            <th style="padding: 10px;">Status</th>
+            <th style="padding: 10px; text-align: center;">Gaps</th>
+            <th style="padding: 10px; text-align: center;">Unclear</th>
+            <th style="padding: 10px;">Generated At</th>
+            <th style="padding: 10px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% locals.integritySummaries.forEach(function(s) {
+             // Use explicit status from artifact (Contract First)
+             let status = s.status || 'UNKNOWN';
+             let color = 'gray';
 
+             // Map status to colors
+             if (status === 'OK') color = 'green';
+             else if (status === 'WARN' || status === 'UNCLEAR') color = 'orange';
+             else if (status === 'FAIL' || status === 'GAP') color = 'red';
+          %>
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px; font-weight: bold;"><%= s.repo || 'unknown' %></td>
+            <td style="padding: 10px; color: <%= color %>; font-weight: bold;"><%= status %></td>
+            <td style="padding: 10px; text-align: center; color: <%= (s.counts?.loop_gaps || 0) > 0 ? 'red' : '#ccc' %>">
+               <%= s.counts?.loop_gaps || 0 %>
+            </td>
+            <td style="padding: 10px; text-align: center; color: <%= (s.counts?.unclear || 0) > 0 ? 'orange' : '#ccc' %>">
+               <%= s.counts?.unclear || 0 %>
+            </td>
+            <td style="padding: 10px; color: #666;"><%= s.generated_at || 'n/a' %></td>
+            <td style="padding: 10px; text-align: right;">
+               <% if (s.summary_url) { %>
+                  <a href="<%= s.summary_url %>" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>
+               <% } %>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+
+      <!-- Aggregated Metrics -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 15px;">
          <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 2em; font-weight: bold; color: #333;"><%= locals.integritySummary.counts.claims || 0 %></div>
-            <div style="color: #666; font-size: 0.85em;">Claims</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #333;"><%= aggClaims %></div>
+            <div style="color: #666; font-size: 0.8em;">Total Claims</div>
          </div>
          <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 2em; font-weight: bold; color: #333;"><%= locals.integritySummary.counts.artifacts || 0 %></div>
-            <div style="color: #666; font-size: 0.85em;">Artifacts</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #333;"><%= aggArtifacts %></div>
+            <div style="color: #666; font-size: 0.8em;">Total Artifacts</div>
          </div>
          <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 2em; font-weight: bold; color: #d9534f;"><%= locals.integritySummary.counts.loop_gaps || 0 %></div>
-            <div style="color: #666; font-size: 0.85em;">Loop Gaps</div>
-         </div>
-         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 2em; font-weight: bold; color: #f0ad4e;"><%= locals.integritySummary.counts.unclear || 0 %></div>
-            <div style="color: #666; font-size: 0.85em;">Unclear</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #d9534f;"><%= aggGap %></div>
+            <div style="color: #666; font-size: 0.8em;">Total Gaps</div>
          </div>
       </div>
-
-      <% if (locals.integritySummary.summary_url) { %>
-        <div style="margin-top: 15px; text-align: right;">
-            <a href="<%= locals.integritySummary.summary_url %>" target="_blank" style="color: #1976d2; text-decoration: none; font-size: 0.9em;">View Detailed Report &rarr;</a>
-        </div>
-      <% } %>
 
     <% } else { %>
        <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">

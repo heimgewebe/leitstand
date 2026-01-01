@@ -1,0 +1,1 @@
+{ "repo": "metarepo", "generated_at": "2023-10-27T10:00:00Z", "summary_url": "https://example.com/meta", "status": "OK", "counts": { "claims": 10, "artifacts": 10, "loop_gaps": 0, "unclear": 0 }, "details": {} }
