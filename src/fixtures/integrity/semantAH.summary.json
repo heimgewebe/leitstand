@@ -1,0 +1,12 @@
+{
+  "repo": "heimgewebe/semantAH",
+  "generated_at": "2023-10-27T10:00:00Z",
+  "status": "UNCLEAR",
+  "counts": {
+    "total_claims": 15,
+    "total_artifacts": 15,
+    "loop_gaps": 3,
+    "unclear": 2
+  },
+  "summary_url": "https://example.com/reports/integrity/semantAH.summary.json"
+}

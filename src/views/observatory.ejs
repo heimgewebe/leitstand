@@ -162,55 +162,189 @@
   <!-- INTEGRITY SECTION (New Panel) -->
   <h2 class="section-title">System Integrity</h2>
   <div style="background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
-    <% if (locals.integritySummary) { %>
+    <% if (locals.integritySummaries && locals.integritySummaries.length > 0) { %>
+      <%
+             // Build list of repos to display
+             // 1. Start with known repos from fleet metrics (if available)
+             // 2. Add any repos found in integrity summaries (even if not in fleet metrics)
+
+             const reposMap = new Map();
+
+             // Add from metrics
+             if (locals.fleetMetrics && locals.fleetMetrics.repos) {
+                locals.fleetMetrics.repos.forEach(r => {
+                   if (typeof r === 'string') {
+                      reposMap.set(r, { name: r, status: 'MISSING', isMissing: true });
+                   } else if (r.name) {
+                      reposMap.set(r.name, { name: r.name, status: 'MISSING', isMissing: true });
+                   }
+                });
+             }
+
+             // Add/Merge from summaries
+             locals.integritySummaries.forEach(s => {
+                if (s.repo) {
+                   reposMap.set(s.repo, { ...s, isMissing: false });
+                }
+             });
+
+             // Convert to array and sort alphabetically
+             const repoList = Array.from(reposMap.values()).sort((a, b) => {
+                 const nameA = a.name || a.repo || 'unknown';
+                 const nameB = b.name || b.repo || 'unknown';
+                 return nameA.localeCompare(nameB);
+             });
+
+         // Calculate Aggregate Status using Explicit Status Fields (Contract-First)
+         // Ranking: FAIL > GAP > WARN > UNCLEAR > MISSING > OK
+         // We treat MISSING as a high-severity state (similar to UNCLEAR or WARN) because we lost observability.
+
+         let aggGap = 0;
+         let aggClaims = 0;
+         let aggArtifacts = 0;
+         let statusRank = 0; // 0=OK, 1=UNCLEAR, 2=WARN, 3=GAP, 4=FAIL
+
+         repoList.forEach(s => {
+             aggGap += (s.counts?.loop_gaps || 0);
+             aggClaims += (s.counts?.claims || 0);
+             aggArtifacts += (s.counts?.artifacts || 0);
+
+             let st = (s.status || 'OK').toUpperCase();
+             if (s.isMissing) st = 'MISSING';
+
+             let rank = 0;
+             if (st === 'UNCLEAR') rank = 1;
+             else if (st === 'MISSING') rank = 2; // Rank MISSING as WARN-level
+             else if (st === 'WARN') rank = 2;
+             else if (st === 'GAP') rank = 3;
+             else if (st === 'FAIL') rank = 4;
+
+             if (rank > statusRank) statusRank = rank;
+         });
+
+         // Determine text/color based on rank
+         let aggStatus = 'OK';
+         let aggColor = '#1b5e20';
+         let aggBg = '#c8e6c9';
+
+         if (statusRank === 4) {
+            aggStatus = 'FAIL';
+            aggColor = '#b71c1c';
+            aggBg = '#ffcdd2';
+         } else if (statusRank === 3) {
+            aggStatus = 'GAP';
+            aggColor = '#bf360c';
+            aggBg = '#ffccbc';
+         } else if (statusRank === 2) {
+            // Check if it's purely MISSING or mixed
+            const hasMissing = repoList.some(r => r.isMissing);
+            const hasWarn = repoList.some(r => (r.status||'').toUpperCase() === 'WARN');
+
+            if (hasWarn) {
+                aggStatus = 'WARN';
+                aggColor = '#e65100';
+                aggBg = '#ffe0b2';
+            } else if (hasMissing) {
+                aggStatus = 'MISSING (Partial)'; // Or just WARN
+                aggColor = '#e65100'; // Orange
+                aggBg = '#ffe0b2';
+            } else {
+                aggStatus = 'WARN'; // Default fallback
+                aggColor = '#e65100';
+                aggBg = '#ffe0b2';
+            }
+         } else if (statusRank === 1) {
+            aggStatus = 'UNCLEAR';
+            aggColor = '#f57f17';
+            aggBg = '#fff9c4';
+         }
+      %>
+
       <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
          <div>
              <strong>Source:</strong>
              <% if (locals.view_meta && locals.view_meta.integrity_source_kind === 'artifact') { %>
-                integrity.summary.json (Artifact)
+                integrity/*.json (Artifact)
              <% } else { %>
-                integrity.summary.json (Fixture)
+                integrity/*.json (Fixture)
              <% } %>
          </div>
-         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px;
-            <% if (locals.integritySummary.counts.loop_gaps > 0) { %> background-color: #ffccbc; color: #bf360c; /* GAP */
-            <% } else if (locals.integritySummary.counts.unclear > 0) { %> background-color: #fff9c4; color: #f57f17; /* UNCLEAR */
-            <% } else { %> background-color: #c8e6c9; color: #1b5e20; /* OK */ <% } %>">
-            Status:
-            <% if (locals.integritySummary.counts.loop_gaps > 0) { %> GAP
-            <% } else if (locals.integritySummary.counts.unclear > 0) { %> UNCLEAR
-            <% } else { %> OK <% } %>
+         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px; background-color: <%= aggBg %>; color: <%= aggColor %>;">
+            Overall Status: <%= aggStatus %>
          </div>
       </div>
 
-      <div style="margin-bottom: 10px;">
-         <strong>Generated:</strong> <%= locals.integritySummary.generated_at || 'n/a' %>
-      </div>
+      <!-- Repo Table -->
+      <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; border-radius: 4px; overflow: hidden; font-size: 0.9em;">
+        <thead>
+          <tr style="background: #f5f5f5; text-align: left; border-bottom: 2px solid #ddd;">
+            <th style="padding: 10px;">Repo</th>
+            <th style="padding: 10px;">Status</th>
+            <th style="padding: 10px;">Counts / Details</th>
+            <th style="padding: 10px;">Generated At</th>
+            <th style="padding: 10px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <%
+             repoList.forEach(function(s) {
+                 // Ensure name is set for display
+                 s.name = s.name || s.repo || 'unknown';
 
+                 // Strict status source: default to UNKNOWN if missing, never assume OK
+                 let status = s.status || 'UNKNOWN';
+                 let color = 'gray';
+
+                 if (s.isMissing) {
+                     status = 'MISSING';
+                     color = '#999';
+                 } else {
+                     // Map status to colors
+                     if (status === 'OK') color = 'green';
+                     else if (status === 'WARN' || status === 'UNCLEAR') color = 'orange';
+                     else if (status === 'FAIL' || status === 'GAP') color = 'red';
+                 }
+          %>
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px; font-weight: bold;"><%= s.name || 'unknown' %></td>
+            <td style="padding: 10px; color: <%= color %>; font-weight: bold;"><%= status %></td>
+            <td style="padding: 10px; font-size: 0.85em; color: #555;">
+               <% if (s.counts && typeof s.counts === 'object') { %>
+                  <% Object.keys(s.counts).sort().forEach(function(key, index, arr) { %>
+                     <span style="white-space: nowrap;">
+                       <%= key %>: <strong><%= s.counts[key] %></strong><%= index < arr.length - 1 ? ', ' : '' %>
+                     </span>
+                  <% }); %>
+               <% } else { %>
+                  <span style="color: #ccc;">-</span>
+               <% } %>
+            </td>
+            <td style="padding: 10px; color: #666;"><%= s.generated_at || '' %></td>
+            <td style="padding: 10px; text-align: right;">
+               <% if (s.summary_url) { %>
+                  <a href="<%= s.summary_url %>" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>
+               <% } %>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+
+      <!-- Aggregated Metrics -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 15px;">
          <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 2em; font-weight: bold; color: #333;"><%= locals.integritySummary.counts.claims || 0 %></div>
-            <div style="color: #666; font-size: 0.85em;">Claims</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #333;"><%= aggClaims %></div>
+            <div style="color: #666; font-size: 0.8em;">Total Claims</div>
          </div>
          <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 2em; font-weight: bold; color: #333;"><%= locals.integritySummary.counts.artifacts || 0 %></div>
-            <div style="color: #666; font-size: 0.85em;">Artifacts</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #333;"><%= aggArtifacts %></div>
+            <div style="color: #666; font-size: 0.8em;">Total Artifacts</div>
          </div>
          <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 2em; font-weight: bold; color: #d9534f;"><%= locals.integritySummary.counts.loop_gaps || 0 %></div>
-            <div style="color: #666; font-size: 0.85em;">Loop Gaps</div>
-         </div>
-         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 2em; font-weight: bold; color: #f0ad4e;"><%= locals.integritySummary.counts.unclear || 0 %></div>
-            <div style="color: #666; font-size: 0.85em;">Unclear</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #d9534f;"><%= aggGap %></div>
+            <div style="color: #666; font-size: 0.8em;">Total Gaps</div>
          </div>
       </div>
-
-      <% if (locals.integritySummary.summary_url) { %>
-        <div style="margin-top: 15px; text-align: right;">
-            <a href="<%= locals.integritySummary.summary_url %>" target="_blank" style="color: #1976d2; text-decoration: none; font-size: 0.9em;">View Detailed Report &rarr;</a>
-        </div>
-      <% } %>
 
     <% } else { %>
        <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">

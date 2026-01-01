@@ -1,9 +1,10 @@
 import express, { Express } from 'express';
-import { readFile } from 'fs/promises';
+import { readFile, readdir } from 'fs/promises';
 import { join } from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
+import { loadLatestMetrics } from './metrics.js';
 
 const execPromise = promisify(exec);
 
@@ -292,62 +293,126 @@ app.get('/observatory', async (_req, res) => {
       }
     }
 
-    // Load integrity.summary.json (System Integrity)
-    const integrityArtifactPath = join(process.cwd(), 'artifacts', 'integrity.summary.json');
-    const integrityFixturePath = join(process.cwd(), 'src', 'fixtures', 'integrity.summary.json');
+    // Load integrity summaries (System Integrity)
+    // Supports multiple per-repo summaries in artifacts/integrity/ OR legacy single file
+    const integrityDir = join(process.cwd(), 'artifacts', 'integrity');
+    const legacyIntegrityPath = join(process.cwd(), 'artifacts', 'integrity.summary.json');
 
-    let integritySummary = null;
-    let integritySource = null;
+    interface IntegritySummary {
+      repo: string;
+      status: string;
+      generated_at: string;
+      counts?: {
+        claims?: number;
+        artifacts?: number;
+        loop_gaps?: number;
+        unclear?: number;
+      };
+      _source?: string;
+      [key: string]: unknown;
+    }
+
+    // We will collect all summaries here
+    const integritySummaries: IntegritySummary[] = [];
+    let integritySource = 'missing'; // Default
     let integrityMissingReason = 'unknown';
 
+    const loadIntegrityFile = async (path: string, sourceLabel: string): Promise<IntegritySummary | null> => {
+      try {
+        const content = await readFile(path, 'utf-8');
+        if (!content.trim()) return null;
+        const json = JSON.parse(content);
+        // Ensure it looks like a summary
+        if (json && typeof json === 'object') {
+             // Tag it for the UI
+             json._source = sourceLabel;
+             return json;
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    // 1. Try loading from artifacts/integrity/*.json
     try {
-      const content = await readFile(integrityArtifactPath, 'utf-8');
-      if (content.trim()) {
-        integritySummary = JSON.parse(content);
-        integritySource = 'artifact';
-        integrityMissingReason = 'ok';
+      const files = await readdir(integrityDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      for (const file of jsonFiles) {
+        const summary = await loadIntegrityFile(join(integrityDir, file), 'artifact');
+        if (summary) integritySummaries.push(summary);
       }
     } catch (e) {
-      if (isStrictFail) {
-        // Integrity is strictly diagnostic, so we might want to relax strict failure even in strict mode?
-        // But adhering to the pattern:
-        // "This schema is observation artifact, no decision input." -> So maybe it shouldn't fail the build?
-        // Prompt says: "No CI-Fail". So we should catch errors gracefully even in strict fail mode?
-        // "Kein CI-Fail" -> implies we should NOT throw Error even if missing.
-        console.warn('Integrity artifact missing in Strict Fail mode. Ignoring per instruction (No CI-Fail).');
-      }
+       // Directory might not exist, which is fine
+    }
 
-      const isSyntaxErrorIntegrity = (err: unknown): err is SyntaxError =>
-        err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
+    // 2. Try loading legacy artifact if we haven't found anything (or even if we have, maybe it's distinct?)
+    // Actually, if we have per-repo files, we might not want the legacy one if it duplicates data.
+    // But for safety, let's load it and maybe deduplicate by repo name later if needed.
+    // However, if legacy file exists, it might be the only source.
+    const legacySummary = await loadIntegrityFile(legacyIntegrityPath, 'artifact');
+    if (legacySummary) {
+       // Avoid duplication if repo is same
+       const exists = integritySummaries.find(s => s.repo === legacySummary.repo);
+       if (!exists) integritySummaries.push(legacySummary);
+    }
 
-      if (isStrict) {
-        if (isSyntaxErrorIntegrity(e)) {
-             console.error('[STRICT] Integrity artifact corrupted. Treating as missing.', e);
-             integrityMissingReason = 'corrupt';
-             integritySummary = null;
-             integritySource = 'missing';
-        } else {
-            // In strict mode (production), if missing, just show missing.
-            const msg = e instanceof Error ? e.message : String(e);
-            integrityMissingReason = msg.includes('Empty file') ? 'empty' : 'enoent';
-            integritySummary = null;
-            integritySource = 'missing';
-        }
-        integritySummary = null;
-        integritySource = 'missing';
-      } else {
-        // Dev / Fallback
+    // Determine source kind so far
+    if (integritySummaries.length > 0) {
+      integritySource = 'artifact';
+      integrityMissingReason = 'ok';
+    } else {
+      // 3. Fallback to fixtures if not strict
+      if (!isStrict) {
+        const fixtureDir = join(process.cwd(), 'src', 'fixtures', 'integrity');
+        const legacyFixturePath = join(process.cwd(), 'src', 'fixtures', 'integrity.summary.json');
+
+        // Try directory fixtures
         try {
-          const content = await readFile(integrityFixturePath, 'utf-8');
-          integritySummary = JSON.parse(content);
-          integritySource = 'fixture';
-          integrityMissingReason = 'fallback';
-        } catch (e2) {
-          integritySummary = null;
-          integritySource = 'missing';
-          integrityMissingReason = 'enoent';
+          const files = await readdir(fixtureDir);
+          const jsonFiles = files.filter(f => f.endsWith('.json'));
+          for (const file of jsonFiles) {
+             const summary = await loadIntegrityFile(join(fixtureDir, file), 'fixture');
+             if (summary) integritySummaries.push(summary);
+          }
+        } catch (e) { /* ignore */ }
+
+        // Try legacy fixture
+        const legacyFixture = await loadIntegrityFile(legacyFixturePath, 'fixture');
+        if (legacyFixture) {
+           const exists = integritySummaries.find(s => s.repo === legacyFixture.repo);
+           if (!exists) integritySummaries.push(legacyFixture);
         }
+
+        if (integritySummaries.length > 0) {
+           integritySource = 'fixture';
+           integrityMissingReason = 'fallback';
+        } else {
+           integritySource = 'missing';
+           integrityMissingReason = 'enoent';
+        }
+      } else {
+         // Strict mode and no artifacts found
+         integritySource = 'missing';
+         integrityMissingReason = 'enoent'; // or empty
       }
+    }
+
+    // Load Fleet Metrics (to identify missing repos)
+    // We try to load the latest snapshot from artifacts/metrics/ or fixtures/metrics/
+    let fleetMetrics = null;
+    try {
+        // Try artifacts first
+        const metricsDir = join(process.cwd(), 'artifacts', 'metrics');
+        fleetMetrics = await loadLatestMetrics(metricsDir);
+
+        // Fallback to fixtures if not strict and not found
+        if (!fleetMetrics && !isStrict) {
+            const metricsFixtureDir = join(process.cwd(), 'src', 'fixtures', 'metrics');
+            fleetMetrics = await loadLatestMetrics(metricsFixtureDir);
+        }
+    } catch (e) {
+        console.warn('Failed to load fleet metrics for observatory:', e instanceof Error ? e.message : String(e));
     }
 
     // Load forensic metadata if available
@@ -361,7 +426,8 @@ app.get('/observatory', async (_req, res) => {
     res.render('observatory', {
       data,
       insightsDaily,
-      integritySummary,
+      integritySummaries, // Passed as array now
+      fleetMetrics,       // Passed to help identify MISSING repos
       observatoryUrl,
       view_meta: {
         source_kind: sourceKind,
