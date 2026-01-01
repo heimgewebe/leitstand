@@ -299,7 +299,7 @@ app.get('/observatory', async (_req, res) => {
     const legacyIntegrityPath = join(process.cwd(), 'artifacts', 'integrity.summary.json');
 
     // We will collect all summaries here
-    let integritySummaries: any[] = [];
+    const integritySummaries: any[] = [];
     let integritySource = 'missing'; // Default
     let integrityMissingReason = 'unknown';
 
