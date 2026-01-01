@@ -1,0 +1,17 @@
+{
+  "timestamp": "2023-10-27T00:00:00Z",
+  "repoCount": 6,
+  "status": {
+    "ok": 3,
+    "warn": 0,
+    "fail": 1
+  },
+  "repos": [
+    { "name": "heimgewebe/metarepo" },
+    { "name": "heimgewebe/wgx" },
+    { "name": "heimgewebe/semantAH" },
+    { "name": "heimgewebe/plexer" },
+    { "name": "heimgewebe/leitstand" },
+    { "name": "heimgewebe/chronik" }
+  ]
+}

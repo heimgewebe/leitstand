@@ -164,37 +164,96 @@
   <div style="background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
     <% if (locals.integritySummaries && locals.integritySummaries.length > 0) { %>
       <%
-         // Calculate Aggregate Status
-         // Worst case: FAIL > MISSING > GAP > UNCLEAR > OK
-         // Actually, MISSING might be separate.
-         // Logic: If ANY has GAP -> GAP. If ANY has UNCLEAR -> UNCLEAR (if no GAP).
-         // Status per repo:
-         // GAP (loop_gaps > 0)
-         // UNCLEAR (unclear > 0)
-         // OK (else)
-         // MISSING (handled by not being in list, or explicit status if provided)
+             // Build list of repos to display
+             // 1. Start with known repos from fleet metrics (if available)
+             // 2. Add any repos found in integrity summaries (even if not in fleet metrics)
+
+             const reposMap = new Map();
+
+             // Add from metrics
+             if (locals.fleetMetrics && locals.fleetMetrics.repos) {
+                locals.fleetMetrics.repos.forEach(r => {
+                   if (typeof r === 'string') {
+                      reposMap.set(r, { name: r, status: 'MISSING', isMissing: true });
+                   } else if (r.name) {
+                      reposMap.set(r.name, { name: r.name, status: 'MISSING', isMissing: true });
+                   }
+                });
+             }
+
+             // Add/Merge from summaries
+             locals.integritySummaries.forEach(s => {
+                if (s.repo) {
+                   reposMap.set(s.repo, { ...s, isMissing: false });
+                }
+             });
+
+             // Convert to array and sort alphabetically
+             const repoList = Array.from(reposMap.values()).sort((a, b) => {
+                 const nameA = a.name || a.repo || 'unknown';
+                 const nameB = b.name || b.repo || 'unknown';
+                 return nameA.localeCompare(nameB);
+             });
+
+         // Calculate Aggregate Status using Explicit Status Fields (Contract-First)
+         // Ranking: FAIL > GAP > WARN > UNCLEAR > MISSING > OK
+         // We treat MISSING as a high-severity state (similar to UNCLEAR or WARN) because we lost observability.
 
          let aggGap = 0;
-         let aggUnclear = 0;
          let aggClaims = 0;
          let aggArtifacts = 0;
+         let statusRank = 0; // 0=OK, 1=UNCLEAR, 2=WARN, 3=GAP, 4=FAIL
 
-         locals.integritySummaries.forEach(s => {
+         repoList.forEach(s => {
              aggGap += (s.counts?.loop_gaps || 0);
-             aggUnclear += (s.counts?.unclear || 0);
              aggClaims += (s.counts?.claims || 0);
              aggArtifacts += (s.counts?.artifacts || 0);
+
+             let st = (s.status || 'OK').toUpperCase();
+             if (s.isMissing) st = 'MISSING';
+
+             let rank = 0;
+             if (st === 'UNCLEAR') rank = 1;
+             else if (st === 'MISSING') rank = 2; // Rank MISSING as WARN-level
+             else if (st === 'WARN') rank = 2;
+             else if (st === 'GAP') rank = 3;
+             else if (st === 'FAIL') rank = 4;
+
+             if (rank > statusRank) statusRank = rank;
          });
 
+         // Determine text/color based on rank
          let aggStatus = 'OK';
          let aggColor = '#1b5e20';
          let aggBg = '#c8e6c9';
 
-         if (aggGap > 0) {
+         if (statusRank === 4) {
+            aggStatus = 'FAIL';
+            aggColor = '#b71c1c';
+            aggBg = '#ffcdd2';
+         } else if (statusRank === 3) {
             aggStatus = 'GAP';
             aggColor = '#bf360c';
             aggBg = '#ffccbc';
-         } else if (aggUnclear > 0) {
+         } else if (statusRank === 2) {
+            // Check if it's purely MISSING or mixed
+            const hasMissing = repoList.some(r => r.isMissing);
+            const hasWarn = repoList.some(r => (r.status||'').toUpperCase() === 'WARN');
+
+            if (hasWarn) {
+                aggStatus = 'WARN';
+                aggColor = '#e65100';
+                aggBg = '#ffe0b2';
+            } else if (hasMissing) {
+                aggStatus = 'MISSING (Partial)'; // Or just WARN
+                aggColor = '#e65100'; // Orange
+                aggBg = '#ffe0b2';
+            } else {
+                aggStatus = 'WARN'; // Default fallback
+                aggColor = '#e65100';
+                aggBg = '#ffe0b2';
+            }
+         } else if (statusRank === 1) {
             aggStatus = 'UNCLEAR';
             aggColor = '#f57f17';
             aggBg = '#fff9c4';
@@ -228,18 +287,26 @@
           </tr>
         </thead>
         <tbody>
-          <% locals.integritySummaries.forEach(function(s) {
-             // Use explicit status from artifact (Contract First)
-             let status = s.status || 'UNKNOWN';
-             let color = 'gray';
+          <%
+             repoList.forEach(function(s) {
+                 // Ensure name is set for display
+                 s.name = s.name || s.repo || 'unknown';
 
-             // Map status to colors
-             if (status === 'OK') color = 'green';
-             else if (status === 'WARN' || status === 'UNCLEAR') color = 'orange';
-             else if (status === 'FAIL' || status === 'GAP') color = 'red';
+                 let status = s.status || 'UNKNOWN';
+                 let color = 'gray';
+
+                 if (s.isMissing) {
+                     status = 'MISSING';
+                     color = '#999';
+                 } else {
+                     // Map status to colors
+                     if (status === 'OK') color = 'green';
+                     else if (status === 'WARN' || status === 'UNCLEAR') color = 'orange';
+                     else if (status === 'FAIL' || status === 'GAP') color = 'red';
+                 }
           %>
           <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 10px; font-weight: bold;"><%= s.repo || 'unknown' %></td>
+            <td style="padding: 10px; font-weight: bold;"><%= s.name || 'unknown' %></td>
             <td style="padding: 10px; color: <%= color %>; font-weight: bold;"><%= status %></td>
             <td style="padding: 10px; text-align: center; color: <%= (s.counts?.loop_gaps || 0) > 0 ? 'red' : '#ccc' %>">
                <%= s.counts?.loop_gaps || 0 %>
@@ -247,7 +314,7 @@
             <td style="padding: 10px; text-align: center; color: <%= (s.counts?.unclear || 0) > 0 ? 'orange' : '#ccc' %>">
                <%= s.counts?.unclear || 0 %>
             </td>
-            <td style="padding: 10px; color: #666;"><%= s.generated_at || 'n/a' %></td>
+            <td style="padding: 10px; color: #666;"><%= s.generated_at || '' %></td>
             <td style="padding: 10px; text-align: right;">
                <% if (s.summary_url) { %>
                   <a href="<%= s.summary_url %>" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>

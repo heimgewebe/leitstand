@@ -1,1 +1,1 @@
-{ "repo": "wgx", "generated_at": "2023-10-27T11:00:00Z", "summary_url": "https://example.com/wgx", "status": "FAIL", "counts": { "claims": 5, "artifacts": 4, "loop_gaps": 1, "unclear": 0 }, "details": {} }
+{ "repo": "heimgewebe/wgx", "generated_at": "2023-10-27T11:00:00Z", "summary_url": "https://example.com/wgx", "status": "FAIL", "counts": { "claims": 5, "artifacts": 4, "loop_gaps": 1, "unclear": 0 }, "details": {} }

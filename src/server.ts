@@ -4,6 +4,7 @@ import { join } from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
+import { loadLatestMetrics } from './metrics.js';
 
 const execPromise = promisify(exec);
 
@@ -383,6 +384,23 @@ app.get('/observatory', async (_req, res) => {
       }
     }
 
+    // Load Fleet Metrics (to identify missing repos)
+    // We try to load the latest snapshot from artifacts/metrics/ or fixtures/metrics/
+    let fleetMetrics = null;
+    try {
+        // Try artifacts first
+        const metricsDir = join(process.cwd(), 'artifacts', 'metrics');
+        fleetMetrics = await loadLatestMetrics(metricsDir);
+
+        // Fallback to fixtures if not strict and not found
+        if (!fleetMetrics && !isStrict) {
+            const metricsFixtureDir = join(process.cwd(), 'src', 'fixtures', 'metrics');
+            fleetMetrics = await loadLatestMetrics(metricsFixtureDir);
+        }
+    } catch (e) {
+        console.warn('Failed to load fleet metrics for observatory:', e instanceof Error ? e.message : String(e));
+    }
+
     // Load forensic metadata if available
     let forensics = {};
     try {
@@ -395,6 +413,7 @@ app.get('/observatory', async (_req, res) => {
       data,
       insightsDaily,
       integritySummaries, // Passed as array now
+      fleetMetrics,       // Passed to help identify MISSING repos
       observatoryUrl,
       view_meta: {
         source_kind: sourceKind,

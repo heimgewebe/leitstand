@@ -62,7 +62,9 @@ try {
     // Create artifacts/integrity/ directory
     const repoDir = "artifacts/integrity";
     await mkdir(repoDir, { recursive: true });
-    finalPath = path.join(repoDir, `${obj.repo}.summary.json`);
+    // Sanitize repo name for filename (replace / and \ with __)
+    const safeRepoName = obj.repo.replace(/[/\\]/g, '__');
+    finalPath = path.join(repoDir, `${safeRepoName}.summary.json`);
   } else {
     // Fallback to OUT (integrity.summary.json)
     await mkdir(path.dirname(OUT), { recursive: true });

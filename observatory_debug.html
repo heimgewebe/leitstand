@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Observatorium - Leitstand</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    nav { margin-bottom: 20px; padding: 10px; background: #f0f0f0; }
+    nav a { margin-right: 15px; text-decoration: none; color: #333; font-weight: bold; }
+    nav a:hover { text-decoration: underline; }
+    .topic { margin-bottom: 20px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
+    .topic h3 { margin-top: 0; }
+    .meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
+    .empty-state { padding: 40px; background: #f9f9f9; border: 2px dashed #ccc; text-align: center; color: #666; margin-top: 20px; border-radius: 8px; }
+
+    /* Insights & Negations */
+    .section-title { margin-top: 30px; border-bottom: 2px solid #333; padding-bottom: 5px; }
+    .insight-card { margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fafafa; }
+    .insight-card.negation { border-left: 5px solid #d9534f; background: #fff0f0; }
+    .insight-card h4 { margin: 0 0 5px 0; font-size: 1.1em; }
+    .insight-meta { font-size: 0.85em; color: #555; margin-bottom: 5px; }
+    .verdict { font-weight: bold; color: #d9534f; margin-top: 5px; }
+    .relation { display: flex; gap: 10px; margin-top: 10px; font-size: 0.9em; }
+    .relation-item { background: #eee; padding: 2px 6px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/observatory">Observatorium</a>
+  </nav>
+  <h1>Observatorium</h1>
+
+  <!-- STRICT MODE & FORENSICS (Always Visible) -->
+  <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background: #fff; font-size: 0.85em; color: #555;">
+    <div><strong>Strict Mode:</strong>
+
+            <span style="color: #666;">OFF</span>
+
+    </div>
+
+  </div>
+
+  <!-- RUNTIME DEBUG (Always Available) -->
+  <div id="runtime-observatory" style="margin-top: 10px; padding: 10px; background: #eef; border: 1px solid #ccd; border-radius: 5px; display: none; font-size: 0.9em;">
+    <h3 style="margin-top:0;">Debug: Runtime Fetch</h3>
+    <p style="margin-top:0; color:#666; font-size:0.9em;">Checks connectivity to upstream Release Asset. Does <strong>not</strong> verify local build artifacts.</p>
+    <div id="obs-runtime-status">Initializing...</div>
+    <pre id="obs-runtime-json" style="max-height: 200px; overflow: auto; background: #fff; padding: 10px; border: 1px solid #ddd;"></pre>
+  </div>
+  <script>
+    (async function() {
+      const URL = "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
+      const debugContainer = document.getElementById("runtime-observatory");
+      const statusEl = document.getElementById("obs-runtime-status");
+      const preEl = document.getElementById("obs-runtime-json");
+
+      const isDebug = new URLSearchParams(window.location.search).get("debug") === "1";
+      if (isDebug) debugContainer.style.display = "block";
+
+      statusEl.textContent = "Fetching live data from: " + URL;
+
+      try {
+        const r = await fetch(URL, { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const data = await r.json();
+
+        // Update Metadata
+        const genEl = document.getElementById("obs-generated-at");
+        if (genEl) genEl.textContent = (data.generated_at || "n/a") + " (Live)";
+        const srcEl = document.getElementById("obs-source-desc");
+        if (srcEl) srcEl.textContent = "Live from Release Asset";
+
+        // Update Topics (only if container exists - i.e. not empty state)
+        const topicsContainer = document.getElementById("obs-topics-container");
+        if (topicsContainer) {
+          topicsContainer.textContent = ""; // Clear existing content
+          if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
+            data.topics.forEach(t => {
+              const topicDiv = document.createElement("div");
+              topicDiv.className = "topic";
+              const h3 = document.createElement("h3");
+              h3.textContent = t.title || "Untitled topic";
+              topicDiv.appendChild(h3);
+              if (t.summary) {
+                const pSummary = document.createElement("p");
+                pSummary.textContent = t.summary;
+                topicDiv.appendChild(pSummary);
+              }
+              const pSources = document.createElement("p");
+              const strong = document.createElement("strong");
+              strong.textContent = "Sources: ";
+              pSources.appendChild(strong);
+              pSources.appendChild(document.createTextNode(t.sources ? t.sources.length : 0));
+              topicDiv.appendChild(pSources);
+              topicsContainer.appendChild(topicDiv);
+            });
+          } else {
+            const p = document.createElement("p");
+            p.textContent = "No topics available.";
+            topicsContainer.appendChild(p);
+          }
+        }
+
+        // Debug Output
+        statusEl.innerHTML = "<strong>Live data loaded!</strong>";
+        statusEl.style.color = "green";
+        if (isDebug) {
+          preEl.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (e) {
+        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
+        statusEl.style.color = "red";
+        if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
+      }
+    })();
+  </script>
+
+
+  <div class="meta">
+    <div><strong>Generated:</strong> <span id="obs-generated-at">2025-12-13T00:00:00Z</span></div>
+    <div><strong>Source:</strong> <span id="obs-source-desc">
+
+        fixture: metarepo/contracts/examples/knowledge.observatory.example.json
+
+    </span></div>
+    <div><strong>ID:</strong> obs-example-001</div>
+    <div>
+      <strong>Quelle:</strong>
+
+        <span style="color: #d9534f; font-weight: bold;">Fixture (Fallback) - Live Data Missing</span>
+
+    </div>
+  </div>
+
+
+    <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+      <strong>⚠️ Warning:</strong> This view is running in fallback mode using static fixture data. The live knowledge artifact could not be loaded.
+    </div>
+
+
+  <!-- INTEGRITY SECTION (New Panel) -->
+  <h2 class="section-title">System Integrity</h2>
+  <div style="background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
+
+
+
+      <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+         <div>
+             <strong>Source:</strong>
+
+                integrity/*.json (Fixture)
+
+         </div>
+         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px; background-color: #ffcdd2; color: #b71c1c;">
+            Overall Status: FAIL
+         </div>
+      </div>
+
+      <!-- Repo Table -->
+      <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; border-radius: 4px; overflow: hidden; font-size: 0.9em;">
+        <thead>
+          <tr style="background: #f5f5f5; text-align: left; border-bottom: 2px solid #ddd;">
+            <th style="padding: 10px;">Repo</th>
+            <th style="padding: 10px;">Status</th>
+            <th style="padding: 10px; text-align: center;">Gaps</th>
+            <th style="padding: 10px; text-align: center;">Unclear</th>
+            <th style="padding: 10px;">Generated At</th>
+            <th style="padding: 10px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px; font-weight: bold;">heimgewebe/metarepo</td>
+            <td style="padding: 10px; color: green; font-weight: bold;">OK</td>
+            <td style="padding: 10px; text-align: center; color: #ccc">
+               0
+            </td>
+            <td style="padding: 10px; text-align: center; color: #ccc">
+               0
+            </td>
+            <td style="padding: 10px; color: #666;">2023-10-27T10:00:00Z</td>
+            <td style="padding: 10px; text-align: right;">
+
+                  <a href="https://example.com/meta" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>
+
+            </td>
+          </tr>
+
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px; font-weight: bold;">heimgewebe/semantAH</td>
+            <td style="padding: 10px; color: orange; font-weight: bold;">UNCLEAR</td>
+            <td style="padding: 10px; text-align: center; color: red">
+               3
+            </td>
+            <td style="padding: 10px; text-align: center; color: orange">
+               2
+            </td>
+            <td style="padding: 10px; color: #666;">2023-10-27T10:00:00Z</td>
+            <td style="padding: 10px; text-align: right;">
+
+                  <a href="https://example.com/reports/integrity/semantAH.summary.json" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>
+
+            </td>
+          </tr>
+
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px; font-weight: bold;">heimgewebe/wgx</td>
+            <td style="padding: 10px; color: red; font-weight: bold;">FAIL</td>
+            <td style="padding: 10px; text-align: center; color: red">
+               1
+            </td>
+            <td style="padding: 10px; text-align: center; color: #ccc">
+               0
+            </td>
+            <td style="padding: 10px; color: #666;">2023-10-27T11:00:00Z</td>
+            <td style="padding: 10px; text-align: right;">
+
+                  <a href="https://example.com/wgx" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>
+
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+
+      <!-- Aggregated Metrics -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 15px;">
+         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
+            <div style="font-size: 1.5em; font-weight: bold; color: #333;">15</div>
+            <div style="color: #666; font-size: 0.8em;">Total Claims</div>
+         </div>
+         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
+            <div style="font-size: 1.5em; font-weight: bold; color: #333;">14</div>
+            <div style="color: #666; font-size: 0.8em;">Total Artifacts</div>
+         </div>
+         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
+            <div style="font-size: 1.5em; font-weight: bold; color: #d9534f;">4</div>
+            <div style="color: #666; font-size: 0.8em;">Total Gaps</div>
+         </div>
+      </div>
+
+
+  </div>
+
+  <!-- PUBLISHED KNOWLEDGE SECTION -->
+  <h2 class="section-title">Verdichtete Erkenntnis (Published Daily)</h2>
+  <div style="background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
+
+       <div style="margin-bottom: 10px;">
+         <strong>Source:</strong>
+
+            insights.daily.json (Fixture)
+
+       </div>
+       <div style="margin-bottom: 10px;">
+         <strong>Date:</strong> 2025-12-28
+       </div>
+
+
+         <div style="margin-bottom: 10px;">
+           <strong>Source ID:</strong> semantAH.daily
+         </div>
+
+
+
+
+
+            <div style="margin-bottom: 10px;">
+              <strong>Observatory Ref:</strong> obs-example-001
+            </div>
+
+
+            <div style="margin-bottom: 10px;">
+              <strong>Uncertainty:</strong> 0.12
+            </div>
+
+
+
+
+         <h4>Topics (Weighted)</h4>
+         <ul style="margin-top: 5px; margin-bottom: 15px;">
+
+             <li>observatory <span style="color:#666; font-size:0.9em;">(0.9)</span></li>
+
+             <li>insights.daily <span style="color:#666; font-size:0.9em;">(0.7)</span></li>
+
+             <li>leitstand-ui <span style="color:#666; font-size:0.9em;">(0.5)</span></li>
+
+         </ul>
+
+
+
+         <h4>Open Questions</h4>
+         <ul style="margin-top: 5px; margin-bottom: 15px;">
+
+             <li>Welche Topics aus knowledge.observatory sind stabil über 3 Tage?</li>
+
+             <li>Welche Deltas sind echte Trendwechsel und welche Rauschen?</li>
+
+         </ul>
+
+
+
+         <h4>Deltas (Changes)</h4>
+         <ul style="margin-top: 5px; margin-bottom: 15px;">
+
+             <li>Neue Observatory-Quelle verfügbar (Artifact statt Fixture).</li>
+
+             <li>UI trennt Raw Observatory und Published Daily klarer.</li>
+
+         </ul>
+
+
+
+  </div>
+
+  <!-- RAW KNOWLEDGE SECTION -->
+  <h2 class="section-title">Erkenntnisraum (Raw Observatory)</h2>
+
+
+    <h2 class="section-title">Insights / Conflicts</h2>
+    <div class="insights">
+
+
+          <div class="insight-card negation">
+            <h4>Conflict Detected</h4>
+            <div class="insight-meta">ID: neg-hash-123</div>
+            <div class="verdict">Verdict: Direct contradiction: Thesis claims X, while source Y claims !X.</div>
+            <div class="relation">
+
+                <span class="relation-item">Thesis: t-001</span>
+                <span class="relation-item">Antithesis: neg-hash-123</span>
+
+            </div>
+            <!-- Optional: Link to thesis detail if we had a route for it -->
+          </div>
+
+
+    </div>
+
+
+  <h2 class="section-title">Topics</h2>
+  <div class="topics" id="obs-topics-container">
+
+
+        <div class="topic">
+          <h3>Beispieltopic</h3>
+
+          <p><strong>Sources:</strong> 2</p>
+        </div>
+
+
+  </div>
+
+
+</body>
+</html>
