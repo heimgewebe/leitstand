@@ -298,12 +298,26 @@ app.get('/observatory', async (_req, res) => {
     const integrityDir = join(process.cwd(), 'artifacts', 'integrity');
     const legacyIntegrityPath = join(process.cwd(), 'artifacts', 'integrity.summary.json');
 
+    interface IntegritySummary {
+      repo: string;
+      status: string;
+      generated_at: string;
+      counts?: {
+        claims?: number;
+        artifacts?: number;
+        loop_gaps?: number;
+        unclear?: number;
+      };
+      _source?: string;
+      [key: string]: unknown;
+    }
+
     // We will collect all summaries here
-    let integritySummaries: any[] = [];
+    const integritySummaries: IntegritySummary[] = [];
     let integritySource = 'missing'; // Default
     let integrityMissingReason = 'unknown';
 
-    const loadIntegrityFile = async (path: string, sourceLabel: string) => {
+    const loadIntegrityFile = async (path: string, sourceLabel: string): Promise<IntegritySummary | null> => {
       try {
         const content = await readFile(path, 'utf-8');
         if (!content.trim()) return null;
