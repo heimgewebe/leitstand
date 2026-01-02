@@ -53,7 +53,11 @@ try {
   // Minimal Schema Check (Diagnostic)
   if (!obj || typeof obj !== "object") throw new Error("Artifact JSON is not an object.");
   if (!obj.generated_at) console.warn("[leitstand] WARN: Artifact missing generated_at.");
-  if (!obj.counts) console.warn("[leitstand] WARN: Artifact missing counts (continuing).");
+  if (!obj.counts) {
+    console.warn("[leitstand] WARN: Artifact missing counts (continuing).");
+    // Ensure robust internal state
+    obj.counts = {};
+  }
 
   counts = obj.counts;
 

@@ -124,6 +124,7 @@ app.post('/events', async (req, res) => {
       });
     }
   } else if (eventType === 'integrity.summary.published.v1') {
+    // payload.url is expected to point to reports/integrity/summary.json (the report), not to event_payload.json
     const { summary_url, url } = event.payload || {};
     const finalUrl = summary_url || url;
 
