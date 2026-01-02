@@ -214,9 +214,9 @@
 
              let rank = 0;
              if (st === 'UNCLEAR') rank = 1;
-             else if (st === 'MISSING') rank = 2; // Rank MISSING as WARN-level
              else if (st === 'WARN') rank = 2;
              else if (st === 'GAP') rank = 3;
+             else if (st === 'MISSING') rank = 4; // Rank MISSING as FAIL-level
              else if (st === 'FAIL') rank = 4;
 
              if (rank > statusRank) statusRank = rank;

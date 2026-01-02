@@ -124,24 +124,25 @@ app.post('/events', async (req, res) => {
       });
     }
   } else if (eventType === 'integrity.summary.published.v1') {
-    const { summary_url } = event.payload || {};
+    const { summary_url, url } = event.payload || {};
+    const finalUrl = summary_url || url;
 
-    if (!summary_url) {
-      console.warn('Received integrity published event without summary_url');
-      res.status(400).send('Missing payload.summary_url');
+    if (!finalUrl) {
+      console.warn('Received integrity published event without url or summary_url');
+      res.status(400).send('Missing payload.url');
       return;
     }
 
-    console.log(`[Event] Received integrity.summary.published.v1. Fetching from ${summary_url}`);
+    console.log(`[Event] Received integrity.summary.published.v1. Fetching from ${finalUrl}`);
 
     try {
       // Execute the fetch script with the provided URL
       await execPromise('node scripts/fetch-integrity.mjs', {
-        env: { ...process.env, INTEGRITY_URL: summary_url }
+        env: { ...process.env, INTEGRITY_URL: finalUrl }
       });
 
       console.log('[Event] Integrity refresh complete.');
-      res.status(200).send({ status: 'refreshed', url: summary_url });
+      res.status(200).send({ status: 'refreshed', url: finalUrl });
     } catch (error) {
       console.error('[Event] Failed to refresh integrity:', error);
       // Integrity failure is diagnostic only, so we log but maybe don't want to alert purely as error?
