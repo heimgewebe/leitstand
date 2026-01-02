@@ -134,6 +134,11 @@ app.post('/events', async (req, res) => {
       return;
     }
 
+    // Soft enforcement: Warn if URL does not point to a summary.json file
+    if (!finalUrl.endsWith('summary.json')) {
+      console.warn(`[Event] WARN: Integrity URL '${finalUrl}' does not end in 'summary.json'. This deviates from the canonical contract.`);
+    }
+
     console.log(`[Event] Received integrity.summary.published.v1. Fetching from ${finalUrl}`);
 
     try {

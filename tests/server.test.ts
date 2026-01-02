@@ -118,18 +118,18 @@ describe('POST /events', () => {
       .post('/events')
       .send({
         type: 'integrity.summary.published.v1',
-        payload: { url: 'https://example.com/event_payload.json' }
+        payload: { url: 'https://example.com/reports/integrity/summary.json' }
       });
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'refreshed', url: 'https://example.com/event_payload.json' });
+    expect(res.body).toEqual({ status: 'refreshed', url: 'https://example.com/reports/integrity/summary.json' });
 
     // Verify exec was called with correct script and env
     const { exec } = await import('child_process');
     expect(exec).toHaveBeenCalledWith(
       'node scripts/fetch-integrity.mjs',
       expect.objectContaining({
-        env: expect.objectContaining({ INTEGRITY_URL: 'https://example.com/event_payload.json' })
+        env: expect.objectContaining({ INTEGRITY_URL: 'https://example.com/reports/integrity/summary.json' })
       }),
       expect.anything()
     );
