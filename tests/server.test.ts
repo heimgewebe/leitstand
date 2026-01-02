@@ -91,7 +91,7 @@ describe('POST /events', () => {
     expect(res.status).toBe(200);
   });
 
-  it('should trigger fetch-integrity script on valid integrity event', async () => {
+  it('should trigger fetch-integrity script on valid integrity event (summary_url)', async () => {
     const res = await request(app)
       .post('/events')
       .send({
@@ -113,7 +113,29 @@ describe('POST /events', () => {
     );
   });
 
-  it('should reject integrity event without summary_url', async () => {
+  it('should trigger fetch-integrity script on valid integrity event (url)', async () => {
+    const res = await request(app)
+      .post('/events')
+      .send({
+        type: 'integrity.summary.published.v1',
+        payload: { url: 'https://example.com/reports/integrity/summary.json' }
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: 'refreshed', url: 'https://example.com/reports/integrity/summary.json' });
+
+    // Verify exec was called with correct script and env
+    const { exec } = await import('child_process');
+    expect(exec).toHaveBeenCalledWith(
+      'node scripts/fetch-integrity.mjs',
+      expect.objectContaining({
+        env: expect.objectContaining({ INTEGRITY_URL: 'https://example.com/reports/integrity/summary.json' })
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should reject integrity event without url or summary_url', async () => {
     const res = await request(app)
       .post('/events')
       .send({
