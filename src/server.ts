@@ -482,7 +482,7 @@ try {
     !!process.argv[1] &&
     realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url));
 } catch {
-  // If path resolution fails, do not treat this as a direct run to avoid crashing on import
+  // If path resolution fails, treat as not a direct run to avoid crashing on import
   isDirectRun = false;
 }
 
