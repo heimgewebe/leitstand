@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
+import { realpathSync } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
-import { join, dirname } from 'path';
+import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { format, startOfDay, addDays, parseISO, isValid } from 'date-fns';
 import { loadConfig } from './config.js';
@@ -197,6 +198,16 @@ async function main(): Promise<void> {
 }
 
 // Run the CLI if executed directly
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+let isDirectRun = false;
+try {
+  isDirectRun =
+    !!process.argv[1] &&
+    realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url));
+} catch {
+  // If path resolution fails, treat as not a direct run to avoid crashing on import
+  isDirectRun = false;
+}
+
+if (isDirectRun) {
   main();
 }

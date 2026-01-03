@@ -1,6 +1,7 @@
 import express, { Express } from 'express';
+import { realpathSync } from 'fs';
 import { readFile, readdir } from 'fs/promises';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
@@ -475,7 +476,17 @@ app.get('/intent', async (_req, res) => {
   }
 });
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+let isDirectRun = false;
+try {
+  isDirectRun =
+    !!process.argv[1] &&
+    realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url));
+} catch {
+  // If path resolution fails, do not treat this as a direct run to avoid crashing on import
+  isDirectRun = false;
+}
+
+if (isDirectRun) {
   app.listen(port, () => {
     console.log(`Leitstand server running at http://localhost:${port}`);
   });
