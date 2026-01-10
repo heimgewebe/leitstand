@@ -238,6 +238,51 @@ async function main() {
     }
   }
 
+  // Load self_state.json (Heimgeist)
+  const selfStateArtifactPath = join(ROOT, 'artifacts', 'self_state.json');
+  const selfStateFixturePath = join(ROOT, 'src', 'fixtures', 'self_state.json');
+
+  let selfState = null;
+  let selfStateSource = null;
+  let selfStateMissingReason = 'unknown';
+
+  try {
+    const content = await readFile(selfStateArtifactPath, 'utf-8');
+    if (content.trim()) {
+      selfState = JSON.parse(content);
+      selfStateSource = 'artifact';
+      selfStateMissingReason = 'ok';
+      console.log(`Loaded self_state from artifact: ${selfStateArtifactPath}`);
+    }
+  } catch (e) {
+    if (isStrict) {
+      console.warn("Strict build: Self-State artifact missing. Proceeding with EMPTY STATE.");
+      selfState = null;
+      selfStateSource = 'missing';
+      selfStateMissingReason = 'enoent';
+    } else {
+      try {
+        const content = await readFile(selfStateFixturePath, 'utf-8');
+        selfState = JSON.parse(content);
+        selfStateSource = 'fixture';
+        selfStateMissingReason = 'fallback';
+        console.warn('Loaded self_state from fixture (fallback)');
+      } catch (e2) {
+        selfState = null;
+        selfStateSource = 'missing';
+        selfStateMissingReason = 'enoent';
+        console.warn('Could not load self_state fixture:', e2.message);
+      }
+    }
+  }
+
+  // Ensure history is sorted descending
+  if (selfState && selfState.history && Array.isArray(selfState.history)) {
+       selfState.history.sort((a, b) => {
+          return new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime();
+       });
+  }
+
   // Load _meta.json forensic trail
   let metaForensics = {};
   try {
@@ -250,15 +295,17 @@ async function main() {
   await renderTo(
     join(OUT, "observatory", "index.html"),
     "observatory",
-    { data: observatoryData, insightsDaily, integritySummary },
+    { data: observatoryData, insightsDaily, integritySummary, selfState },
     {
       view_meta: {
           source_kind: sourceKind,
           missing_reason: missingReason,
           insights_source_kind: insightsDailySource,
           integrity_source_kind: integritySource,
+          self_state_source_kind: selfStateSource,
           insights_missing_reason: insightsMissingReason,
           integrity_missing_reason: integrityMissingReason,
+          self_state_missing_reason: selfStateMissingReason,
           is_strict: isStrict,
           forensics: metaForensics
       },

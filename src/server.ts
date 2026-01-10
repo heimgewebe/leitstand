@@ -9,6 +9,21 @@ import { loadLatestMetrics } from './metrics.js';
 
 const execPromise = promisify(exec);
 
+interface SelfModel {
+  confidence: number;
+  fatigue: number;
+  risk_tension: number;
+  autonomy_level: "dormant" | "aware" | "reflective" | "critical";
+  last_updated: string;
+  basis_signals: string[];
+}
+
+interface SelfStateArtifact {
+  schema?: string;
+  current: SelfModel;
+  history: SelfModel[];
+}
+
 class EmptyFileError extends Error {
   code = 'EMPTY_FILE';
   constructor(message: string) {
@@ -423,6 +438,53 @@ app.get('/observatory', async (_req, res) => {
         console.warn('Failed to load fleet metrics for observatory:', e instanceof Error ? e.message : String(e));
     }
 
+    // Load Self-State (Heimgeist Meta-Cognition)
+    // Artifact: artifacts/self_state.json
+    const selfStateArtifactPath = join(process.cwd(), 'artifacts', 'self_state.json');
+    const selfStateFixturePath = join(process.cwd(), 'src', 'fixtures', 'self_state.json');
+
+    let selfState: SelfStateArtifact | null = null;
+    let selfStateSource: string | null = null;
+    let selfStateMissingReason = 'unknown';
+
+    try {
+      const content = await readFile(selfStateArtifactPath, 'utf-8');
+      if (content.trim()) {
+        selfState = JSON.parse(content);
+        selfStateSource = 'artifact';
+        selfStateMissingReason = 'ok';
+      }
+    } catch (e) {
+      if (isStrict) {
+        // In strict mode, if missing, we just show empty state for this panel, or warn
+        console.warn('[STRICT] Self-State artifact missing. Panel will be empty/unavailable.');
+        selfState = null;
+        selfStateSource = 'missing';
+        selfStateMissingReason = 'enoent';
+      } else {
+        // Fallback to fixture
+        try {
+          const content = await readFile(selfStateFixturePath, 'utf-8');
+          selfState = JSON.parse(content);
+          selfStateSource = 'fixture';
+          selfStateMissingReason = 'fallback';
+          console.warn('Self-State loaded from fixture (fallback)');
+        } catch (e2) {
+          console.warn('Could not load self_state fixture:', e2 instanceof Error ? e2.message : String(e2));
+          selfState = null;
+          selfStateSource = 'missing';
+          selfStateMissingReason = 'enoent';
+        }
+      }
+    }
+
+    // Ensure history is sorted descending by date (newest first)
+    if (selfState && selfState.history && Array.isArray(selfState.history)) {
+       selfState.history.sort((a, b) => {
+          return new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime();
+       });
+    }
+
     // Load forensic metadata if available
     let forensics = {};
     try {
@@ -436,14 +498,17 @@ app.get('/observatory', async (_req, res) => {
       insightsDaily,
       integritySummaries, // Passed as array now
       fleetMetrics,       // Passed to help identify MISSING repos
+      selfState,          // Heimgeist Self-State
       observatoryUrl,
       view_meta: {
         source_kind: sourceKind,
         insights_source_kind: insightsDailySource,
         integrity_source_kind: integritySource,
+        self_state_source_kind: selfStateSource,
         missing_reason: missingReason,
         insights_missing_reason: insightsMissingReason,
         integrity_missing_reason: integrityMissingReason,
+        self_state_missing_reason: selfStateMissingReason,
         is_strict: isStrict,
         forensics: forensics
       }
