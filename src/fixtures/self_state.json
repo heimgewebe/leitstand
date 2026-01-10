@@ -1,5 +1,5 @@
 {
-  "schema": "heimgeist.self_state.v1",
+  "schema": "heimgeist.self_state.bundle.v1",
   "current": {
     "confidence": 0.85,
     "fatigue": 0.1,

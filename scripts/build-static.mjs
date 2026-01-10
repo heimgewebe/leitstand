@@ -283,6 +283,17 @@ async function main() {
        });
   }
 
+  // Check Schema
+  let selfStateSchemaValid = false;
+  const EXPECTED_SCHEMA = "heimgeist.self_state.bundle.v1";
+  if (selfState) {
+       if (selfState.schema === EXPECTED_SCHEMA) {
+           selfStateSchemaValid = true;
+       } else {
+           console.warn(`[SelfState] Schema mismatch. Expected ${EXPECTED_SCHEMA}, got ${selfState.schema}`);
+       }
+  }
+
   // Load _meta.json forensic trail
   let metaForensics = {};
   try {
@@ -303,6 +314,7 @@ async function main() {
           insights_source_kind: insightsDailySource,
           integrity_source_kind: integritySource,
           self_state_source_kind: selfStateSource,
+          self_state_schema_valid: selfStateSchemaValid,
           insights_missing_reason: insightsMissingReason,
           integrity_missing_reason: integrityMissingReason,
           self_state_missing_reason: selfStateMissingReason,

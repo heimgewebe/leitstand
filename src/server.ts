@@ -483,6 +483,20 @@ app.get('/observatory', async (_req, res) => {
        selfState.history.sort((a, b) => {
           return new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime();
        });
+       // Validate ISO date format for normalized rows
+       // We mark invalid rows in the UI, here we can pre-calculate validity if needed
+       // or just rely on the UI. The UI will use Date(iso) which is robust-ish but let's be strict if needed.
+    }
+
+    // Check Schema
+    let selfStateSchemaValid = false;
+    const EXPECTED_SCHEMA = "heimgeist.self_state.bundle.v1";
+    if (selfState) {
+       if (selfState.schema === EXPECTED_SCHEMA) {
+           selfStateSchemaValid = true;
+       } else {
+           console.warn(`[SelfState] Schema mismatch. Expected ${EXPECTED_SCHEMA}, got ${selfState.schema}`);
+       }
     }
 
     // Load forensic metadata if available
@@ -505,6 +519,7 @@ app.get('/observatory', async (_req, res) => {
         insights_source_kind: insightsDailySource,
         integrity_source_kind: integritySource,
         self_state_source_kind: selfStateSource,
+        self_state_schema_valid: selfStateSchemaValid,
         missing_reason: missingReason,
         insights_missing_reason: insightsMissingReason,
         integrity_missing_reason: integrityMissingReason,

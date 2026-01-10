@@ -182,6 +182,12 @@
          </div>
        </div>
 
+       <% if (locals.view_meta && locals.view_meta.self_state_schema_valid === false) { %>
+         <div style="background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ffeeba;">
+           <strong>⚠️ Schema Mismatch:</strong> The loaded artifact does not match the expected contract (heimgeist.self_state.bundle.v1). Displaying best-effort rendering.
+         </div>
+       <% } %>
+
        <!-- Current Metrics Grid -->
        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 20px;">
            <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #e1bee7;">
@@ -226,8 +232,13 @@
               </thead>
               <tbody>
                 <% locals.selfState.history.slice(0, 7).forEach(function(snap) { %>
-                  <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 5px;"><%= snap.last_updated %></td>
+                  <%
+                     let isValidDate = !isNaN(Date.parse(snap.last_updated));
+                     let rowStyle = isValidDate ? "border-bottom: 1px solid #eee;" : "border-bottom: 1px solid #eee; background-color: #fce4ec; color: #c62828;";
+                     let timeDisplay = isValidDate ? snap.last_updated : (snap.last_updated + " (INVALID)");
+                  %>
+                  <tr style="<%= rowStyle %>">
+                    <td style="padding: 5px;"><%= timeDisplay %></td>
                     <td style="padding: 5px;"><%= snap.autonomy_level %></td>
                     <td style="padding: 5px;"><%= (snap.confidence * 100).toFixed(0) %>%</td>
                     <td style="padding: 5px;"><%= (snap.fatigue * 100).toFixed(0) %>%</td>
