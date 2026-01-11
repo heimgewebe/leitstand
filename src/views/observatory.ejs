@@ -159,6 +159,112 @@
     </div>
   <% } %>
 
+  <!-- HEIMGEIST SELF-STATE (New Panel) -->
+  <h2 class="section-title">Heimgeist Self-State</h2>
+  <div style="background: #f3e5f5; border: 1px solid #e1bee7; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
+    <% if (locals.selfState && locals.selfState.current) { %>
+       <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+         <div>
+             <strong>Source:</strong>
+             <% if (locals.view_meta && locals.view_meta.self_state_source_kind === 'artifact') { %>
+                self_state.json (Artifact)
+             <% } else { %>
+                self_state.json (Fixture)
+             <% } %>
+             <% if (locals.selfState.schema) { %>
+                <span style="color: #666; font-size: 0.85em;">(Schema: <%= locals.selfState.schema %>)</span>
+             <% } else { %>
+                <span style="color: #d9534f; font-size: 0.85em;">(Schema: unknown)</span>
+             <% } %>
+         </div>
+         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px; background-color: #fff; color: #6a1b9a;">
+            Autonomy Level: <%= locals.selfState.current.autonomy_level %>
+         </div>
+       </div>
+
+       <% if (locals.view_meta && locals.view_meta.self_state_schema_valid === false) { %>
+         <div style="background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ffeeba;">
+           <strong>⚠️ Schema Mismatch:</strong> The loaded artifact does not match the expected contract (heimgeist.self_state.bundle.v1). Displaying best-effort rendering.
+         </div>
+       <% } %>
+
+       <!-- Current Metrics Grid -->
+       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 20px;">
+           <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #e1bee7;">
+               <div style="font-size: 1.5em; font-weight: bold; color: #4a148c;"><%= (locals.selfState.current.confidence * 100).toFixed(0) %>%</div>
+               <div style="color: #666; font-size: 0.8em;">Confidence</div>
+           </div>
+           <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #e1bee7;">
+               <div style="font-size: 1.5em; font-weight: bold; color: #4a148c;"><%= (locals.selfState.current.fatigue * 100).toFixed(0) %>%</div>
+               <div style="color: #666; font-size: 0.8em;">Fatigue</div>
+           </div>
+           <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #e1bee7;">
+               <div style="font-size: 1.5em; font-weight: bold; color: #4a148c;"><%= (locals.selfState.current.risk_tension * 100).toFixed(0) %>%</div>
+               <div style="color: #666; font-size: 0.8em;">Risk Tension</div>
+           </div>
+       </div>
+
+       <!-- Basis Signals -->
+       <% if (locals.selfState.current.basis_signals && locals.selfState.current.basis_signals.length > 0) { %>
+         <div style="margin-bottom: 15px;">
+           <strong>Basis Signals:</strong>
+           <ul style="margin-top: 5px; color: #555; font-size: 0.9em;">
+             <% locals.selfState.current.basis_signals.forEach(function(signal) { %>
+               <li><%= signal %></li>
+             <% }); %>
+           </ul>
+         </div>
+       <% } %>
+
+       <!-- History (Last 24h / 7 Days) -->
+       <% if (locals.selfState.history && locals.selfState.history.length > 0) { %>
+         <div style="margin-top: 20px; border-top: 1px solid #e1bee7; padding-top: 10px;">
+            <strong>History (Last 7 Snapshots):</strong>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85em; background: #fff;">
+              <thead>
+                <tr style="background: #f3e5f5; text-align: left;">
+                  <th style="padding: 5px;">Time</th>
+                  <th style="padding: 5px;">Autonomy</th>
+                  <th style="padding: 5px;">Conf.</th>
+                  <th style="padding: 5px;">Fatigue</th>
+                  <th style="padding: 5px;">Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% locals.selfState.history.slice(0, 7).forEach(function(snap) { %>
+                  <%
+                     let isValidDate = !isNaN(Date.parse(snap.timestamp));
+                     let rowStyle = isValidDate ? "border-bottom: 1px solid #eee;" : "border-bottom: 1px solid #eee; background-color: #fce4ec; color: #c62828;";
+                     let timeDisplay = isValidDate ? snap.timestamp : (snap.timestamp + " (INVALID)");
+                  %>
+                  <tr style="<%= rowStyle %>">
+                    <td style="padding: 5px;"><%= timeDisplay %></td>
+                    <td style="padding: 5px;"><%= snap.state.autonomy_level %></td>
+                    <td style="padding: 5px;"><%= (snap.state.confidence * 100).toFixed(0) %>%</td>
+                    <td style="padding: 5px;"><%= (snap.state.fatigue * 100).toFixed(0) %>%</td>
+                    <td style="padding: 5px;"><%= (snap.state.risk_tension * 100).toFixed(0) %>%</td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+         </div>
+       <% } %>
+
+       <div style="margin-top: 15px; font-size: 0.8em; color: #7b1fa2; font-style: italic;">
+          ⚠️ Self-State is heuristic – no claim to truth.
+       </div>
+
+    <% } else { %>
+       <p style="color: #666; font-style: italic;">
+         <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+            Self-State artifact not found (Strict Mode).
+         <% } else { %>
+            Self-State not available.
+         <% } %>
+       </p>
+    <% } %>
+  </div>
+
   <!-- INTEGRITY SECTION (New Panel) -->
   <h2 class="section-title">System Integrity</h2>
   <div style="background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
