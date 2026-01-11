@@ -233,16 +233,16 @@
               <tbody>
                 <% locals.selfState.history.slice(0, 7).forEach(function(snap) { %>
                   <%
-                     let isValidDate = !isNaN(Date.parse(snap.last_updated));
+                     let isValidDate = !isNaN(Date.parse(snap.timestamp));
                      let rowStyle = isValidDate ? "border-bottom: 1px solid #eee;" : "border-bottom: 1px solid #eee; background-color: #fce4ec; color: #c62828;";
-                     let timeDisplay = isValidDate ? snap.last_updated : (snap.last_updated + " (INVALID)");
+                     let timeDisplay = isValidDate ? snap.timestamp : (snap.timestamp + " (INVALID)");
                   %>
                   <tr style="<%= rowStyle %>">
                     <td style="padding: 5px;"><%= timeDisplay %></td>
-                    <td style="padding: 5px;"><%= snap.autonomy_level %></td>
-                    <td style="padding: 5px;"><%= (snap.confidence * 100).toFixed(0) %>%</td>
-                    <td style="padding: 5px;"><%= (snap.fatigue * 100).toFixed(0) %>%</td>
-                    <td style="padding: 5px;"><%= (snap.risk_tension * 100).toFixed(0) %>%</td>
+                    <td style="padding: 5px;"><%= snap.state.autonomy_level %></td>
+                    <td style="padding: 5px;"><%= (snap.state.confidence * 100).toFixed(0) %>%</td>
+                    <td style="padding: 5px;"><%= (snap.state.fatigue * 100).toFixed(0) %>%</td>
+                    <td style="padding: 5px;"><%= (snap.state.risk_tension * 100).toFixed(0) %>%</td>
                   </tr>
                 <% }); %>
               </tbody>

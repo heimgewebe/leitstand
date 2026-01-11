@@ -14,14 +14,19 @@ interface SelfModel {
   fatigue: number;
   risk_tension: number;
   autonomy_level: "dormant" | "aware" | "reflective" | "critical";
-  last_updated: string;
+  last_updated?: string; // Optional now, since history has timestamps
   basis_signals: string[];
+}
+
+interface SelfStateSnapshot {
+  timestamp: string;
+  state: SelfModel;
 }
 
 interface SelfStateArtifact {
   schema?: string;
   current: SelfModel;
-  history: SelfModel[];
+  history: SelfStateSnapshot[];
 }
 
 class EmptyFileError extends Error {
@@ -481,7 +486,7 @@ app.get('/observatory', async (_req, res) => {
     // Ensure history is sorted descending by date (newest first)
     if (selfState && selfState.history && Array.isArray(selfState.history)) {
        selfState.history.sort((a, b) => {
-          return new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime();
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
        });
        // Validate ISO date format for normalized rows
        // We mark invalid rows in the UI, here we can pre-calculate validity if needed

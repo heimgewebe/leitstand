@@ -279,7 +279,7 @@ async function main() {
   // Ensure history is sorted descending
   if (selfState && selfState.history && Array.isArray(selfState.history)) {
        selfState.history.sort((a, b) => {
-          return new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime();
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
        });
   }
 
