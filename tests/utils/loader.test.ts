@@ -3,7 +3,6 @@ import { mkdtemp, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { loadWithFallback } from '../../src/utils/loader.js';
-import { InvalidJsonError } from '../../src/utils/fs.js';
 
 describe('loadWithFallback', () => {
   let testDir: string;
