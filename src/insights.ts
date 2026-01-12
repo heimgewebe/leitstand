@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises';
+import { readJsonFile } from './utils/fs.js';
 
 /**
  * Topic with frequency count from semantic analysis
@@ -36,8 +36,16 @@ export interface DailyInsights {
  */
 export async function loadDailyInsights(path: string): Promise<DailyInsights> {
   try {
-    const content = await readFile(path, 'utf-8');
-    const data = JSON.parse(content);
+    interface RawInsights {
+        ts?: string;
+        topics?: unknown[];
+        questions?: unknown[];
+        deltas?: unknown[];
+        source?: string;
+        metadata?: Record<string, unknown>;
+        [key: string]: unknown;
+    }
+    const data = await readJsonFile<RawInsights>(path);
     
     // Basic validation
     if (!data.ts || typeof data.ts !== 'string') {
@@ -62,9 +70,16 @@ export async function loadDailyInsights(path: string): Promise<DailyInsights> {
       metadata: typeof data.metadata === 'object' && data.metadata !== null ? data.metadata : undefined,
     };
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`Invalid JSON in insights file: ${error.message}`);
-    }
+    // If it's our known InvalidJsonError, we propagate it (or wrap it if we want to change prefix).
+    // The test expects .toThrow('Invalid JSON'), and InvalidJsonError message starts with "Invalid JSON".
+    // However, the test also handles other errors (e.g. missing fields) which might be thrown by validation above.
+    // The original code wrapped EVERYTHING in "Failed to load insights: ...".
+    // If I just rethrow, InvalidJsonError is fine.
+    // But other errors (like "Missing or invalid ts field") would NOT be wrapped if I just rethrow.
+    // Let's preserve the wrapper for consistency for non-JSON errors, but maybe special case InvalidJsonError if needed?
+    // Actually, "Failed to load insights: Missing or invalid ts field" vs "Missing or invalid ts field".
+    // If I wrap everything, InvalidJsonError becomes "Failed to load insights: Invalid JSON in ..." -> still matches 'Invalid JSON'.
+
     throw new Error(`Failed to load insights: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

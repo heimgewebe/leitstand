@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { readFile } from 'fs/promises';
 import { resolve, dirname } from 'path';
+import { readJsonFile } from './utils/fs.js';
 
 /**
  * Schema for the leitstand configuration file
@@ -71,8 +71,7 @@ function resolvePath(path: string, baseDir: string): string {
  */
 export async function loadConfig(configPath: string): Promise<Config> {
   try {
-    const content = await readFile(configPath, 'utf-8');
-    const rawConfig = JSON.parse(content);
+    const rawConfig = await readJsonFile(configPath);
     const config = ConfigSchema.parse(rawConfig);
     
     // Resolve all paths relative to the config file directory
@@ -100,9 +99,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
       const issues = error.issues.map(i => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
       throw new Error(`Configuration validation failed:\n${issues}`);
     }
-    if (error instanceof SyntaxError) {
-      throw new Error(`Invalid JSON in config file: ${error.message}`);
-    }
+    // readJsonFile handles syntax errors with specific message
     throw new Error(`Failed to load config: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

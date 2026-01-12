@@ -69,6 +69,8 @@ export async function loadRecentEvents(
     
     for (const file of jsonlFiles) {
       const filePath = join(dataDir, file);
+      // We read file directly since it is JSONL, not a single JSON object
+      // So we don't use readJsonFile here
       const content = await readFile(filePath, 'utf-8');
       const lines = content.split('\n');
       
