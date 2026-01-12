@@ -6,6 +6,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 import { loadLatestMetrics } from './metrics.js';
+import { readJsonFile } from './utils/fs.js';
+import { loadWithFallback } from './utils/loader.js';
 
 const execPromise = promisify(exec);
 
@@ -27,14 +29,6 @@ interface SelfStateArtifact {
   schema?: string;
   current: SelfModel;
   history: SelfStateSnapshot[];
-}
-
-class EmptyFileError extends Error {
-  code = 'EMPTY_FILE';
-  constructor(message: string) {
-    super(message);
-    this.name = 'EmptyFileError';
-  }
 }
 
 const app: Express = express();
@@ -115,8 +109,7 @@ app.post('/events', async (req, res) => {
     if (generated_at) {
       try {
         const artifactPath = join(process.cwd(), 'artifacts', 'knowledge.observatory.json');
-        const content = await readFile(artifactPath, 'utf-8');
-        const currentData = JSON.parse(content);
+        const currentData = await readJsonFile<any>(artifactPath);
         if (currentData.generated_at === generated_at) {
           console.log(`[Event] Skipping duplicate event for generated_at=${generated_at}`);
           res.status(200).send({ status: 'skipped', reason: 'idempotent' });
@@ -190,136 +183,30 @@ app.get('/', (_req, res) => {
 
 app.get('/observatory', async (_req, res) => {
   try {
-    const defaultArtifactPath = join(process.cwd(), 'artifacts', 'knowledge.observatory.json');
-    const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
-    const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
     const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
     const isStrictFail = process.env.OBSERVATORY_STRICT_FAIL === '1';
     const observatoryUrl = process.env.OBSERVATORY_URL || "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
 
-    let data;
-    let sourceKind;
-    let missingReason = 'unknown';
+    // Load Knowledge Observatory
+    const defaultArtifactPath = join(process.cwd(), 'artifacts', 'knowledge.observatory.json');
+    const artifactPath = process.env.OBSERVATORY_ARTIFACT_PATH || defaultArtifactPath;
+    const fixturePath = join(process.cwd(), 'src', 'fixtures', 'observatory.json');
 
-    try {
-      const artifactContent = await readFile(artifactPath, 'utf-8');
-      if (!artifactContent.trim()) {
-        throw new EmptyFileError('Artifact file is empty');
-      }
-      data = JSON.parse(artifactContent);
-      sourceKind = 'artifact';
-      missingReason = 'ok';
-      console.log('Observatory loaded from artifact');
-    } catch (artifactError) {
-      if (isStrictFail) {
-         console.error('[STRICT FAIL] Artifact load failed. Aborting request.', artifactError);
-         throw new Error("Strict Fail: Observatory artifact missing or invalid.");
-      }
+    const observatoryLoad = await loadWithFallback(artifactPath, fixturePath, { strict: isStrict, strictFail: isStrictFail, name: 'Observatory' });
+    const data = observatoryLoad.data;
+    const sourceKind = observatoryLoad.source;
+    const missingReason = observatoryLoad.reason;
 
-      // Type guards
-      const isEnoent = (err: unknown): boolean =>
-        typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'ENOENT';
-      const isSyntaxError = (err: unknown): err is SyntaxError =>
-        err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
-
-      // If strict mode is enabled (but not fail), we treat missing artifacts as Empty State.
-      // BUT we still fail on corruption (SyntaxError).
-      if (isStrict) {
-        if (isSyntaxError(artifactError)) {
-             console.error('[STRICT] Artifact corrupted (SyntaxError). Failing.', artifactError);
-             missingReason = 'corrupt';
-             throw new Error("Strict: Artifact file contains invalid JSON");
-        }
-        if (artifactError instanceof EmptyFileError) missingReason = 'empty';
-        else if (isEnoent(artifactError)) missingReason = 'enoent';
-        else missingReason = 'unknown';
-        // For missing/empty files, we allow Empty State
-        console.warn('[STRICT] Artifact missing/empty. Proceeding with Empty State.', artifactError instanceof Error ? artifactError.message : String(artifactError));
-        data = null;
-        sourceKind = 'missing';
-      } else {
-        // Dev / Fallback Mode
-        if (isEnoent(artifactError)) {
-          // Fallback to fixture only if artifact is missing
-          const fixtureContent = await readFile(fixturePath, 'utf-8');
-          data = JSON.parse(fixtureContent);
-          sourceKind = 'fixture';
-          missingReason = 'enoent';
-          console.warn('Observatory loaded from fixture (fallback) - artifact not found');
-        } else if (isSyntaxError(artifactError)) {
-          // Invalid JSON in artifact
-          const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
-          missingReason = 'corrupt';
-          console.error('Observatory artifact contains invalid JSON:', msg);
-          throw new Error('Artifact file contains invalid JSON');
-        } else if (artifactError instanceof EmptyFileError) {
-          // Empty artifact file - treat as missing to trigger fallback
-          console.warn('Observatory artifact file is empty (fallback to fixture)');
-          const fixtureContent = await readFile(fixturePath, 'utf-8');
-          data = JSON.parse(fixtureContent);
-          sourceKind = 'fixture';
-          missingReason = 'empty';
-        } else {
-          // Other errors (e.g. permission denied)
-          const msg = artifactError instanceof Error ? artifactError.message : String(artifactError);
-          missingReason = 'unknown';
-          console.error('Error reading observatory artifact:', msg);
-          throw artifactError;
-        }
-      }
-    }
 
     // Load insights.daily.json (Compressed/Published Knowledge)
     const insightsArtifactPath = join(process.cwd(), 'artifacts', 'insights.daily.json');
     const insightsFixturePath = join(process.cwd(), 'src', 'fixtures', 'insights.daily.json');
 
-    let insightsDaily = null;
-    let insightsDailySource = null;
-    let insightsMissingReason = 'unknown';
+    const insightsLoad = await loadWithFallback(insightsArtifactPath, insightsFixturePath, { strict: isStrict, strictFail: isStrictFail, name: 'Insights Daily' });
+    const insightsDaily = insightsLoad.data;
+    const insightsDailySource = insightsLoad.source;
+    const insightsMissingReason = insightsLoad.reason;
 
-    // Server logic also respects strict env (already defined above)
-
-    // 1. Try local artifact
-    try {
-      const content = await readFile(insightsArtifactPath, 'utf-8');
-      if (content.trim()) {
-        insightsDaily = JSON.parse(content);
-        insightsDailySource = 'artifact';
-        insightsMissingReason = 'ok';
-      }
-    } catch (e) {
-      // 2. Fallback to fixture (only in non-strict mode, no runtime fetch)
-      if (isStrictFail) {
-         throw new Error("Strict Fail: Insights artifact missing or invalid.");
-      }
-
-      const isSyntaxError = (err: unknown): err is SyntaxError =>
-        err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
-
-      // Use isSyntaxError even if we are not strictly checking it in strict mode yet, or just check e directly for now to satisfy linter if logic is simpler
-      if (isStrict) {
-        if (isSyntaxError(e)) {
-             throw new Error("Strict: Insights artifact contains invalid JSON");
-        }
-        const msg = e instanceof Error ? e.message : String(e);
-        insightsMissingReason = msg.includes('Empty file') ? 'empty' : 'enoent';
-
-        console.warn('[STRICT] Insights artifact missing/empty. Proceeding with Empty State.', e instanceof Error ? e.message : String(e));
-        // Do not throw, just leave insightsDaily as null
-        insightsDaily = null;
-        insightsDailySource = 'missing';
-      } else if (!insightsDaily) {
-         try {
-           const content = await readFile(insightsFixturePath, 'utf-8');
-           insightsDaily = JSON.parse(content);
-           insightsDailySource = 'fixture';
-           insightsMissingReason = 'fallback';
-           console.warn('Insights Daily loaded from fixture (fallback)');
-         } catch (e2) {
-           console.warn('Could not load insights.daily fixture:', e2 instanceof Error ? e2.message : String(e2));
-         }
-      }
-    }
 
     // Load integrity summaries (System Integrity)
     // Supports multiple per-repo summaries in artifacts/integrity/ OR legacy single file
@@ -347,10 +234,7 @@ app.get('/observatory', async (_req, res) => {
 
     const loadIntegrityFile = async (path: string, sourceLabel: string): Promise<IntegritySummary | null> => {
       try {
-        const content = await readFile(path, 'utf-8');
-        if (!content.trim()) return null;
-        const json = JSON.parse(content);
-        // Ensure it looks like a summary
+        const json = await readJsonFile<IntegritySummary>(path);
         if (json && typeof json === 'object') {
              // Tag it for the UI
              json._source = sourceLabel;
@@ -374,10 +258,7 @@ app.get('/observatory', async (_req, res) => {
        // Directory might not exist, which is fine
     }
 
-    // 2. Try loading legacy artifact if we haven't found anything (or even if we have, maybe it's distinct?)
-    // Actually, if we have per-repo files, we might not want the legacy one if it duplicates data.
-    // But for safety, let's load it and maybe deduplicate by repo name later if needed.
-    // However, if legacy file exists, it might be the only source.
+    // 2. Try loading legacy artifact
     const legacySummary = await loadIntegrityFile(legacyIntegrityPath, 'artifact');
     if (legacySummary) {
        // Avoid duplication if repo is same
@@ -448,49 +329,29 @@ app.get('/observatory', async (_req, res) => {
     const selfStateArtifactPath = join(process.cwd(), 'artifacts', 'self_state.json');
     const selfStateFixturePath = join(process.cwd(), 'src', 'fixtures', 'self_state.json');
 
-    let selfState: SelfStateArtifact | null = null;
-    let selfStateSource: string | null = null;
-    let selfStateMissingReason = 'unknown';
+    const selfStateLoad = await loadWithFallback<SelfStateArtifact>(selfStateArtifactPath, selfStateFixturePath, {
+        strict: isStrict,
+        // Self-State is diagnostic only, so we typically don't fail strictly even if strictFail is on?
+        // But the original code didn't seem to exempt it from strict checks other than just logging.
+        // The original code:
+        // if (isStrict) { console.warn(...); selfState = null; }
+        // It didn't throw even in strict mode.
+        // So we should pass strictFail: false always for SelfState if we want to preserve that behavior,
+        // OR we can rely on loadWithFallback behavior.
+        // Original: "Strict requires Raw + Daily" (throws 503 if missing). Self State was effectively optional.
+        strictFail: false, // Self State is optional/diagnostic
+        name: 'Self-State'
+    });
 
-    try {
-      const content = await readFile(selfStateArtifactPath, 'utf-8');
-      if (content.trim()) {
-        selfState = JSON.parse(content);
-        selfStateSource = 'artifact';
-        selfStateMissingReason = 'ok';
-      }
-    } catch (e) {
-      if (isStrict) {
-        // In strict mode, if missing, we just show empty state for this panel, or warn
-        console.warn('[STRICT] Self-State artifact missing. Panel will be empty/unavailable.');
-        selfState = null;
-        selfStateSource = 'missing';
-        selfStateMissingReason = 'enoent';
-      } else {
-        // Fallback to fixture
-        try {
-          const content = await readFile(selfStateFixturePath, 'utf-8');
-          selfState = JSON.parse(content);
-          selfStateSource = 'fixture';
-          selfStateMissingReason = 'fallback';
-          console.warn('Self-State loaded from fixture (fallback)');
-        } catch (e2) {
-          console.warn('Could not load self_state fixture:', e2 instanceof Error ? e2.message : String(e2));
-          selfState = null;
-          selfStateSource = 'missing';
-          selfStateMissingReason = 'enoent';
-        }
-      }
-    }
+    let selfState = selfStateLoad.data;
+    const selfStateSource = selfStateLoad.source;
+    const selfStateMissingReason = selfStateLoad.reason;
 
     // Ensure history is sorted descending by date (newest first)
     if (selfState && selfState.history && Array.isArray(selfState.history)) {
        selfState.history.sort((a, b) => {
           return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
        });
-       // Validate ISO date format for normalized rows
-       // We mark invalid rows in the UI, here we can pre-calculate validity if needed
-       // or just rely on the UI. The UI will use Date(iso) which is robust-ish but let's be strict if needed.
     }
 
     // Check Schema
@@ -508,8 +369,7 @@ app.get('/observatory', async (_req, res) => {
     let forensics = {};
     try {
       const metaPath = join(process.cwd(), 'artifacts', '_meta.json');
-      const metaContent = await readFile(metaPath, 'utf-8');
-      forensics = JSON.parse(metaContent);
+      forensics = await readJsonFile(metaPath);
     } catch (e) { /* ignore */ }
 
     res.render('observatory', {
@@ -540,7 +400,7 @@ app.get('/observatory', async (_req, res) => {
     if (!res.headersSent) {
        console.error('Final error handler:', error);
        const msg = error instanceof Error ? error.message : String(error);
-       if (msg.includes('Strict requires Raw + Daily') || msg.includes('Strict Mode')) {
+       if (msg.includes('Strict Fail') || msg.includes('Strict Mode') || msg.includes('Strict:')) {
           res.status(503).send(msg);
        } else {
           res.status(500).send('Error loading observatory data');
@@ -552,8 +412,7 @@ app.get('/observatory', async (_req, res) => {
 app.get('/intent', async (_req, res) => {
   try {
     const dataPath = join(process.cwd(), 'src', 'fixtures', 'intent.json');
-    const dataContent = await readFile(dataPath, 'utf-8');
-    const data = JSON.parse(dataContent);
+    const data = await readJsonFile(dataPath);
     res.render('intent', { data });
   } catch (error) {
     console.error(error);

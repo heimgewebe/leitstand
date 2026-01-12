@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises';
+import { readJsonFile } from './utils/fs.js';
 
 /**
  * Topic with frequency count from semantic analysis
@@ -36,8 +36,7 @@ export interface DailyInsights {
  */
 export async function loadDailyInsights(path: string): Promise<DailyInsights> {
   try {
-    const content = await readFile(path, 'utf-8');
-    const data = JSON.parse(content);
+    const data = await readJsonFile<any>(path);
     
     // Basic validation
     if (!data.ts || typeof data.ts !== 'string') {
@@ -62,9 +61,11 @@ export async function loadDailyInsights(path: string): Promise<DailyInsights> {
       metadata: typeof data.metadata === 'object' && data.metadata !== null ? data.metadata : undefined,
     };
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`Invalid JSON in insights file: ${error.message}`);
-    }
+    // readJsonFile already handles SyntaxError, but we might want to preserve the "Invalid JSON in insights file" message convention if existing tests rely on it.
+    // readJsonFile throws "Invalid JSON in {path}: {message}"
+    // The original code threw "Invalid JSON in insights file: {message}"
+
+    // Let's rethrow with context if it's not our known error
     throw new Error(`Failed to load insights: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
