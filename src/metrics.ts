@@ -61,7 +61,9 @@ export interface MetricsSnapshot {
 export function processRepoStatus(repo: RepoData): RepoData {
   const newRepo = { ...repo };
   let issues = [...(repo.issues || [])];
-  let repoStatus = repo.status || 'unknown';
+
+  // repoStatus was assigned but never used, except implicit logic below
+  // let repoStatus = repo.status || 'unknown';
 
   // Determine if profile is expected (default to true if not specified)
   // Check both ai_context path and potential config path
@@ -78,7 +80,7 @@ export function processRepoStatus(repo: RepoData): RepoData {
      // Re-evaluate status
      if (issues.length === 0) {
        // If no issues remain, it's definitely OK
-       repoStatus = 'ok';
+       // repoStatus = 'ok'; // Not used locally
        newRepo.status = 'ok';
      } else {
        // If issues remain, we preserve the original status because we don't know
@@ -101,8 +103,20 @@ export function processRepoStatus(repo: RepoData): RepoData {
 export async function loadMetricsSnapshot(filePath: string): Promise<MetricsSnapshot> {
   try {
     // Use generic JSON loader
-    // We type assert to unknown first because we need to validate/shape it
-    const data = await readJsonFile<Record<string, any>>(filePath);
+    // Using explicit interface partial instead of Record<string, any>
+    interface RawMetrics {
+        repoCount?: number;
+        repos?: RepoData[];
+        status?: RepoStatus;
+        ok?: number;
+        warn?: number;
+        fail?: number;
+        timestamp?: string;
+        metadata?: Record<string, unknown>;
+        [key: string]: unknown;
+    }
+
+    const data = await readJsonFile<RawMetrics>(filePath);
     
     // Extract basic metrics with fallback defaults
     const repoCount = data.repoCount || data.repos?.length || 0;

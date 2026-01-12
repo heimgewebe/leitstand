@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { readFile } from 'fs/promises';
 import { resolve, dirname } from 'path';
 import { readJsonFile } from './utils/fs.js';
 

@@ -36,7 +36,16 @@ export interface DailyInsights {
  */
 export async function loadDailyInsights(path: string): Promise<DailyInsights> {
   try {
-    const data = await readJsonFile<any>(path);
+    interface RawInsights {
+        ts?: string;
+        topics?: unknown[];
+        questions?: unknown[];
+        deltas?: unknown[];
+        source?: string;
+        metadata?: Record<string, unknown>;
+        [key: string]: unknown;
+    }
+    const data = await readJsonFile<RawInsights>(path);
     
     // Basic validation
     if (!data.ts || typeof data.ts !== 'string') {

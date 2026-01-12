@@ -1,12 +1,12 @@
 import express, { Express } from 'express';
 import { realpathSync } from 'fs';
-import { readFile, readdir } from 'fs/promises';
+import { readdir } from 'fs/promises';
 import { join, resolve } from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 import { loadLatestMetrics } from './metrics.js';
-import { readJsonFile, InvalidJsonError } from './utils/fs.js';
+import { readJsonFile } from './utils/fs.js';
 import { loadWithFallback } from './utils/loader.js';
 
 const execPromise = promisify(exec);
@@ -109,7 +109,7 @@ app.post('/events', async (req, res) => {
     if (generated_at) {
       try {
         const artifactPath = join(process.cwd(), 'artifacts', 'knowledge.observatory.json');
-        const currentData = await readJsonFile<any>(artifactPath);
+        const currentData = await readJsonFile<{ generated_at?: string }>(artifactPath);
         if (currentData.generated_at === generated_at) {
           console.log(`[Event] Skipping duplicate event for generated_at=${generated_at}`);
           res.status(200).send({ status: 'skipped', reason: 'idempotent' });
@@ -337,7 +337,7 @@ app.get('/observatory', async (_req, res) => {
         name: 'Self-State'
     });
 
-    let selfState = selfStateLoad.data;
+    const selfState = selfStateLoad.data; // Changed from let to const
     const selfStateSource = selfStateLoad.source;
     const selfStateMissingReason = selfStateLoad.reason;
 
