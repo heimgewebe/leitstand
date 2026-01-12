@@ -1,4 +1,4 @@
-import { readJsonFile, EmptyFileError } from './fs.js';
+import { readJsonFile, EmptyFileError, InvalidJsonError } from './fs.js';
 
 export interface LoadResult<T> {
   data: T | null;
@@ -26,8 +26,6 @@ export async function loadWithFallback<T>(
   // Type guards (helper)
   const isEnoent = (err: unknown): boolean =>
     typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'ENOENT';
-  const isSyntaxError = (err: unknown): err is SyntaxError =>
-    err instanceof SyntaxError || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: unknown }).name === 'SyntaxError');
 
   try {
     // 1. Try Artifact
@@ -41,12 +39,9 @@ export async function loadWithFallback<T>(
 
     if (strict) {
       // In strict mode (not failing), we treat missing/empty as Empty State.
-      // But we still fail on corruption (SyntaxError) if the caller expects it?
-      // server.ts logic: "Strict: Artifact file contains invalid JSON" (throws)
-      if (isSyntaxError(artifactError) || (artifactError instanceof Error && artifactError.message.startsWith('Invalid JSON'))) {
+      // But we still fail on corruption (InvalidJsonError) if the caller expects it?
+      if (artifactError instanceof InvalidJsonError) {
          console.error(`[STRICT] ${name} artifact corrupted. Failing.`, artifactError);
-         // server.ts threw error here. We should probably propagate the error or return a specific "corrupt" reason?
-         // The server.ts logic threw: throw new Error("Strict: Artifact file contains invalid JSON");
          throw new Error(`Strict: ${name} artifact contains invalid JSON`);
       }
 
@@ -71,9 +66,8 @@ export async function loadWithFallback<T>(
           console.warn(`Could not load ${name} fixture:`, fixtureError instanceof Error ? fixtureError.message : String(fixtureError));
           return { data: null, source: 'missing', reason: 'enoent' }; // Both missing
         }
-      } else if (isSyntaxError(artifactError) || (artifactError instanceof Error && artifactError.message.startsWith('Invalid JSON'))) {
-         console.error(`${name} artifact contains invalid JSON:`, artifactError instanceof Error ? artifactError.message : String(artifactError));
-         // server.ts threw error here
+      } else if (artifactError instanceof InvalidJsonError) {
+         console.error(`${name} artifact contains invalid JSON:`, artifactError.message);
          throw new Error(`${name} artifact contains invalid JSON`);
       } else {
          // Other errors (permission etc)

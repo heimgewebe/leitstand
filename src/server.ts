@@ -6,7 +6,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 import { loadLatestMetrics } from './metrics.js';
-import { readJsonFile } from './utils/fs.js';
+import { readJsonFile, InvalidJsonError } from './utils/fs.js';
 import { loadWithFallback } from './utils/loader.js';
 
 const execPromise = promisify(exec);
@@ -329,17 +329,11 @@ app.get('/observatory', async (_req, res) => {
     const selfStateArtifactPath = join(process.cwd(), 'artifacts', 'self_state.json');
     const selfStateFixturePath = join(process.cwd(), 'src', 'fixtures', 'self_state.json');
 
+    // Policy Decision: strictFail is always false for Self-State because it is a diagnostic tool,
+    // and its absence should not block the main Observatory dashboard.
     const selfStateLoad = await loadWithFallback<SelfStateArtifact>(selfStateArtifactPath, selfStateFixturePath, {
         strict: isStrict,
-        // Self-State is diagnostic only, so we typically don't fail strictly even if strictFail is on?
-        // But the original code didn't seem to exempt it from strict checks other than just logging.
-        // The original code:
-        // if (isStrict) { console.warn(...); selfState = null; }
-        // It didn't throw even in strict mode.
-        // So we should pass strictFail: false always for SelfState if we want to preserve that behavior,
-        // OR we can rely on loadWithFallback behavior.
-        // Original: "Strict requires Raw + Daily" (throws 503 if missing). Self State was effectively optional.
-        strictFail: false, // Self State is optional/diagnostic
+        strictFail: false,
         name: 'Self-State'
     });
 

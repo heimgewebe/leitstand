@@ -61,11 +61,16 @@ export async function loadDailyInsights(path: string): Promise<DailyInsights> {
       metadata: typeof data.metadata === 'object' && data.metadata !== null ? data.metadata : undefined,
     };
   } catch (error) {
-    // readJsonFile already handles SyntaxError, but we might want to preserve the "Invalid JSON in insights file" message convention if existing tests rely on it.
-    // readJsonFile throws "Invalid JSON in {path}: {message}"
-    // The original code threw "Invalid JSON in insights file: {message}"
+    // If it's our known InvalidJsonError, we propagate it (or wrap it if we want to change prefix).
+    // The test expects .toThrow('Invalid JSON'), and InvalidJsonError message starts with "Invalid JSON".
+    // However, the test also handles other errors (e.g. missing fields) which might be thrown by validation above.
+    // The original code wrapped EVERYTHING in "Failed to load insights: ...".
+    // If I just rethrow, InvalidJsonError is fine.
+    // But other errors (like "Missing or invalid ts field") would NOT be wrapped if I just rethrow.
+    // Let's preserve the wrapper for consistency for non-JSON errors, but maybe special case InvalidJsonError if needed?
+    // Actually, "Failed to load insights: Missing or invalid ts field" vs "Missing or invalid ts field".
+    // If I wrap everything, InvalidJsonError becomes "Failed to load insights: Invalid JSON in ..." -> still matches 'Invalid JSON'.
 
-    // Let's rethrow with context if it's not our known error
     throw new Error(`Failed to load insights: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
