@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/server.js';
+import { resetEnvConfig } from '../src/config.js';
 
 // Mock child_process for fetch scripts
 vi.mock('child_process', () => {
@@ -20,14 +21,17 @@ describe('POST /events', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
+    resetEnvConfig(); // Force reload of env config
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    resetEnvConfig(); // Clean up
   });
 
   it('should allow request with correct Bearer token', async () => {
     vi.stubEnv('LEITSTAND_EVENTS_TOKEN', 'valid-token');
+    resetEnvConfig(); // Ensure stub is picked up
 
     const res = await request(app)
       .post('/events')
@@ -39,6 +43,7 @@ describe('POST /events', () => {
 
   it('should allow request with correct X-Events-Token', async () => {
     vi.stubEnv('LEITSTAND_EVENTS_TOKEN', 'valid-token');
+    resetEnvConfig();
 
     const res = await request(app)
       .post('/events')
@@ -50,6 +55,7 @@ describe('POST /events', () => {
 
   it('should reject request with invalid token (401)', async () => {
     vi.stubEnv('LEITSTAND_EVENTS_TOKEN', 'valid-token');
+    resetEnvConfig();
 
     const res = await request(app)
       .post('/events')
@@ -61,6 +67,7 @@ describe('POST /events', () => {
 
   it('should reject request with missing token when token is configured (401)', async () => {
     vi.stubEnv('LEITSTAND_EVENTS_TOKEN', 'valid-token');
+    resetEnvConfig();
 
     const res = await request(app)
       .post('/events')
@@ -71,6 +78,7 @@ describe('POST /events', () => {
 
   it('should be disabled in STRICT mode if no token configured (403)', async () => {
     vi.stubEnv('LEITSTAND_STRICT', '1');
+    resetEnvConfig();
     // Ensure LEITSTAND_EVENTS_TOKEN is unset
 
     const res = await request(app)

@@ -1,6 +1,88 @@
 import { z } from 'zod';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, join } from 'path';
 import { readJsonFile } from './utils/fs.js';
+
+/**
+ * Schema for runtime environment variables
+ */
+const EnvSchema = z.object({
+  PORT: z.coerce.number().int().positive().default(3000),
+  NODE_ENV: z.string().default('development'),
+  LEITSTAND_STRICT: z.string().optional(),
+  LEITSTAND_EVENTS_TOKEN: z.string().optional(),
+  OBSERVATORY_STRICT: z.string().optional(),
+  OBSERVATORY_STRICT_FAIL: z.string().optional(),
+  OBSERVATORY_URL: z.string().default('https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json'),
+  OBSERVATORY_ARTIFACT_PATH: z.string().optional(),
+  INTEGRITY_URL: z.string().optional(),
+});
+
+type EnvType = z.infer<typeof EnvSchema>;
+
+// Memoization cache
+let cachedEnv: EnvType | null = null;
+
+const parsedEnv = (): EnvType => {
+    if (cachedEnv) {
+        return cachedEnv;
+    }
+
+    const parsed = EnvSchema.safeParse(process.env);
+
+    // Default values if parsing fails completely
+    const defaults: EnvType = {
+        PORT: 3000,
+        NODE_ENV: 'development',
+        OBSERVATORY_URL: 'https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json',
+        LEITSTAND_STRICT: undefined,
+        LEITSTAND_EVENTS_TOKEN: undefined,
+        OBSERVATORY_STRICT: undefined,
+        OBSERVATORY_STRICT_FAIL: undefined,
+        OBSERVATORY_ARTIFACT_PATH: undefined,
+        INTEGRITY_URL: undefined
+    };
+
+    if (!parsed.success) {
+        console.warn('Invalid environment variables:', parsed.error.format());
+        cachedEnv = defaults;
+        return defaults;
+    }
+
+    cachedEnv = parsed.data;
+    return parsed.data;
+};
+
+/**
+ * Resets the environment configuration cache.
+ * Call this in tests when using vi.stubEnv() to ensure changes are picked up.
+ */
+export const resetEnvConfig = () => {
+    cachedEnv = null;
+};
+
+export const envConfig = {
+    get PORT() { return parsedEnv().PORT; },
+    get NODE_ENV() { return parsedEnv().NODE_ENV; },
+    get OBSERVATORY_URL() { return parsedEnv().OBSERVATORY_URL; },
+    get token() { return parsedEnv().LEITSTAND_EVENTS_TOKEN; },
+    get OBSERVATORY_ARTIFACT_PATH() { return parsedEnv().OBSERVATORY_ARTIFACT_PATH; },
+    get INTEGRITY_URL() { return parsedEnv().INTEGRITY_URL; },
+
+    get isStrict() {
+        const env = parsedEnv();
+        return env.LEITSTAND_STRICT === '1' || env.NODE_ENV === 'production' || env.OBSERVATORY_STRICT === '1';
+    },
+
+    get isStrictFail() {
+        return parsedEnv().OBSERVATORY_STRICT_FAIL === '1';
+    },
+
+    paths: {
+      artifacts: join(process.cwd(), 'artifacts'),
+      fixtures: join(process.cwd(), 'src', 'fixtures'),
+    }
+};
+
 
 /**
  * Schema for the leitstand configuration file

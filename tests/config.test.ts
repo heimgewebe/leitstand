@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { writeFile, rm, mkdtemp } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadConfig } from '../src/config.js';
+import { loadConfig, resetEnvConfig, envConfig } from '../src/config.js';
 
 describe('config', () => {
   let testDir: string;
@@ -11,10 +11,39 @@ describe('config', () => {
   beforeEach(async () => {
     testDir = await mkdtemp(join(tmpdir(), 'leitstand-test-config-'));
     configPath = join(testDir, 'test.config.json');
+    // Clear env config cache before each test
+    resetEnvConfig();
+    vi.unstubAllEnvs();
   });
   
   afterEach(async () => {
     await rm(testDir, { recursive: true, force: true });
+    vi.unstubAllEnvs();
+    resetEnvConfig();
+  });
+
+  describe('envConfig', () => {
+      it('should validate PORT as integer', () => {
+          vi.stubEnv('PORT', '4000');
+          resetEnvConfig();
+          expect(envConfig.PORT).toBe(4000);
+      });
+
+      it('should fallback to default PORT 3000 if invalid', () => {
+          vi.stubEnv('PORT', 'invalid-port');
+          resetEnvConfig();
+          // z.coerce.number() will result in NaN, which fails .int()/.positive(),
+          // but safeParse catches it and returns default object which has 3000.
+          // Wait, safeParse fails -> we log warning -> return default object (PORT: 3000)
+          expect(envConfig.PORT).toBe(3000);
+      });
+
+      it('should fallback to default PORT 3000 if non-positive', () => {
+        vi.stubEnv('PORT', '-500');
+        resetEnvConfig();
+        // safeParse fails -> returns defaults -> 3000
+        expect(envConfig.PORT).toBe(3000);
+      });
   });
   
   it('should load valid configuration', async () => {
