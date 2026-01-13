@@ -6,7 +6,7 @@ import { readJsonFile } from './utils/fs.js';
  * Schema for runtime environment variables
  */
 const EnvSchema = z.object({
-  PORT: z.string().transform(Number).default('3000'),
+  PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.string().default('development'),
   LEITSTAND_STRICT: z.string().optional(),
   LEITSTAND_EVENTS_TOKEN: z.string().optional(),
@@ -17,19 +17,20 @@ const EnvSchema = z.object({
   INTEGRITY_URL: z.string().optional(),
 });
 
-// We need to return a function or a proxy to allow live reloading of env vars during tests
-// But `envConfig` is exported as a constant object.
-// The issue is that the IIFE runs once at module load time.
-// In tests, `server.ts` imports `config.ts`, and `vi.stubEnv` changes `process.env` AFTER `config.ts` has already initialized `envConfig`.
+type EnvType = z.infer<typeof EnvSchema>;
 
-// To fix this without major refactoring of the usage sites, we can make `envConfig` a proxy
-// or simply getters.
+// Memoization cache
+let cachedEnv: EnvType | null = null;
 
-const parsedEnv = () => {
+const parsedEnv = (): EnvType => {
+    if (cachedEnv) {
+        return cachedEnv;
+    }
+
     const parsed = EnvSchema.safeParse(process.env);
 
-    // Default values
-    const defaults = {
+    // Default values if parsing fails completely
+    const defaults: EnvType = {
         PORT: 3000,
         NODE_ENV: 'development',
         OBSERVATORY_URL: 'https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json',
@@ -42,11 +43,21 @@ const parsedEnv = () => {
     };
 
     if (!parsed.success) {
-        // console.warn('Invalid environment variables:', parsed.error.format());
-        // Return mostly empty/defaults if parsing fails
+        console.warn('Invalid environment variables:', parsed.error.format());
+        cachedEnv = defaults;
         return defaults;
     }
+
+    cachedEnv = parsed.data;
     return parsed.data;
+};
+
+/**
+ * Resets the environment configuration cache.
+ * Call this in tests when using vi.stubEnv() to ensure changes are picked up.
+ */
+export const resetEnvConfig = () => {
+    cachedEnv = null;
 };
 
 export const envConfig = {
