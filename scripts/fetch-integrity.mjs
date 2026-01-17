@@ -27,6 +27,9 @@ let success = false;
 let bytes = 0;
 let parsed = false;
 let counts = null;
+let countsMissing = false;
+let repoMissing = false;
+let errorReason = null;
 let finalPath = OUT;
 
 try {
@@ -53,13 +56,14 @@ try {
   // Minimal Schema Check (Diagnostic)
   if (!obj || typeof obj !== "object") throw new Error("Artifact JSON is not an object.");
   if (!obj.generated_at) console.warn("[leitstand] WARN: Artifact missing generated_at.");
-  if (!obj.counts) {
-    console.warn("[leitstand] WARN: Artifact missing counts (continuing).");
-    // Ensure robust internal state
-    obj.counts = {};
-  }
 
-  counts = obj.counts;
+  if (!obj.counts) {
+    console.warn("[leitstand] WARN: Artifact missing counts.");
+    countsMissing = true;
+    // Strict semantic: Do NOT heal. View must handle missing counts.
+  } else {
+    counts = obj.counts;
+  }
 
   // Determine final path based on repo name if available
   if (obj.repo && typeof obj.repo === 'string') {
@@ -70,6 +74,8 @@ try {
     const safeRepoName = obj.repo.replace(/[/\\]/g, '__');
     finalPath = path.join(repoDir, `${safeRepoName}.summary.json`);
   } else {
+    console.warn("[leitstand] WARN: Artifact missing repo field. Falling back to generic output path.");
+    repoMissing = true;
     // Fallback to OUT (integrity.summary.json)
     await mkdir(path.dirname(OUT), { recursive: true });
     finalPath = OUT;
@@ -83,6 +89,7 @@ try {
   console.log(`[leitstand] Integrity fetch complete. bytes=${bytes}`);
 
 } catch (err) {
+  errorReason = err.message;
   console.error(`[leitstand] Integrity fetch failed: ${err.message}.`);
   // Do NOT exit 1. This is diagnostic.
 }
@@ -106,7 +113,10 @@ try {
     source_url: URL,
     parsed: parsed,
     success: success,
-    counts: counts
+    counts: counts,
+    counts_missing: countsMissing,
+    repo_missing: repoMissing,
+    error_reason: errorReason
   };
 
   fs.writeFileSync(META_PATH, JSON.stringify(meta, null, 2));
