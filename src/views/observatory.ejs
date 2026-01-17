@@ -397,10 +397,19 @@
                  // Ensure name is set for display
                  s.name = s.name || s.repo || 'unknown';
 
-                 // Strict status source: default to UNKNOWN if missing, never assume OK
-                 let status = s.status || 'UNKNOWN';
+                 // Strict status source: default to UNCLEAR if missing, never assume OK
+                 let status = s.status || 'UNCLEAR';
                  let color = 'gray';
                  let statusTooltip = '';
+                 const isSanitized = s.generated_at_sanitized === true || (s.payload && s.payload.generated_at_sanitized === true);
+
+                 // Append global reasons
+                 if (isSanitized) {
+                    statusTooltip = (statusTooltip ? statusTooltip + '. ' : '') + 'Timestamp sanitized by Chronik';
+                 }
+                 if (!s.generated_at) {
+                    statusTooltip = (statusTooltip ? statusTooltip + '. ' : '') + 'Missing timestamp';
+                 }
 
                  if (s.isMissing) {
                      status = 'MISSING';
@@ -419,16 +428,14 @@
                      }
                      else if (status === 'FAIL' || status === 'GAP') {
                         color = '#c62828'; // Red
-                        // Determine failure reason
+                        // Determine failure reason if not already clear
                         if (!s.generated_at || isNaN(Date.parse(s.generated_at))) {
                            statusTooltip = 'Invalid or missing timestamp';
                         } else {
-                           statusTooltip = 'Schema violation';
+                           statusTooltip = statusTooltip || 'Schema violation';
                         }
                      }
                  }
-
-                 const isSanitized = s.generated_at_sanitized === true || (s.payload && s.payload.generated_at_sanitized === true);
           %>
           <tr style="border-bottom: 1px solid #eee;">
             <td style="padding: 10px; font-weight: bold;"><%= s.name || 'unknown' %></td>

@@ -89,8 +89,8 @@ try {
   console.log(`[leitstand] Integrity fetch complete. bytes=${bytes}`);
 
 } catch (err) {
-  errorReason = err.message;
-  console.error(`[leitstand] Integrity fetch failed: ${err.message}.`);
+  errorReason = (err && typeof err === 'object' && 'message' in err) ? String(err.message) : String(err);
+  console.error(`[leitstand] Integrity fetch failed: ${errorReason}.`);
   // Do NOT exit 1. This is diagnostic.
 }
 
