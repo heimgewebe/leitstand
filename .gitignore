@@ -43,3 +43,4 @@ pnpm-debug.log*
 # Temporary files
 *.tmp
 tmp/
+verification/*.png
