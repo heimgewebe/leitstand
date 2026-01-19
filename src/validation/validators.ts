@@ -27,12 +27,12 @@ if (fs.existsSync(PLEXER_REPORT_SCHEMA_PATH)) {
 
 export const validatePlexerReport = (data: unknown) => {
     if (!plexerReportValidate) {
-        throw new Error("Validator not initialized (schema missing or invalid)");
+        return { valid: false, error: "Validator not initialized (schema missing or invalid)", status: 503 };
     }
     const valid = plexerReportValidate(data);
     if (!valid) {
         const errorMsg = plexerReportValidate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ');
-        return { valid: false, error: errorMsg };
+        return { valid: false, error: errorMsg, status: 400 };
     }
-    return { valid: true };
+    return { valid: true, status: 200 };
 };
