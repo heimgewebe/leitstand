@@ -5,7 +5,7 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { format, startOfDay, addDays, parseISO, isValid } from 'date-fns';
-import { loadConfig } from './config.js';
+import { loadConfig, type Config } from './config.js';
 import { loadDailyInsights } from './insights.js';
 import { loadRecentEvents } from './events.js';
 import { loadLatestMetrics, loadMetricsSnapshot } from './metrics.js';
@@ -49,6 +49,92 @@ export function parseTargetDate(dateInput?: string): Date {
   }
 
   return parsed;
+}
+
+/**
+ * Loads data from all sources
+ */
+export async function loadData(config: Config, dateStr: string, since: Date, until: Date) {
+  // Define task for insights
+  const loadInsightsTask = async () => {
+    console.log('Loading daily insights...');
+    try {
+      // Determine which insights file to load
+      // If today, use todayInsights from config
+      // If historical date, try to find it in daily directory
+      // We assume daily directory is parent of todayInsights + /daily/
+      const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+      let insightsPath = config.paths.semantah.todayInsights;
+
+      if (!isToday) {
+        // Try to construct historical path
+        // Standard layout: .../insights/today.json -> .../insights/daily/YYYY-MM-DD.json
+        const insightsDir = join(dirname(config.paths.semantah.todayInsights), 'daily');
+        insightsPath = join(insightsDir, `${dateStr}.json`);
+        console.log(`  Targeting historical insights: ${insightsPath}`);
+      }
+
+      return await loadDailyInsights(insightsPath);
+    } catch (error) {
+      console.warn(`Warning: Could not load insights: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    }
+  };
+
+  // Define task for events
+  const loadEventsTask = async () => {
+    console.log('Loading recent events...');
+    try {
+      const events = await loadRecentEvents(config.paths.chronik.dataDir, since, until);
+      console.log(`  Found ${events.length} events`);
+      return events;
+    } catch (error) {
+      console.warn(`Warning: Could not load events: ${error instanceof Error ? error.message : String(error)}`);
+      return [] as Awaited<ReturnType<typeof loadRecentEvents>>;
+    }
+  };
+
+  // Define task for metrics
+  const loadMetricsTask = async () => {
+    console.log('Loading fleet metrics...');
+    try {
+      let metrics = null;
+      // Let's try to manually construct the path if we are looking for history.
+      const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+
+      if (!isToday) {
+        // Try to load specific metrics file
+        const metricsPath = join(config.paths.wgx.metricsDir, `${dateStr}.json`);
+        try {
+          metrics = await loadMetricsSnapshot(metricsPath);
+          console.log(`  Loaded historical metrics from ${metricsPath}`);
+        } catch (e) {
+          console.log(`  Could not load historical metrics for ${dateStr}, falling back to latest.`);
+          metrics = await loadLatestMetrics(config.paths.wgx.metricsDir);
+        }
+      } else {
+        metrics = await loadLatestMetrics(config.paths.wgx.metricsDir);
+      }
+
+      if (metrics) {
+        console.log(`  Metrics from ${metrics.timestamp}`);
+      } else {
+        console.log('  No metrics available');
+      }
+      return metrics;
+    } catch (error) {
+      console.warn(`Warning: Could not load metrics: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    }
+  };
+
+  const [insights, events, metrics] = await Promise.all([
+    loadInsightsTask(),
+    loadEventsTask(),
+    loadMetricsTask(),
+  ]);
+
+  return { insights, events, metrics };
 }
 
 /**
@@ -97,66 +183,7 @@ async function main(): Promise<void> {
     const until = addDays(since, 1);
     
     // Load data from all sources
-    console.log('Loading daily insights...');
-    let insights = null;
-    try {
-      // Determine which insights file to load
-      // If today, use todayInsights from config
-      // If historical date, try to find it in daily directory
-      // We assume daily directory is parent of todayInsights + /daily/
-      const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
-      let insightsPath = config.paths.semantah.todayInsights;
-
-      if (!isToday) {
-        // Try to construct historical path
-        // Standard layout: .../insights/today.json -> .../insights/daily/YYYY-MM-DD.json
-        const insightsDir = join(dirname(config.paths.semantah.todayInsights), 'daily');
-        insightsPath = join(insightsDir, `${dateStr}.json`);
-        console.log(`  Targeting historical insights: ${insightsPath}`);
-      }
-
-      insights = await loadDailyInsights(insightsPath);
-    } catch (error) {
-      console.warn(`Warning: Could not load insights: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    
-    console.log('Loading recent events...');
-    let events: Awaited<ReturnType<typeof loadRecentEvents>> = [];
-    try {
-      events = await loadRecentEvents(config.paths.chronik.dataDir, since, until);
-      console.log(`  Found ${events.length} events`);
-    } catch (error) {
-      console.warn(`Warning: Could not load events: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    
-    console.log('Loading fleet metrics...');
-    let metrics = null;
-    try {
-      // Let's try to manually construct the path if we are looking for history.
-      const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
-
-      if (!isToday) {
-         // Try to load specific metrics file
-         const metricsPath = join(config.paths.wgx.metricsDir, `${dateStr}.json`);
-         try {
-             metrics = await loadMetricsSnapshot(metricsPath);
-             console.log(`  Loaded historical metrics from ${metricsPath}`);
-         } catch (e) {
-             console.log(`  Could not load historical metrics for ${dateStr}, falling back to latest.`);
-             metrics = await loadLatestMetrics(config.paths.wgx.metricsDir);
-         }
-      } else {
-         metrics = await loadLatestMetrics(config.paths.wgx.metricsDir);
-      }
-
-      if (metrics) {
-        console.log(`  Metrics from ${metrics.timestamp}`);
-      } else {
-        console.log('  No metrics available');
-      }
-    } catch (error) {
-      console.warn(`Warning: Could not load metrics: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    const { insights, events, metrics } = await loadData(config, dateStr, since, until);
     
     // Build the digest
     console.log('Building digest...');
