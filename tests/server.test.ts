@@ -153,4 +153,26 @@ describe('POST /events', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('should trigger fetch-observatory script on valid observatory event', async () => {
+    const res = await request(app)
+      .post('/events')
+      .send({
+        type: 'knowledge.observatory.published.v1',
+        payload: { url: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json' }
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: 'refreshed', url: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json' });
+
+    // Verify exec was called with correct script and env
+    const { exec } = await import('child_process');
+    expect(exec).toHaveBeenCalledWith(
+      'node scripts/fetch-observatory.mjs',
+      expect.objectContaining({
+        env: expect.objectContaining({ OBSERVATORY_URL: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json' })
+      }),
+      expect.anything()
+    );
+  });
 });

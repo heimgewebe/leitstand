@@ -56,11 +56,52 @@ if (fs.existsSync(OUT)) {
   try {
     const obj = JSON.parse(s);
     if (!obj || typeof obj !== "object") throw new Error("Artifact JSON is not an object.");
-    if (!obj.generated_at) throw new Error("Artifact missing generated_at.");
-    if (!obj.source) throw new Error("Artifact missing source.");
-    if (!Array.isArray(obj.topics)) throw new Error("Artifact topics must be an array.");
 
-    console.log(`[leitstand] Artifact valid. bytes=${Buffer.byteLength(s, "utf8")} generated_at=${obj.generated_at} topics=${obj.topics.length}`);
+    // Load Schema
+    const SCHEMA_PATH = path.join(process.cwd(), "contracts", "knowledge.observatory.schema.json");
+    if (fs.existsSync(SCHEMA_PATH)) {
+        try {
+            const schema = JSON.parse(fs.readFileSync(SCHEMA_PATH, "utf8"));
+            // Basic Schema Validation (Proxy for full AJV)
+            if (schema.required && Array.isArray(schema.required)) {
+                for (const field of schema.required) {
+                    if (!(field in obj)) throw new Error(`Schema violation: Missing required field '${field}'`);
+
+                    // Strengthen check: Type check for string fields (avoid null/empty holes)
+                    if (schema.properties && schema.properties[field]) {
+                        const type = schema.properties[field].type;
+                        if (type === 'string') {
+                            if (typeof obj[field] !== 'string' || obj[field].trim() === '') {
+                                throw new Error(`Schema violation: Field '${field}' must be a non-empty string`);
+                            }
+                        }
+                    }
+                }
+            }
+            if (schema.properties) {
+                 if (schema.properties.topics && obj.topics && !Array.isArray(obj.topics)) {
+                     throw new Error("Schema violation: 'topics' must be an array");
+                 }
+            }
+            console.log(`[leitstand] Validated against schema: ${SCHEMA_PATH}`);
+        } catch (schemaErr) {
+             // If validation failed, throw it. If loading failed, log warn?
+             if (schemaErr.message.startsWith("Schema violation")) throw schemaErr;
+             console.warn(`[leitstand] WARN: Schema validation skipped (load error): ${schemaErr.message}`);
+
+             // Fallback to manual checks if schema load fails
+             if (!obj.generated_at) throw new Error("Artifact missing generated_at.");
+             if (!obj.source) throw new Error("Artifact missing source.");
+             if (!Array.isArray(obj.topics)) throw new Error("Artifact topics must be an array.");
+        }
+    } else {
+        console.warn(`[leitstand] WARN: Contract not found at ${SCHEMA_PATH}. Using fallback validation.`);
+        if (!obj.generated_at) throw new Error("Artifact missing generated_at.");
+        if (!obj.source) throw new Error("Artifact missing source.");
+        if (!Array.isArray(obj.topics)) throw new Error("Artifact topics must be an array.");
+    }
+
+    console.log(`[leitstand] Artifact valid. bytes=${Buffer.byteLength(s, "utf8")} generated_at=${obj.generated_at} topics=${obj.topics ? obj.topics.length : '?'}`);
   } catch (e) {
     if (strict) {
         console.error(`[leitstand] FATAL: Artifact is not valid JSON/Schema: ${e.message}`);
