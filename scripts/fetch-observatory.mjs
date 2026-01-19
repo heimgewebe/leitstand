@@ -47,12 +47,18 @@ try {
 
   // SHA Verification
   if (EXPECTED_SHA) {
-      const fileBuffer = fs.readFileSync(OUT);
-      const hash = createHash('sha256').update(fileBuffer).digest('hex');
-      if (hash !== EXPECTED_SHA) {
-          throw new Error(`SHA mismatch. Expected ${EXPECTED_SHA}, got ${hash}`);
+      if (!/^[a-f0-9]{64}$/i.test(EXPECTED_SHA)) {
+          const msg = `Invalid SHA format: ${EXPECTED_SHA} (expected 64-char hex)`;
+          if (strict) throw new Error(msg);
+          console.warn(`[leitstand] WARN: ${msg}. Skipping verification.`);
+      } else {
+          const fileBuffer = fs.readFileSync(OUT);
+          const hash = createHash('sha256').update(fileBuffer).digest('hex');
+          if (hash !== EXPECTED_SHA) {
+              throw new Error(`SHA mismatch. Expected ${EXPECTED_SHA}, got ${hash}`);
+          }
+          console.log(`[leitstand] SHA verified: ${hash}`);
       }
-      console.log(`[leitstand] SHA verified: ${hash}`);
   }
 
 } catch (err) {

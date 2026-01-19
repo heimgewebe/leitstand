@@ -45,7 +45,7 @@
         Fetched At: <%= locals.view_meta.forensics.fetched_at %><br>
         <% if (locals.view_meta.forensics.observatory) { %>
            Raw Bytes: <%= locals.view_meta.forensics.observatory.bytes %> | Source: <%= locals.view_meta.forensics.observatory.source_url %>
-           <% if (locals.view_meta.forensics.observatory.sha) { %> | SHA: <span title="<%= locals.view_meta.forensics.observatory.sha %>"><%= locals.view_meta.forensics.observatory.sha.substring(0, 7) %>...</span><% } %>
+           <% if (locals.view_meta.forensics.observatory.sha) { %> | SHA-256: <span title="<%= locals.view_meta.forensics.observatory.sha %>"><%= locals.view_meta.forensics.observatory.sha.substring(0, 7) %>...</span><% } %>
            <% if (locals.view_meta.forensics.observatory.schema_ref) { %> | Schema: <a href="<%= locals.view_meta.forensics.observatory.schema_ref %>" target="_blank" style="color: #555; text-decoration: underline;">ref</a><% } %><br>
         <% } %>
         <% if (locals.view_meta.forensics.insights_daily) { %>

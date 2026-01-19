@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import { join } from 'path';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
+import { createHash } from 'crypto';
 
 const execPromise = promisify(exec);
 
@@ -14,6 +15,18 @@ describe('scripts/fetch-observatory.mjs', () => {
     let baseUrl;
     let testDir;
     let artifactPath;
+
+    // Deterministic content for SHA test
+    const staticContent = JSON.stringify({
+        generated_at: "2023-01-01T00:00:00.000Z",
+        source: "test-static",
+        observatory_id: "test-static-id",
+        topics: [{ name: "t1" }],
+        signals: {},
+        blind_spots: [],
+        considered_but_rejected: []
+    });
+    const staticSha = createHash('sha256').update(staticContent).digest('hex');
 
     beforeAll(async () => {
         // Setup simple server to serve JSON artifacts
@@ -28,6 +41,10 @@ describe('scripts/fetch-observatory.mjs', () => {
                 blind_spots: [],
                 considered_but_rejected: []
             });
+        });
+        app.get('/static.json', (req, res) => {
+            res.setHeader('Content-Type', 'application/json');
+            res.send(staticContent);
         });
         app.get('/invalid.json', (req, res) => {
             res.json({
@@ -72,32 +89,17 @@ describe('scripts/fetch-observatory.mjs', () => {
         expect(stdout).toContain('Artifact valid');
     }, 10000);
 
-    it('should verify SHA checksum if provided', async () => {
-        // Pre-calculate SHA for valid.json response
-        // Note: Express res.json() serialization is usually deterministic but spacing might vary.
-        // For robustness, we can just assume the content or calculate it if possible.
-        // Or simpler: use a static file server?
-        // Let's assume standard JSON stringify.
-        const validObj = {
-            generated_at: new Date().toISOString(), // This will drift if we call new Date() again inside the test
-            source: "test-source",
-            observatory_id: "test-obs",
-            topics: [{ name: "t1" }],
-            signals: {},
-            blind_spots: [],
-            considered_but_rejected: []
-        };
-        // We can't easily predict the exact bytes served by express res.json() without controlling it fully.
-        // Let's skip SHA matching for the "success" case unless we serve a static buffer.
-        // Instead, let's test the FAILURE case (mismatch) which is easier.
-
+    it('should verify SHA checksum if provided (failure case)', async () => {
         const cmd = `node scripts/fetch-observatory.mjs`;
+        // Valid SHA format (64 chars) but wrong value
+        const wrongSha = 'a'.repeat(64);
+
         const env = {
             ...process.env,
             OBSERVATORY_URL: `${baseUrl}/valid.json`,
             OBSERVATORY_ARTIFACT_PATH: artifactPath,
             LEITSTAND_STRICT: '1',
-            OBSERVATORY_SHA: 'invalid-sha-123'
+            OBSERVATORY_SHA: wrongSha
         };
 
         try {
@@ -107,6 +109,20 @@ describe('scripts/fetch-observatory.mjs', () => {
             expect(error.code).not.toBe(0);
             expect(error.stderr).toContain('SHA mismatch');
         }
+    }, 10000);
+
+    it('should verify SHA checksum if provided (success case)', async () => {
+        const cmd = `node scripts/fetch-observatory.mjs`;
+        const env = {
+            ...process.env,
+            OBSERVATORY_URL: `${baseUrl}/static.json`,
+            OBSERVATORY_ARTIFACT_PATH: artifactPath,
+            LEITSTAND_STRICT: '1',
+            OBSERVATORY_SHA: staticSha
+        };
+
+        const { stdout } = await execPromise(cmd, { env });
+        expect(stdout).toContain(`SHA verified: ${staticSha}`);
     }, 10000);
 
     it('should fail strict validation for an invalid artifact', async () => {
