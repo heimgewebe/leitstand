@@ -1,5 +1,6 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.heimgewebe.org/contracts/knowledge/observatory.schema.json",
   "title": "Knowledge Observatory Artifact",
   "type": "object",
   "required": [

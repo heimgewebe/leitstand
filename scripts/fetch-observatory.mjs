@@ -5,7 +5,7 @@ import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import { fileURLToPath } from 'url';
 import { createHash } from "crypto";
-import Ajv from "ajv";
+import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -83,7 +83,8 @@ if (fs.existsSync(OUT)) {
     if (!obj || typeof obj !== "object") throw new Error("Artifact JSON is not an object.");
 
     // Load Schema from vendor path
-    const SCHEMA_PATH = path.resolve(__dirname, "..", "vendor", "contracts", "knowledge.observatory.schema.json");
+    const SCHEMA_PATH = path.resolve(__dirname, "..", "vendor", "contracts", "knowledge", "observatory.schema.json");
+    console.log(`[leitstand] Debug: Checking schema at ${SCHEMA_PATH}`);
 
     if (fs.existsSync(SCHEMA_PATH)) {
         try {
@@ -102,17 +103,19 @@ if (fs.existsSync(OUT)) {
              // If validation failed, check strictness
              if (schemaErr.message.startsWith("Schema violation")) {
                  if (strict) {
-                     console.error(`[leitstand] FATAL: ${schemaErr.message}`);
+                     console.log(`[leitstand] FATAL: ${schemaErr.message}`); // Log to stdout for test visibility
                      process.exit(1);
                  } else {
-                     console.warn(`[leitstand] WARN: ${schemaErr.message}`);
+                     console.log(`[leitstand] WARN: ${schemaErr.message}`);
                  }
              } else {
-                 console.warn(`[leitstand] WARN: Schema validation skipped (load/compile error): ${schemaErr.message}`);
+                 console.log(`[leitstand] WARN: Schema validation skipped (load/compile error): ${schemaErr.message}`);
              }
         }
     } else {
-        console.warn(`[leitstand] WARN: Contract not found at ${SCHEMA_PATH}. Validation skipped.`);
+        console.log(`[leitstand] WARN: Contract not found at ${SCHEMA_PATH}. Validation skipped.`);
+        console.log(`[leitstand] Debug: CWD is ${process.cwd()}`);
+        console.log(`[leitstand] Debug: __dirname is ${__dirname}`);
         // Fallback check if schema is missing
         if (!obj.generated_at) throw new Error("Artifact missing generated_at.");
     }

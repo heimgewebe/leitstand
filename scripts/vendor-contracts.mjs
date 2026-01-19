@@ -7,11 +7,11 @@ import { finished } from "node:stream/promises";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TARGET_DIR = path.resolve(__dirname, "..", "vendor", "contracts");
-const METAREPO_BASE = process.env.METAREPO_BASE_URL || "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts";
+const METAREPO_BASE = process.env.METAREPO_BASE_URL || "https://raw.githubusercontent.com/heimgewebe/metarepo/main";
 
 const CONTRACTS = [
-    { name: "knowledge.observatory.schema.json", path: "contracts/knowledge/observatory.schema.json" },
-    { name: "plexer.delivery.report.v1.schema.json", path: "contracts/plexer/delivery.report.v1.schema.json" }
+    "contracts/knowledge/observatory.schema.json",
+    "contracts/plexer/delivery.report.v1.schema.json"
 ];
 
 async function fetchContract(url, dest) {
@@ -35,30 +35,23 @@ async function main() {
         contracts: {}
     };
 
-    for (const contract of CONTRACTS) {
-        // If METAREPO_BASE includes 'contracts', remove it from path if present, or adjust base.
-        // Assuming METAREPO_BASE is root of repo or raw content root
-        // Default: https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts
-        // If base ends in /contracts, we should not duplicate it if path starts with contracts/
+    for (const contractPath of CONTRACTS) {
+        const url = `${METAREPO_BASE}/${contractPath}`;
 
-        let url = `${METAREPO_BASE}`;
-        let contractPath = contract.path;
+        // Map "contracts/knowledge/observatory.schema.json" -> "vendor/contracts/knowledge/observatory.schema.json"
+        // We strip "contracts/" prefix relative to TARGET_DIR if TARGET_DIR implies vendor/contracts
+        // Actually, let's keep the structure under vendor/contracts/ as-is from metarepo/contracts/
+        const relativePath = contractPath.replace(/^contracts\//, '');
+        const dest = path.join(TARGET_DIR, relativePath);
 
-        if (url.endsWith('/contracts') && contractPath.startsWith('contracts/')) {
-            contractPath = contractPath.replace(/^contracts\//, '');
-        }
+        await fs.promises.mkdir(path.dirname(dest), { recursive: true });
 
-        url = `${url}/${contractPath}`;
-
-        const dest = path.join(TARGET_DIR, contract.name);
         try {
             const sha = await fetchContract(url, dest);
-            pin.contracts[contract.name] = { sha256: sha, url };
-            console.log(`[vendor] Updated ${contract.name} (SHA: ${sha.substring(0, 8)}...)`);
+            pin.contracts[contractPath] = { sha256: sha, url };
+            console.log(`[vendor] Updated ${relativePath} (SHA: ${sha.substring(0, 8)}...)`);
         } catch (e) {
-            console.warn(`[vendor] Failed to fetch ${contract.name}: ${e.message}`);
-            // If local file exists, keep it but mark as stale? Or fail?
-            // For now, we fail if we can't fetch, to ensure we don't have partial state
+            console.warn(`[vendor] Failed to fetch ${contractPath}: ${e.message}`);
             if (!fs.existsSync(dest)) {
                  process.exit(1);
             }
@@ -70,16 +63,18 @@ async function main() {
 
     // Post-processing: Check canonical IDs
     console.log("[vendor] verifying canonical IDs...");
-    for (const contract of CONTRACTS) {
-        const dest = path.join(TARGET_DIR, contract.name);
+    for (const contractPath of CONTRACTS) {
+        const relativePath = contractPath.replace(/^contracts\//, '');
+        const dest = path.join(TARGET_DIR, relativePath);
+
         if (fs.existsSync(dest)) {
             try {
                 const schema = JSON.parse(fs.readFileSync(dest, 'utf8'));
                 if (schema.$id && !schema.$id.startsWith("https://schemas.heimgewebe.org/contracts/")) {
-                    console.warn(`[vendor] WARN: Schema ${contract.name} has non-canonical ID: ${schema.$id}`);
+                    console.warn(`[vendor] WARN: Schema ${relativePath} has non-canonical ID: ${schema.$id}`);
                 }
             } catch (e) {
-                console.warn(`[vendor] Failed to parse ${contract.name} for ID check.`);
+                console.warn(`[vendor] Failed to parse ${relativePath} for ID check.`);
             }
         }
     }

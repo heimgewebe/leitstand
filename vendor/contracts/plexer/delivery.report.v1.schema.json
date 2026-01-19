@@ -1,6 +1,6 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "http://heimgewebe.net/schemas/plexer/delivery.report.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.heimgewebe.org/contracts/plexer/delivery.report.v1.schema.json",
   "title": "Plexer Delivery Report V1",
   "type": "object",
   "required": ["counts"],
