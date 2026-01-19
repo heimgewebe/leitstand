@@ -162,7 +162,11 @@ describe('POST /events', () => {
       .post('/events')
       .send({
         type: 'knowledge.observatory.published.v1',
-        payload: { url: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json' }
+        payload: {
+            url: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json',
+            sha: 'abcdef123456',
+            schema_ref: 'https://schemas.heimgewebe.org/test.json'
+        }
       });
 
     expect(res.status).toBe(200);
@@ -173,7 +177,11 @@ describe('POST /events', () => {
     expect(exec).toHaveBeenCalledWith(
       'node scripts/fetch-observatory.mjs',
       expect.objectContaining({
-        env: expect.objectContaining({ OBSERVATORY_URL: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json' })
+        env: expect.objectContaining({
+            OBSERVATORY_URL: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json',
+            OBSERVATORY_SHA: 'abcdef123456',
+            OBSERVATORY_SCHEMA_REF: 'https://schemas.heimgewebe.org/test.json'
+        })
       }),
       expect.anything()
     );

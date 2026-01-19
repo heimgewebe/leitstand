@@ -4,6 +4,7 @@ import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import { fileURLToPath } from 'url';
+import { createHash } from "crypto";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 
@@ -21,6 +22,8 @@ if (!URL) {
 }
 
 let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_PATH || "artifacts/knowledge.observatory.json";
+const EXPECTED_SHA = process.env.OBSERVATORY_SHA;
+const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
 
 if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) {
     console.warn("[leitstand] WARN: OBSERVATORY_OUT_PATH is deprecated. Use OBSERVATORY_ARTIFACT_PATH.");
@@ -41,12 +44,23 @@ try {
   const fileStream = fs.createWriteStream(OUT);
   await finished(Readable.fromWeb(res.body).pipe(fileStream));
   console.log(`[leitstand] Fetch complete.`);
+
+  // SHA Verification
+  if (EXPECTED_SHA) {
+      const fileBuffer = fs.readFileSync(OUT);
+      const hash = createHash('sha256').update(fileBuffer).digest('hex');
+      if (hash !== EXPECTED_SHA) {
+          throw new Error(`SHA mismatch. Expected ${EXPECTED_SHA}, got ${hash}`);
+      }
+      console.log(`[leitstand] SHA verified: ${hash}`);
+  }
+
 } catch (err) {
   if (strict) {
-      console.error(`[leitstand] FATAL: Fetch failed: ${err.message}`);
+      console.error(`[leitstand] FATAL: Fetch/Verify failed: ${err.message}`);
       process.exit(1);
   }
-  console.warn(`[leitstand] WARN: Fetch failed: ${err.message}. Proceeding without artifact.`);
+  console.warn(`[leitstand] WARN: Fetch/Verify failed: ${err.message}. Proceeding without artifact.`);
 }
 
 if (fs.existsSync(OUT)) {
@@ -134,7 +148,9 @@ try {
     path: OUT,
     bytes: bytes,
     source_url: URL,
-    parsed: parsed
+    parsed: parsed,
+    sha: EXPECTED_SHA || null,
+    schema_ref: SCHEMA_REF || null
   };
 
   fs.writeFileSync(META_PATH, JSON.stringify(meta, null, 2));

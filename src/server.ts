@@ -65,7 +65,7 @@ app.post('/events', async (req, res) => {
   const eventType = event.type || event.kind;
 
   if (eventType === 'knowledge.observatory.published.v1') {
-    const { url, generated_at } = event.payload || {};
+    const { url, generated_at, sha, schema_ref } = event.payload || {};
 
     if (!url) {
       console.warn('Received observatory published event without URL');
@@ -105,9 +105,11 @@ app.post('/events', async (req, res) => {
 
     try {
       // Execute the fetch script with the provided URL
-      await execPromise('node scripts/fetch-observatory.mjs', {
-        env: { ...process.env, OBSERVATORY_URL: url }
-      });
+      const env = { ...process.env, OBSERVATORY_URL: url };
+      if (sha) env.OBSERVATORY_SHA = sha;
+      if (schema_ref) env.OBSERVATORY_SCHEMA_REF = schema_ref;
+
+      await execPromise('node scripts/fetch-observatory.mjs', { env });
 
       console.log('[Event] Observatory refresh complete.');
       res.status(200).send({ status: 'refreshed', url });
