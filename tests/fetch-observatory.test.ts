@@ -3,7 +3,7 @@ import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { join } from 'path';
-import { mkdir, rm, writeFile } from 'fs/promises';
+import { mkdir } from 'fs/promises';
 import { tmpdir } from 'os';
 import { createHash } from 'crypto';
 
@@ -83,7 +83,7 @@ describe('scripts/fetch-observatory.mjs', () => {
             LEITSTAND_STRICT: '1' // Enforce strict validation
         };
 
-        const { stdout, stderr } = await execPromise(cmd, { env });
+        const { stdout } = await execPromise(cmd, { env });
         expect(stdout).toContain('Fetch complete');
         expect(stdout).toContain('Validated against schema');
         expect(stdout).toContain('Artifact valid');
