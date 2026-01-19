@@ -10,8 +10,8 @@ const TARGET_DIR = path.resolve(__dirname, "..", "vendor", "contracts");
 const METAREPO_BASE = process.env.METAREPO_BASE_URL || "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts";
 
 const CONTRACTS = [
-    { name: "knowledge.observatory.schema.json", path: "knowledge/observatory.schema.json" },
-    { name: "plexer.delivery.report.v1.schema.json", path: "plexer/delivery.report.v1.schema.json" }
+    { name: "knowledge.observatory.schema.json", path: "contracts/knowledge/observatory.schema.json" },
+    { name: "plexer.delivery.report.v1.schema.json", path: "contracts/plexer/delivery.report.v1.schema.json" }
 ];
 
 async function fetchContract(url, dest) {
@@ -36,9 +36,19 @@ async function main() {
     };
 
     for (const contract of CONTRACTS) {
-        const url = `${METAREPO_BASE}/${contract.path}`; // Note: assuming flattened or specific structure in metarepo
-        // Actually, metarepo path structure usually mirrors contracts/.
-        // Let's assume METAREPO_BASE points to /contracts root.
+        // If METAREPO_BASE includes 'contracts', remove it from path if present, or adjust base.
+        // Assuming METAREPO_BASE is root of repo or raw content root
+        // Default: https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts
+        // If base ends in /contracts, we should not duplicate it if path starts with contracts/
+
+        let url = `${METAREPO_BASE}`;
+        let contractPath = contract.path;
+
+        if (url.endsWith('/contracts') && contractPath.startsWith('contracts/')) {
+            contractPath = contractPath.replace(/^contracts\//, '');
+        }
+
+        url = `${url}/${contractPath}`;
 
         const dest = path.join(TARGET_DIR, contract.name);
         try {
