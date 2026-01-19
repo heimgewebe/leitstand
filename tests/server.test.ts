@@ -4,8 +4,11 @@ import { app } from '../src/server.js';
 import { resetEnvConfig } from '../src/config.js';
 
 // Mock child_process for fetch scripts
-vi.mock('child_process', () => {
+import * as cp from 'child_process';
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof cp>();
   return {
+    ...actual,
     exec: vi.fn((cmd, opts, callback) => {
       if (typeof opts === 'function') {
         callback = opts;

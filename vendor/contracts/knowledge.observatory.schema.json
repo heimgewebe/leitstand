@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Knowledge Observatory Artifact",
+  "type": "object",
+  "required": [
+    "generated_at",
+    "source",
+    "topics",
+    "observatory_id"
+  ],
+  "properties": {
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observatory_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "topics": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "signals": {
+      "type": "object"
+    },
+    "blind_spots": {
+      "type": "array"
+    },
+    "considered_but_rejected": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

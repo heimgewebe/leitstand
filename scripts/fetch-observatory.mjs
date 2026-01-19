@@ -3,6 +3,11 @@ import path from "path";
 import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
+import { fileURLToPath } from 'url';
+import Ajv from "ajv";
+import addFormats from "ajv-formats";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let URL = process.env.OBSERVATORY_URL;
 
@@ -57,48 +62,39 @@ if (fs.existsSync(OUT)) {
     const obj = JSON.parse(s);
     if (!obj || typeof obj !== "object") throw new Error("Artifact JSON is not an object.");
 
-    // Load Schema
-    const SCHEMA_PATH = path.join(process.cwd(), "contracts", "knowledge.observatory.schema.json");
+    // Load Schema from vendor path
+    const SCHEMA_PATH = path.resolve(__dirname, "..", "vendor", "contracts", "knowledge.observatory.schema.json");
+
     if (fs.existsSync(SCHEMA_PATH)) {
         try {
             const schema = JSON.parse(fs.readFileSync(SCHEMA_PATH, "utf8"));
-            // Basic Schema Validation (Proxy for full AJV)
-            if (schema.required && Array.isArray(schema.required)) {
-                for (const field of schema.required) {
-                    if (!(field in obj)) throw new Error(`Schema violation: Missing required field '${field}'`);
+            const ajv = new Ajv({ strict: strict, allErrors: true });
+            addFormats(ajv);
+            const validate = ajv.compile(schema);
+            const valid = validate(obj);
 
-                    // Strengthen check: Type check for string fields (avoid null/empty holes)
-                    if (schema.properties && schema.properties[field]) {
-                        const type = schema.properties[field].type;
-                        if (type === 'string') {
-                            if (typeof obj[field] !== 'string' || obj[field].trim() === '') {
-                                throw new Error(`Schema violation: Field '${field}' must be a non-empty string`);
-                            }
-                        }
-                    }
-                }
-            }
-            if (schema.properties) {
-                 if (schema.properties.topics && obj.topics && !Array.isArray(obj.topics)) {
-                     throw new Error("Schema violation: 'topics' must be an array");
-                 }
+            if (!valid) {
+                 const errors = validate.errors.map(e => `${e.instancePath} ${e.message}`).join(', ');
+                 throw new Error(`Schema violation: ${errors}`);
             }
             console.log(`[leitstand] Validated against schema: ${SCHEMA_PATH}`);
         } catch (schemaErr) {
-             // If validation failed, throw it. If loading failed, log warn?
-             if (schemaErr.message.startsWith("Schema violation")) throw schemaErr;
-             console.warn(`[leitstand] WARN: Schema validation skipped (load error): ${schemaErr.message}`);
-
-             // Fallback to manual checks if schema load fails
-             if (!obj.generated_at) throw new Error("Artifact missing generated_at.");
-             if (!obj.source) throw new Error("Artifact missing source.");
-             if (!Array.isArray(obj.topics)) throw new Error("Artifact topics must be an array.");
+             // If validation failed, check strictness
+             if (schemaErr.message.startsWith("Schema violation")) {
+                 if (strict) {
+                     console.error(`[leitstand] FATAL: ${schemaErr.message}`);
+                     process.exit(1);
+                 } else {
+                     console.warn(`[leitstand] WARN: ${schemaErr.message}`);
+                 }
+             } else {
+                 console.warn(`[leitstand] WARN: Schema validation skipped (load/compile error): ${schemaErr.message}`);
+             }
         }
     } else {
-        console.warn(`[leitstand] WARN: Contract not found at ${SCHEMA_PATH}. Using fallback validation.`);
+        console.warn(`[leitstand] WARN: Contract not found at ${SCHEMA_PATH}. Validation skipped.`);
+        // Fallback check if schema is missing
         if (!obj.generated_at) throw new Error("Artifact missing generated_at.");
-        if (!obj.source) throw new Error("Artifact missing source.");
-        if (!Array.isArray(obj.topics)) throw new Error("Artifact topics must be an array.");
     }
 
     console.log(`[leitstand] Artifact valid. bytes=${Buffer.byteLength(s, "utf8")} generated_at=${obj.generated_at} topics=${obj.topics ? obj.topics.length : '?'}`);
@@ -114,6 +110,8 @@ if (fs.existsSync(OUT)) {
 // Update _meta.json
 try {
   const META_PATH = "artifacts/_meta.json";
+  await mkdir(path.dirname(META_PATH), { recursive: true });
+
   let meta = {};
   if (fs.existsSync(META_PATH)) {
     try { meta = JSON.parse(fs.readFileSync(META_PATH, "utf8")); } catch (e) {}
