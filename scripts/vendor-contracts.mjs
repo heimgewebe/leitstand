@@ -67,6 +67,22 @@ async function main() {
 
     fs.writeFileSync(path.join(TARGET_DIR, "_pin.json"), JSON.stringify(pin, null, 2));
     console.log("[vendor] Vendoring complete.");
+
+    // Post-processing: Check canonical IDs
+    console.log("[vendor] verifying canonical IDs...");
+    for (const contract of CONTRACTS) {
+        const dest = path.join(TARGET_DIR, contract.name);
+        if (fs.existsSync(dest)) {
+            try {
+                const schema = JSON.parse(fs.readFileSync(dest, 'utf8'));
+                if (schema.$id && !schema.$id.startsWith("https://schemas.heimgewebe.org/contracts/")) {
+                    console.warn(`[vendor] WARN: Schema ${contract.name} has non-canonical ID: ${schema.$id}`);
+                }
+            } catch (e) {
+                console.warn(`[vendor] Failed to parse ${contract.name} for ID check.`);
+            }
+        }
+    }
 }
 
 main().catch(e => {

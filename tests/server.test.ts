@@ -158,13 +158,16 @@ describe('POST /events', () => {
   });
 
   it('should trigger fetch-observatory script on valid observatory event', async () => {
+    // 64-char hex SHA for strict validation
+    const validSha = 'a'.repeat(64);
+
     const res = await request(app)
       .post('/events')
       .send({
         type: 'knowledge.observatory.published.v1',
         payload: {
             url: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json',
-            sha: 'abcdef123456',
+            sha: validSha,
             schema_ref: 'https://schemas.heimgewebe.org/test.json'
         }
       });
@@ -179,7 +182,7 @@ describe('POST /events', () => {
       expect.objectContaining({
         env: expect.objectContaining({
             OBSERVATORY_URL: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json',
-            OBSERVATORY_SHA: 'abcdef123456',
+            OBSERVATORY_SHA: validSha,
             OBSERVATORY_SCHEMA_REF: 'https://schemas.heimgewebe.org/test.json'
         })
       }),
