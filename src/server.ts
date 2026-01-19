@@ -7,6 +7,9 @@ import { fileURLToPath } from 'url';
 import { readJsonFile } from './utils/fs.js';
 import { envConfig } from './config.js';
 import { getObservatoryData } from './controllers/observatory.js';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
+import fs from 'fs';
 
 const execPromise = promisify(exec);
 
@@ -149,6 +152,44 @@ app.post('/events', async (req, res) => {
         error: 'Refresh failed',
         details: error instanceof Error ? error.message : String(error)
       });
+    }
+  } else if (eventType === 'plexer.delivery.report.v1') {
+    const payload = event.payload || {};
+
+    // Validate schema
+    try {
+       const schemaPath = join(process.cwd(), 'vendor', 'contracts', 'plexer.delivery.report.v1.schema.json');
+       if (fs.existsSync(schemaPath)) {
+           const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+           const ajv = new Ajv({ strict: true });
+           addFormats(ajv);
+           const validate = ajv.compile(schema);
+           if (!validate(payload)) {
+               const errorMsg = validate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ');
+               console.warn(`[Event] Invalid Plexer Report: ${errorMsg}`);
+               res.status(400).send({ error: 'Schema violation', details: errorMsg });
+               return;
+           }
+       } else {
+           console.warn(`[Event] Plexer contract missing at ${schemaPath}. Skipping strict validation.`);
+       }
+
+       // Save artifact
+       const artifactPath = join(process.cwd(), 'artifacts', 'plexer.delivery.report.json');
+       // Ensure dir exists?
+       // We assume artifacts dir exists or we should create it
+       const artifactsDir = join(process.cwd(), 'artifacts');
+       if (!fs.existsSync(artifactsDir)) {
+          fs.mkdirSync(artifactsDir, { recursive: true });
+       }
+
+       fs.writeFileSync(artifactPath, JSON.stringify(payload, null, 2));
+       console.log('[Event] Plexer Delivery Report saved.');
+       res.status(200).send({ status: 'saved' });
+
+    } catch (e) {
+       console.error('[Event] Failed to process Plexer report:', e);
+       res.status(500).send({ error: 'Internal Server Error' });
     }
   } else {
     res.status(200).send({ status: 'ignored' });

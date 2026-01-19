@@ -238,6 +238,19 @@ async function main() {
     }
   }
 
+  // Load Plexer Delivery Report
+  const plexerArtifactPath = join(ROOT, 'artifacts', 'plexer.delivery.report.json');
+  let plexerDelivery = null;
+  try {
+      const content = await readFile(plexerArtifactPath, 'utf-8');
+      if (content.trim()) {
+          plexerDelivery = JSON.parse(content);
+          console.log(`Loaded plexer delivery report from artifact: ${plexerArtifactPath}`);
+      }
+  } catch (e) {
+      console.warn("Plexer artifact missing (static build fallback).");
+  }
+
   // Load self_state.json (Heimgeist)
   const selfStateArtifactPath = join(ROOT, 'artifacts', 'self_state.json');
   const selfStateFixturePath = join(ROOT, 'src', 'fixtures', 'self_state.json');
@@ -306,7 +319,7 @@ async function main() {
   await renderTo(
     join(OUT, "observatory", "index.html"),
     "observatory",
-    { data: observatoryData, insightsDaily, integritySummary, selfState },
+    { data: observatoryData, insightsDaily, integritySummary, selfState, plexerDelivery },
     {
       view_meta: {
           source_kind: sourceKind,

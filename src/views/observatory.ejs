@@ -265,6 +265,49 @@
     <% } %>
   </div>
 
+  <!-- PLEXER DELIVERY (New Panel) -->
+  <h2 class="section-title">Plexer Delivery Status</h2>
+  <div style="background: #e0f2f1; border: 1px solid #b2dfdb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
+    <% if (locals.plexerDelivery && locals.plexerDelivery.counts) { %>
+        <%
+           const pCounts = locals.plexerDelivery.counts;
+           const pending = pCounts.pending || 0;
+           const failed = pCounts.failed || 0;
+           let pStatus = 'OK';
+           let pColor = '#00695c';
+           if (failed > 0) { pStatus = 'FAIL'; pColor = '#c62828'; }
+           else if (pending > 10) { pStatus = 'BUSY'; pColor = '#f9a825'; }
+        %>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+           <div>
+               <strong>Status:</strong> <span style="font-weight: bold; color: <%= pColor %>"><%= pStatus %></span>
+           </div>
+           <% if (locals.plexerDelivery.last_retry_at) { %>
+               <div style="font-size: 0.9em; color: #555;">Last Retry: <%= locals.plexerDelivery.last_retry_at %></div>
+           <% } %>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
+            <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #b2dfdb;">
+               <div style="font-size: 1.5em; font-weight: bold; color: #00695c;"><%= pending %></div>
+               <div style="color: #666; font-size: 0.8em;">Pending</div>
+            </div>
+            <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #b2dfdb;">
+               <div style="font-size: 1.5em; font-weight: bold; color: <%= failed > 0 ? '#c62828' : '#00695c' %>;"><%= failed %></div>
+               <div style="color: #666; font-size: 0.8em;">Failed</div>
+            </div>
+        </div>
+
+        <% if (locals.plexerDelivery.last_error) { %>
+            <div style="margin-top: 15px; padding: 10px; background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; border-radius: 4px; font-size: 0.9em;">
+                <strong>Last Error:</strong> <%= locals.plexerDelivery.last_error %>
+            </div>
+        <% } %>
+    <% } else { %>
+        <p style="color: #666; font-style: italic;">No delivery metrics available.</p>
+    <% } %>
+  </div>
+
   <!-- INTEGRITY SECTION (New Panel) -->
   <h2 class="section-title">System Integrity</h2>
   <div style="background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">

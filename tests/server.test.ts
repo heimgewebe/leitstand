@@ -178,4 +178,38 @@ describe('POST /events', () => {
       expect.anything()
     );
   });
+
+  it('should accept and save valid plexer delivery report', async () => {
+    const report = {
+        counts: { pending: 5, failed: 0 },
+        last_error: null,
+        last_retry_at: new Date().toISOString()
+    };
+
+    const res = await request(app)
+      .post('/events')
+      .send({
+        type: 'plexer.delivery.report.v1',
+        payload: report
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: 'saved' });
+  });
+
+  it('should reject invalid plexer delivery report (schema violation)', async () => {
+    const report = {
+        counts: { pending: -1 }, // Invalid negative
+    };
+
+    const res = await request(app)
+      .post('/events')
+      .send({
+        type: 'plexer.delivery.report.v1',
+        payload: report
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Schema violation');
+  });
 });
