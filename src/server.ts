@@ -189,12 +189,10 @@ app.post('/events', async (req, res) => {
            if (fs.existsSync(metaPath)) {
                try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch (e) {}
            }
-           meta.fetched_at = new Date().toISOString();
-           meta.plexer_report = {
-               source_kind: 'event',
-               bytes: Buffer.byteLength(JSON.stringify(payload)),
-               generated_at: new Date().toISOString()
-           };
+           if (!meta.plexer_report) meta.plexer_report = {};
+           meta.plexer_report.fetched_at = new Date().toISOString();
+           meta.plexer_report.source_kind = 'event';
+           meta.plexer_report.bytes = Buffer.byteLength(JSON.stringify(payload));
            fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
        } catch (metaErr) {
            console.warn('[Event] Failed to update forensics for plexer report:', metaErr);
