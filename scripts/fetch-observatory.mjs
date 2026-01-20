@@ -25,6 +25,20 @@ let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_P
 const EXPECTED_SHA = process.env.OBSERVATORY_SHA;
 const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
 
+// Enforce SCHEMA_REF allowlist if provided
+if (SCHEMA_REF) {
+    const ALLOWED_HOSTS = ['schemas.heimgewebe.org', 'raw.githubusercontent.com'];
+    try {
+        const u = new URL(SCHEMA_REF);
+        if (!ALLOWED_HOSTS.includes(u.hostname)) {
+             throw new Error(`SCHEMA_REF hostname '${u.hostname}' not in allowlist.`);
+        }
+    } catch (e) {
+        console.error(`[leitstand] FATAL: Invalid SCHEMA_REF: ${e.message}`);
+        process.exit(1);
+    }
+}
+
 if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) {
     console.warn("[leitstand] WARN: OBSERVATORY_OUT_PATH is deprecated. Use OBSERVATORY_ARTIFACT_PATH.");
 }
@@ -47,14 +61,20 @@ try {
 
   // SHA Verification
   if (EXPECTED_SHA) {
-      if (!/^[a-f0-9]{64}$/i.test(EXPECTED_SHA)) {
-          const msg = `Invalid SHA format: ${EXPECTED_SHA} (expected 64-char hex)`;
+      // Normalize SHA: support "sha256:" prefix
+      let normalizedSha = EXPECTED_SHA;
+      if (normalizedSha.startsWith('sha256:')) {
+          normalizedSha = normalizedSha.slice(7);
+      }
+
+      if (!/^[a-f0-9]{64}$/i.test(normalizedSha)) {
+          const msg = `Invalid SHA format: ${EXPECTED_SHA} (expected 64-char hex or sha256: prefix)`;
           if (strict) throw new Error(msg);
           console.warn(`[leitstand] WARN: ${msg}. Skipping verification.`);
       } else {
           const fileBuffer = fs.readFileSync(OUT);
           const hash = createHash('sha256').update(fileBuffer).digest('hex');
-          if (hash !== EXPECTED_SHA) {
+          if (hash.toLowerCase() !== normalizedSha.toLowerCase()) {
               throw new Error(`SHA mismatch. Expected ${EXPECTED_SHA}, got ${hash}`);
           }
           console.log(`[leitstand] SHA verified: ${hash}`);
@@ -140,7 +160,7 @@ try {
     try { meta = JSON.parse(fs.readFileSync(META_PATH, "utf8")); } catch (e) {}
   }
 
-  meta.fetched_at = new Date().toISOString();
+  // meta.fetched_at = new Date().toISOString(); // Do not overwrite global fetched_at
   meta.strict = strict;
 
   const fileExists = fs.existsSync(OUT);
@@ -154,6 +174,7 @@ try {
   }
 
   meta.observatory = {
+    fetched_at: new Date().toISOString(),
     path: OUT,
     bytes: bytes,
     source_url: URL,

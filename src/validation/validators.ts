@@ -3,9 +3,10 @@ import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { envConfig } from '../config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ajv = new Ajv({ strict: true });
+const ajv = new Ajv({ strict: envConfig.isStrict });
 addFormats(ajv);
 
 const CONTRACTS_DIR = path.resolve(__dirname, '..', '..', 'vendor', 'contracts');

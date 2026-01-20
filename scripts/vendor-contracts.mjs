@@ -57,7 +57,7 @@ async function main() {
             if (fs.existsSync(dest)) {
                 const content = fs.readFileSync(dest);
                 const sha = createHash('sha256').update(content).digest('hex');
-                pin.contracts[contractPath] = { sha256: sha, url, error: e.message };
+                pin.contracts[contractPath] = { sha256: sha, url, status: "cached_fallback", warning: e.message };
             } else {
                  console.error(`[vendor] Fatal: Contract ${contractPath} missing and fetch failed.`);
                  process.exit(1);

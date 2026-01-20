@@ -39,17 +39,35 @@
             <span style="color: #666;">OFF</span>
         <% } %>
     </div>
-    <% if (locals.view_meta && locals.view_meta.forensics && locals.view_meta.forensics.fetched_at) { %>
+    <% if (locals.view_meta && locals.view_meta.forensics) { %>
       <div style="margin-top: 5px; border-top: 1px dashed #ddd; padding-top: 5px;">
         <strong>Forensics:</strong><br>
-        Fetched At: <%= locals.view_meta.forensics.fetched_at %><br>
+        <% if (locals.view_meta.forensics.fetched_at) { %>
+           Global: <%= locals.view_meta.forensics.fetched_at %><br>
+        <% } %>
         <% if (locals.view_meta.forensics.observatory) { %>
-           Raw Bytes: <%= locals.view_meta.forensics.observatory.bytes %> | Source: <%= locals.view_meta.forensics.observatory.source_url %>
-           <% if (locals.view_meta.forensics.observatory.sha) { %> | SHA-256: <span title="<%= locals.view_meta.forensics.observatory.sha %>"><%= locals.view_meta.forensics.observatory.sha.substring(0, 7) %>...</span><% } %>
+           <strong>Observatory:</strong>
+           <% if (locals.view_meta.forensics.observatory.fetched_at) { %>
+              <%= locals.view_meta.forensics.observatory.fetched_at %> |
+           <% } %>
+           <%= locals.view_meta.forensics.observatory.bytes %> bytes |
+           Source: <%= locals.view_meta.forensics.observatory.source_url %>
+           <% if (locals.view_meta.forensics.observatory.sha) { %> | SHA: <span title="<%= locals.view_meta.forensics.observatory.sha %>"><%= locals.view_meta.forensics.observatory.sha.substring(0, 7) %>...</span><% } %>
            <% if (locals.view_meta.forensics.observatory.schema_ref) { %> | Schema: <a href="<%= locals.view_meta.forensics.observatory.schema_ref %>" target="_blank" style="color: #555; text-decoration: underline;">ref</a><% } %><br>
         <% } %>
-        <% if (locals.view_meta.forensics.insights_daily) { %>
-           Daily Bytes: <%= locals.view_meta.forensics.insights_daily.bytes %> | Source: <%= locals.view_meta.forensics.insights_daily.source_url %>
+        <% if (locals.view_meta.forensics.integrity) { %>
+           <strong>Integrity:</strong>
+           <% if (locals.view_meta.forensics.integrity.fetched_at) { %>
+              <%= locals.view_meta.forensics.integrity.fetched_at %>
+           <% } %>
+           <br>
+        <% } %>
+        <% if (locals.view_meta.forensics.plexer_report) { %>
+           <strong>Plexer:</strong>
+           <% if (locals.view_meta.forensics.plexer_report.fetched_at) { %>
+              <%= locals.view_meta.forensics.plexer_report.fetched_at %>
+           <% } %>
+           <br>
         <% } %>
       </div>
     <% } %>
