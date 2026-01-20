@@ -66,6 +66,8 @@ export async function loadRecentEvents(
     const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
     
     const events: EventLine[] = [];
+    const sinceIso = since.toISOString();
+    const untilIso = until.toISOString();
     
     for (const file of jsonlFiles) {
       const filePath = join(dataDir, file);
@@ -78,8 +80,7 @@ export async function loadRecentEvents(
         const event = parseEventLine(line);
         if (!event) continue;
         
-        const eventTime = new Date(event.timestamp);
-        if (eventTime >= since && eventTime < until) {
+        if (event.timestamp >= sinceIso && event.timestamp < untilIso) {
           events.push(event);
         }
       }
