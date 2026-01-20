@@ -3,22 +3,22 @@ import path from "path";
 import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL as NodeURL } from 'url';
 import { createHash } from "crypto";
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-let URL = process.env.OBSERVATORY_URL;
+let OBS_URL = process.env.OBSERVATORY_URL;
 
 if (process.env.OBSERVATORY_ARTIFACT_URL) {
     console.warn("[leitstand] DEPRECATED: OBSERVATORY_ARTIFACT_URL is set; use OBSERVATORY_URL instead.");
-    if (!URL) URL = process.env.OBSERVATORY_ARTIFACT_URL;
+    if (!OBS_URL) OBS_URL = process.env.OBSERVATORY_ARTIFACT_URL;
 }
 
-if (!URL) {
-    URL = "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
+if (!OBS_URL) {
+    OBS_URL = "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
 }
 
 let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_PATH || "artifacts/knowledge.observatory.json";
@@ -27,9 +27,9 @@ const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
 
 // Enforce SCHEMA_REF allowlist if provided
 if (SCHEMA_REF) {
-    const ALLOWED_HOSTS = ['schemas.heimgewebe.org', 'raw.githubusercontent.com'];
+    const ALLOWED_HOSTS = ['schemas.heimgewebe.org'];
     try {
-        const u = new URL(SCHEMA_REF);
+        const u = new NodeURL(SCHEMA_REF);
         if (!ALLOWED_HOSTS.includes(u.hostname)) {
              throw new Error(`SCHEMA_REF hostname '${u.hostname}' not in allowlist.`);
         }
@@ -46,12 +46,12 @@ if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) 
 const strict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === "production" || process.env.OBSERVATORY_STRICT === "1";
 
 await mkdir(path.dirname(OUT), { recursive: true });
-console.log(`[leitstand] Fetch source: ${URL}`);
+console.log(`[leitstand] Fetch source: ${OBS_URL}`);
 console.log(`[leitstand] Output path: ${OUT}`);
 console.log(`[leitstand] strict=${strict}`);
 
 try {
-  const res = await fetch(URL);
+  const res = await fetch(OBS_URL);
   if (!res.ok) {
      throw new Error(`HTTP ${res.status} ${res.statusText}`);
   }
@@ -177,7 +177,7 @@ try {
     fetched_at: new Date().toISOString(),
     path: OUT,
     bytes: bytes,
-    source_url: URL,
+    source_url: OBS_URL,
     parsed: parsed,
     sha: EXPECTED_SHA || null,
     schema_ref: SCHEMA_REF || null

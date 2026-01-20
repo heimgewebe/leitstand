@@ -19,6 +19,18 @@ Leitstand aggregates data from multiple sources to provide a unified dashboard.
 - **Validation:** Strict AJV against `vendor/contracts/plexer/delivery.report.v1.schema.json`
 - **Visualization:** "Plexer Delivery Status" panel in Observatory.
 
+## Contract Vendoring (Maintenance)
+
+Contracts are synchronized from the `heimgewebe/metarepo` to ensure Single Source of Truth (SSOT).
+This process is **manual** and should be run whenever contracts are updated in the metarepo.
+
+**Command:**
+```bash
+pnpm vendor:contracts
+```
+This script fetches canonical schemas and pins them in `vendor/contracts/_pin.json`.
+The vendored files must be committed to the repository. The build process (`build:cf`) relies on these local files and does **not** perform network requests to fetch contracts.
+
 ## Alerts and Monitoring
 
 ### Plexer Delivery Status

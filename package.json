@@ -9,7 +9,7 @@
     "fetch:observatory": "node scripts/fetch-observatory.mjs",
     "fetch:insights": "node scripts/fetch-insights-daily.mjs",
     "vendor:contracts": "node scripts/vendor-contracts.mjs",
-    "build:cf": "pnpm vendor:contracts && pnpm fetch:observatory && pnpm fetch:insights && node scripts/check-artifacts.mjs && pnpm build:static",
+    "build:cf": "pnpm fetch:observatory && pnpm fetch:insights && node scripts/check-artifacts.mjs && pnpm build:static",
     "build": "tsc",
     "build:static": "node scripts/build-static.mjs",
     "test": "vitest run",

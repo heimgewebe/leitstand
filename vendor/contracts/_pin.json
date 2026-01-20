@@ -4,15 +4,11 @@
   "contracts": {
     "contracts/knowledge/observatory.schema.json": {
       "sha256": "7087c9ac966bd13cb07fbc32b8938f635bd699c4d0d0e25d8a8ed1079c8761bf",
-      "url": "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts/knowledge/observatory.schema.json",
-      "status": "cached_fallback",
-      "warning": "HTTP 404 Not Found"
+      "url": "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts/knowledge/observatory.schema.json"
     },
     "contracts/plexer/delivery.report.v1.schema.json": {
       "sha256": "0e1687448db943b031c792f0619a3ce25a3b7b6be7b339f3826fcac75c821c5a",
-      "url": "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts/plexer/delivery.report.v1.schema.json",
-      "status": "cached_fallback",
-      "warning": "HTTP 404 Not Found"
+      "url": "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts/plexer/delivery.report.v1.schema.json"
     }
   }
 }
