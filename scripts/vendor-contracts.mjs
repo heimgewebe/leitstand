@@ -52,7 +52,14 @@ async function main() {
             console.log(`[vendor] Updated ${relativePath} (SHA: ${sha.substring(0, 8)}...)`);
         } catch (e) {
             console.warn(`[vendor] Failed to fetch ${contractPath}: ${e.message}`);
-            if (!fs.existsSync(dest)) {
+            // In simulation/dev, if fetch fails, we might still want to record the attempt in pin
+            // or rely on existing file. If file exists, compute its SHA.
+            if (fs.existsSync(dest)) {
+                const content = fs.readFileSync(dest);
+                const sha = createHash('sha256').update(content).digest('hex');
+                pin.contracts[contractPath] = { sha256: sha, url, error: e.message };
+            } else {
+                 console.error(`[vendor] Fatal: Contract ${contractPath} missing and fetch failed.`);
                  process.exit(1);
             }
         }

@@ -62,7 +62,8 @@ describe('scripts/fetch-observatory.mjs', () => {
             });
         });
 
-        testDir = await mkdir(join(tmpdir(), `leitstand-test-script-${Date.now()}`), { recursive: true });
+        testDir = join(tmpdir(), `leitstand-test-script-${Date.now()}`);
+        await mkdir(testDir, { recursive: true });
         artifactPath = join(testDir, 'observatory.json');
     });
 

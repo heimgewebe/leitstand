@@ -161,9 +161,14 @@ app.post('/events', async (req, res) => {
     try {
        const validation = validatePlexerReport(payload);
        if (!validation.valid) {
-           console.warn(`[Event] Invalid Plexer Report: ${validation.error}`);
-           res.status(validation.status).send({ error: validation.status === 503 ? 'Service Unavailable' : 'Schema violation', details: validation.error });
-           return;
+           const { isStrict } = envConfig;
+           if (!isStrict && validation.status === 503) {
+               console.warn(`[Event] WARN: Validator missing in non-strict mode. Proceeding with save.`);
+           } else {
+               console.warn(`[Event] Invalid Plexer Report: ${validation.error}`);
+               res.status(validation.status).send({ error: validation.status === 503 ? 'Service Unavailable' : 'Schema violation', details: validation.error });
+               return;
+           }
        }
 
        // Save artifact
@@ -176,6 +181,25 @@ app.post('/events', async (req, res) => {
        }
 
        fs.writeFileSync(artifactPath, JSON.stringify(payload, null, 2));
+
+       // Forensics update
+       try {
+           const metaPath = join(process.cwd(), 'artifacts', '_meta.json');
+           let meta: any = {};
+           if (fs.existsSync(metaPath)) {
+               try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch (e) {}
+           }
+           meta.fetched_at = new Date().toISOString();
+           meta.plexer_report = {
+               source_kind: 'event',
+               bytes: Buffer.byteLength(JSON.stringify(payload)),
+               generated_at: new Date().toISOString()
+           };
+           fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
+       } catch (metaErr) {
+           console.warn('[Event] Failed to update forensics for plexer report:', metaErr);
+       }
+
        console.log('[Event] Plexer Delivery Report saved.');
        res.status(200).send({ status: 'saved' });
 
