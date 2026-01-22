@@ -54,7 +54,7 @@ export function parseTargetDate(dateInput?: string): Date {
 /**
  * Loads data from all sources
  */
-export async function loadData(config: Config, dateStr: string, since: Date, until: Date) {
+export async function loadData(config: Config, dateStr: string, since: Date, until: Date, now: Date = new Date()) {
   // Define task for insights
   const loadInsightsTask = async () => {
     console.log('Loading daily insights...');
@@ -63,7 +63,7 @@ export async function loadData(config: Config, dateStr: string, since: Date, unt
       // If today, use todayInsights from config
       // If historical date, try to find it in daily directory
       // We assume daily directory is parent of todayInsights + /daily/
-      const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+      const isToday = dateStr === format(now, 'yyyy-MM-dd');
       let insightsPath = config.paths.semantah.todayInsights;
 
       if (!isToday) {
@@ -100,7 +100,7 @@ export async function loadData(config: Config, dateStr: string, since: Date, unt
     try {
       let metrics = null;
       // Let's try to manually construct the path if we are looking for history.
-      const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+      const isToday = dateStr === format(now, 'yyyy-MM-dd');
 
       if (!isToday) {
         // Try to load specific metrics file
