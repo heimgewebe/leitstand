@@ -64,7 +64,7 @@ describe('CLI Data Loading Concurrency', () => {
     const loadPromise = loadData(mockConfig, dateStr, since, until, now);
 
     // Give the event loop a tick to start tasks
-    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     // Assert that ALL mocks have been called.
     // If execution was sequential, only the first one (insights) would be called,
