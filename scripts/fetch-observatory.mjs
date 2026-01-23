@@ -3,7 +3,7 @@ import path from "path";
 import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
-import { fileURLToPath, URL as NodeURL } from 'url';
+import { fileURLToPath } from 'url';
 import { createHash } from "crypto";
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -109,7 +109,7 @@ if (fs.existsSync(OUT)) {
             const valid = validate(obj);
 
             if (!valid) {
-                 const errors = validate.errors.map(e => `${e.instancePath} ${e.message}`).join(', ');
+                 const errors = (validate.errors || []).map(e => `${e.instancePath} ${e.message}`).join(', ');
                  throw new Error(`Schema violation: ${errors}`);
             }
             console.log(`[leitstand] Validated against schema: ${SCHEMA_PATH}`);
@@ -154,7 +154,6 @@ try {
     try { meta = JSON.parse(fs.readFileSync(META_PATH, "utf8")); } catch (e) {}
   }
 
-  // meta.fetched_at = new Date().toISOString(); // Do not overwrite global fetched_at
   meta.strict = strict;
 
   const fileExists = fs.existsSync(OUT);

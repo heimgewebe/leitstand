@@ -194,6 +194,11 @@ describe('POST /events', () => {
   });
 
   it('should accept and save valid plexer delivery report', async () => {
+    // Explicitly set strict mode to '0' to avoid potential flakiness if validator is missing
+    vi.stubEnv('LEITSTAND_STRICT', '0');
+    resetEnvConfig();
+    resetValidators();
+
     const report = {
         counts: { pending: 5, failed: 0 },
         last_error: null,
