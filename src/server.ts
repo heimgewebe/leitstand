@@ -185,9 +185,13 @@ app.post('/events', async (req, res) => {
        // Forensics update
        try {
            const metaPath = join(process.cwd(), 'artifacts', '_meta.json');
-           let meta: any = {};
+           let meta: Record<string, unknown> = {};
            if (fs.existsSync(metaPath)) {
-               try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch (e) { console.warn('Error parsing _meta.json:', e); }
+               try {
+                   meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+               } catch (e) {
+                   console.debug('[Event] Meta-Datei nicht lesbar, verwende Standardwert');
+               }
            }
            if (!meta.plexer_report) meta.plexer_report = {};
            meta.plexer_report.fetched_at = new Date().toISOString();
