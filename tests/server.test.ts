@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/server.js';
 import { resetEnvConfig } from '../src/config.js';
+import { resetValidators } from '../src/validation/validators.js';
 
 // Mock child_process for fetch scripts
 import * as cp from 'child_process';
@@ -25,11 +26,13 @@ describe('POST /events', () => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
     resetEnvConfig(); // Force reload of env config
+    resetValidators(); // Clean up cached validators
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
     resetEnvConfig(); // Clean up
+    resetValidators(); // Clean up
   });
 
   it('should allow request with correct Bearer token', async () => {

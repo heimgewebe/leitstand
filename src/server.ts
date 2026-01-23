@@ -187,7 +187,7 @@ app.post('/events', async (req, res) => {
            const metaPath = join(process.cwd(), 'artifacts', '_meta.json');
            let meta: any = {};
            if (fs.existsSync(metaPath)) {
-               try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch (e) {}
+               try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch (e) { console.warn('Error parsing _meta.json:', e); }
            }
            if (!meta.plexer_report) meta.plexer_report = {};
            meta.plexer_report.fetched_at = new Date().toISOString();

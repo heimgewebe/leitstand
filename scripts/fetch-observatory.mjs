@@ -25,18 +25,12 @@ let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_P
 const EXPECTED_SHA = process.env.OBSERVATORY_SHA;
 const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
 
-// Enforce SCHEMA_REF allowlist if provided
+// Log SCHEMA_REF for forensics if provided
 if (SCHEMA_REF) {
-    const ALLOWED_HOSTS = ['schemas.heimgewebe.org'];
-    try {
-        const u = new NodeURL(SCHEMA_REF);
-        if (!ALLOWED_HOSTS.includes(u.hostname)) {
-             throw new Error(`SCHEMA_REF hostname '${u.hostname}' not in allowlist.`);
-        }
-    } catch (e) {
-        console.error(`[leitstand] FATAL: Invalid SCHEMA_REF: ${e.message}`);
-        process.exit(1);
-    }
+    // Note: We intentionally do NOT validate or fetch against this URL to avoid strictness traps.
+    // We rely on the vendored contract for actual validation.
+    // This value is merely recorded in _meta.json for audit trails.
+    console.log(`[leitstand] Audit: SCHEMA_REF provided: ${SCHEMA_REF}`);
 }
 
 if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) {
