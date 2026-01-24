@@ -7,7 +7,7 @@ Leitstand aggregates data from multiple sources to provide a unified dashboard.
 ### 1. Knowledge Observatory
 - **Source:** SemantAH (`knowledge.observatory.json`)
 - **Ingest:** Via Plexer Event (`knowledge.observatory.published.v1`) -> `scripts/fetch-observatory.mjs`
-- **Validation:** Strict AJV against `vendor/contracts/knowledge/observatory.schema.json` (Vendored from metarepo SSOT)
+- **Validation:** Strict AJV against `vendor/contracts/knowledge/observatory.schema.json` (Vendored snapshot from metarepo SSOT)
 
 ### 2. System Integrity
 - **Source:** Chronik/WGX (`artifacts/integrity/*.summary.json`)

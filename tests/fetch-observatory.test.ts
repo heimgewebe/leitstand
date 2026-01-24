@@ -84,7 +84,7 @@ describe('scripts/fetch-observatory.mjs', () => {
             LEITSTAND_STRICT: '1' // Enforce strict validation
         };
 
-        const { stdout } = await execPromise(cmd, { env });
+        const { stdout } = await execPromise(cmd, { env, cwd: process.cwd() });
         expect(stdout).toContain('Fetch complete');
         expect(stdout).toContain('Validated against schema');
         expect(stdout).toContain('Artifact valid');
@@ -104,9 +104,9 @@ describe('scripts/fetch-observatory.mjs', () => {
         };
 
         try {
-            await execPromise(cmd, { env });
+            await execPromise(cmd, { env, cwd: process.cwd() });
             throw new Error("Script should have failed due to SHA mismatch");
-        } catch (error) {
+        } catch (error: any) {
             expect(error.code).not.toBe(0);
             expect(error.stderr).toContain('SHA mismatch');
         }
@@ -122,7 +122,7 @@ describe('scripts/fetch-observatory.mjs', () => {
             OBSERVATORY_SHA: staticSha
         };
 
-        const { stdout } = await execPromise(cmd, { env });
+        const { stdout } = await execPromise(cmd, { env, cwd: process.cwd() });
         expect(stdout).toContain(`SHA verified: ${staticSha}`);
     }, 10000);
 
@@ -136,7 +136,7 @@ describe('scripts/fetch-observatory.mjs', () => {
         };
 
         try {
-            await execPromise(cmd, { env });
+            await execPromise(cmd, { env, cwd: process.cwd() });
             throw new Error("Script should have failed");
         } catch (error: any) {
             expect(error.code).not.toBe(0);

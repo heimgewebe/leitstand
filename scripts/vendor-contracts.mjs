@@ -28,9 +28,9 @@ async function fetchContract(url, dest) {
 
 async function main() {
     // Safety check: Prevent accidental network usage in CI
-    if (process.env.CI && !process.env.VENDOR_CONTRACTS_ALLOW_CI) {
+    if (process.env.CI) {
         console.error("[vendor] FATAL: Vendoring in CI is prohibited to ensure offline builds.");
-        console.error("[vendor] Please commit vendored contracts locally or set VENDOR_CONTRACTS_ALLOW_CI=1.");
+        console.error("[vendor] Vendored contracts must be committed. Run 'pnpm vendor:contracts' locally.");
         process.exit(1);
     }
 

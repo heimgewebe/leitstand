@@ -2,11 +2,9 @@ import Ajv from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { envConfig } from '../config.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONTRACTS_DIR = path.resolve(__dirname, '..', '..', 'vendor', 'contracts');
+const CONTRACTS_DIR = path.resolve(process.cwd(), 'vendor', 'contracts');
 const PLEXER_REPORT_SCHEMA_PATH = path.join(CONTRACTS_DIR, 'plexer', 'delivery.report.v1.schema.json');
 
 // Lazy-loaded instances

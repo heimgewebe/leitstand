@@ -103,7 +103,8 @@ if (fs.existsSync(OUT)) {
     if (fs.existsSync(SCHEMA_PATH)) {
         try {
             const schema = JSON.parse(fs.readFileSync(SCHEMA_PATH, "utf8"));
-            const ajv = new Ajv({ strict: strict, allErrors: true });
+            // Use strict: false to decouple validation logic from schema strictness warnings
+            const ajv = new Ajv({ strict: false, allErrors: true });
             addFormats(ajv);
             const validate = ajv.compile(schema);
             const valid = validate(obj);
@@ -130,8 +131,16 @@ if (fs.existsSync(OUT)) {
         console.log(`[leitstand] WARN: Contract not found at ${SCHEMA_PATH}. Validation skipped.`);
         console.log(`[leitstand] Debug: CWD is ${process.cwd()}`);
         console.log(`[leitstand] Debug: __dirname is ${__dirname}`);
-        // Fallback check if schema is missing
-        if (!obj.generated_at) throw new Error("Artifact missing generated_at.");
+        // Fallback check if schema is missing - expanded checks
+        const missingFields = [];
+        if (!obj.generated_at) missingFields.push('generated_at');
+        if (!obj.source) missingFields.push('source');
+        if (!obj.topics || !Array.isArray(obj.topics)) missingFields.push('topics (array)');
+        if (!obj.observatory_id) missingFields.push('observatory_id');
+
+        if (missingFields.length > 0) {
+            throw new Error(`Artifact missing required fields (fallback check): ${missingFields.join(', ')}`);
+        }
     }
 
     console.log(`[leitstand] Artifact valid. bytes=${Buffer.byteLength(s, "utf8")} generated_at=${obj.generated_at} topics=${obj.topics ? obj.topics.length : '?'}`);
