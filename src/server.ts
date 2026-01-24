@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url';
 import { readJsonFile } from './utils/fs.js';
 import { envConfig } from './config.js';
 import { getObservatoryData } from './controllers/observatory.js';
+import fs from 'fs';
+import { validatePlexerReport } from './validation/validators.js';
 
 const execPromise = promisify(exec);
 
@@ -62,7 +64,7 @@ app.post('/events', async (req, res) => {
   const eventType = event.type || event.kind;
 
   if (eventType === 'knowledge.observatory.published.v1') {
-    const { url, generated_at } = event.payload || {};
+    const { url, generated_at, sha, schema_ref } = event.payload || {};
 
     if (!url) {
       console.warn('Received observatory published event without URL');
@@ -102,9 +104,14 @@ app.post('/events', async (req, res) => {
 
     try {
       // Execute the fetch script with the provided URL
-      await execPromise('node scripts/fetch-observatory.mjs', {
-        env: { ...process.env, OBSERVATORY_URL: url }
-      });
+      const env = {
+        ...process.env,
+        OBSERVATORY_URL: url,
+        ...(sha && { OBSERVATORY_SHA: sha }),
+        ...(schema_ref && { OBSERVATORY_SCHEMA_REF: schema_ref })
+      };
+
+      await execPromise('node scripts/fetch-observatory.mjs', { env });
 
       console.log('[Event] Observatory refresh complete.');
       res.status(200).send({ status: 'refreshed', url });
@@ -149,6 +156,62 @@ app.post('/events', async (req, res) => {
         error: 'Refresh failed',
         details: error instanceof Error ? error.message : String(error)
       });
+    }
+  } else if (eventType === 'plexer.delivery.report.v1') {
+    const payload = event.payload || {};
+
+    // Validate schema
+    try {
+       const validation = validatePlexerReport(payload);
+       if (!validation.valid) {
+           const { isStrict } = envConfig;
+           if (!isStrict && validation.status === 503) {
+               console.warn(`[Event] WARN: Validator missing in non-strict mode. Proceeding with save.`);
+           } else {
+               console.warn(`[Event] Invalid Plexer Report: ${validation.error}`);
+               res.status(validation.status).send({ error: validation.status === 503 ? 'Service Unavailable' : 'Schema violation', details: validation.error });
+               return;
+           }
+       }
+
+       // Save artifact
+       const artifactPath = join(process.cwd(), 'artifacts', 'plexer.delivery.report.json');
+       // Ensure dir exists?
+       // We assume artifacts dir exists or we should create it
+       const artifactsDir = join(process.cwd(), 'artifacts');
+       if (!fs.existsSync(artifactsDir)) {
+          fs.mkdirSync(artifactsDir, { recursive: true });
+       }
+
+       fs.writeFileSync(artifactPath, JSON.stringify(payload, null, 2));
+
+       // Forensics update
+       try {
+           const metaPath = join(process.cwd(), 'artifacts', '_meta.json');
+           let meta: Record<string, unknown> = {};
+           if (fs.existsSync(metaPath)) {
+               try {
+                   meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+               } catch (e) {
+                   console.debug('[Event] Meta-Datei nicht lesbar, verwende Standardwert');
+               }
+           }
+           meta.plexer_report = {
+             fetched_at: new Date().toISOString(),
+             source_kind: 'event',
+             bytes: Buffer.byteLength(JSON.stringify(payload))
+           };
+           fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
+       } catch (metaErr) {
+           console.warn('[Event] Failed to update forensics for plexer report:', metaErr);
+       }
+
+       console.log('[Event] Plexer Delivery Report saved.');
+       res.status(200).send({ status: 'saved' });
+
+    } catch (e) {
+       console.error('[Event] Failed to process Plexer report:', e);
+       res.status(500).send({ error: 'Internal Server Error' });
     }
   } else {
     res.status(200).send({ status: 'ignored' });
