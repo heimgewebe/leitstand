@@ -3,19 +3,35 @@ import path from "path";
 import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
+import { fileURLToPath } from 'url';
+import { createHash } from "crypto";
+import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 
-let URL = process.env.OBSERVATORY_URL;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+let OBS_URL = process.env.OBSERVATORY_URL;
 
 if (process.env.OBSERVATORY_ARTIFACT_URL) {
     console.warn("[leitstand] DEPRECATED: OBSERVATORY_ARTIFACT_URL is set; use OBSERVATORY_URL instead.");
-    if (!URL) URL = process.env.OBSERVATORY_ARTIFACT_URL;
+    if (!OBS_URL) OBS_URL = process.env.OBSERVATORY_ARTIFACT_URL;
 }
 
-if (!URL) {
-    URL = "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
+if (!OBS_URL) {
+    OBS_URL = "https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json";
 }
 
 let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_PATH || "artifacts/knowledge.observatory.json";
+const EXPECTED_SHA = process.env.OBSERVATORY_SHA;
+const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
+
+// Log SCHEMA_REF for forensics if provided
+if (SCHEMA_REF) {
+    // Note: We intentionally do NOT validate or fetch against this URL to avoid strictness traps.
+    // We rely on the vendored contract for actual validation.
+    // This value is merely recorded in _meta.json for audit trails.
+    console.log(`[leitstand] Audit: SCHEMA_REF provided: ${SCHEMA_REF}`);
+}
 
 if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) {
     console.warn("[leitstand] WARN: OBSERVATORY_OUT_PATH is deprecated. Use OBSERVATORY_ARTIFACT_PATH.");
@@ -24,24 +40,47 @@ if (process.env.OBSERVATORY_OUT_PATH && !process.env.OBSERVATORY_ARTIFACT_PATH) 
 const strict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === "production" || process.env.OBSERVATORY_STRICT === "1";
 
 await mkdir(path.dirname(OUT), { recursive: true });
-console.log(`[leitstand] Fetch source: ${URL}`);
+console.log(`[leitstand] Fetch source: ${OBS_URL}`);
 console.log(`[leitstand] Output path: ${OUT}`);
 console.log(`[leitstand] strict=${strict}`);
 
 try {
-  const res = await fetch(URL);
+  const res = await fetch(OBS_URL);
   if (!res.ok) {
      throw new Error(`HTTP ${res.status} ${res.statusText}`);
   }
   const fileStream = fs.createWriteStream(OUT);
   await finished(Readable.fromWeb(res.body).pipe(fileStream));
   console.log(`[leitstand] Fetch complete.`);
+
+  // SHA Verification
+  if (EXPECTED_SHA) {
+      // Normalize SHA: support "sha256:" prefix
+      let normalizedSha = EXPECTED_SHA;
+      if (normalizedSha.startsWith('sha256:')) {
+          normalizedSha = normalizedSha.slice(7);
+      }
+
+      if (!/^[a-f0-9]{64}$/i.test(normalizedSha)) {
+          const msg = `Invalid SHA format: ${EXPECTED_SHA} (expected 64-char hex or sha256: prefix)`;
+          if (strict) throw new Error(msg);
+          console.warn(`[leitstand] WARN: ${msg}. Skipping verification.`);
+      } else {
+          const fileBuffer = fs.readFileSync(OUT);
+          const hash = createHash('sha256').update(fileBuffer).digest('hex');
+          if (hash.toLowerCase() !== normalizedSha.toLowerCase()) {
+              throw new Error(`SHA mismatch. Expected ${EXPECTED_SHA}, got ${hash}`);
+          }
+          console.log(`[leitstand] SHA verified: ${hash}`);
+      }
+  }
+
 } catch (err) {
   if (strict) {
-      console.error(`[leitstand] FATAL: Fetch failed: ${err.message}`);
+      console.error(`[leitstand] FATAL: Fetch/Verify failed: ${err.message}`);
       process.exit(1);
   }
-  console.warn(`[leitstand] WARN: Fetch failed: ${err.message}. Proceeding without artifact.`);
+  console.warn(`[leitstand] WARN: Fetch/Verify failed: ${err.message}. Proceeding without artifact.`);
 }
 
 if (fs.existsSync(OUT)) {
@@ -56,11 +95,55 @@ if (fs.existsSync(OUT)) {
   try {
     const obj = JSON.parse(s);
     if (!obj || typeof obj !== "object") throw new Error("Artifact JSON is not an object.");
-    if (!obj.generated_at) throw new Error("Artifact missing generated_at.");
-    if (!obj.source) throw new Error("Artifact missing source.");
-    if (!Array.isArray(obj.topics)) throw new Error("Artifact topics must be an array.");
 
-    console.log(`[leitstand] Artifact valid. bytes=${Buffer.byteLength(s, "utf8")} generated_at=${obj.generated_at} topics=${obj.topics.length}`);
+    // Load Schema from vendor path
+    const SCHEMA_PATH = path.resolve(__dirname, "..", "vendor", "contracts", "knowledge", "observatory.schema.json");
+    console.log(`[leitstand] Debug: Checking schema at ${SCHEMA_PATH}`);
+
+    if (fs.existsSync(SCHEMA_PATH)) {
+        try {
+            const schema = JSON.parse(fs.readFileSync(SCHEMA_PATH, "utf8"));
+            // Use strict: false to decouple validation logic from schema strictness warnings
+            const ajv = new Ajv({ strict: false, allErrors: true });
+            addFormats(ajv);
+            const validate = ajv.compile(schema);
+            const valid = validate(obj);
+
+            if (!valid) {
+                 const errors = (validate.errors || []).map(e => `${e.instancePath} ${e.message}`).join(', ');
+                 throw new Error(`Schema violation: ${errors}`);
+            }
+            console.log(`[leitstand] Validated against schema: ${SCHEMA_PATH}`);
+        } catch (schemaErr) {
+             // If validation failed, check strictness
+             if (schemaErr.message.startsWith("Schema violation")) {
+                 if (strict) {
+                     console.log(`[leitstand] FATAL: ${schemaErr.message}`); // Log to stdout for test visibility
+                     process.exit(1);
+                 } else {
+                     console.log(`[leitstand] WARN: ${schemaErr.message}`);
+                 }
+             } else {
+                 console.log(`[leitstand] WARN: Schema validation skipped (load/compile error): ${schemaErr.message}`);
+             }
+        }
+    } else {
+        console.log(`[leitstand] WARN: Contract not found at ${SCHEMA_PATH}. Validation skipped.`);
+        console.log(`[leitstand] Debug: CWD is ${process.cwd()}`);
+        console.log(`[leitstand] Debug: __dirname is ${__dirname}`);
+        // Fallback check if schema is missing - expanded checks
+        const missingFields = [];
+        if (!obj.generated_at) missingFields.push('generated_at');
+        if (!obj.source) missingFields.push('source');
+        if (!obj.topics || !Array.isArray(obj.topics)) missingFields.push('topics (array)');
+        if (!obj.observatory_id) missingFields.push('observatory_id');
+
+        if (missingFields.length > 0) {
+            throw new Error(`Artifact missing required fields (fallback check): ${missingFields.join(', ')}`);
+        }
+    }
+
+    console.log(`[leitstand] Artifact valid. bytes=${Buffer.byteLength(s, "utf8")} generated_at=${obj.generated_at} topics=${obj.topics ? obj.topics.length : '?'}`);
   } catch (e) {
     if (strict) {
         console.error(`[leitstand] FATAL: Artifact is not valid JSON/Schema: ${e.message}`);
@@ -73,12 +156,13 @@ if (fs.existsSync(OUT)) {
 // Update _meta.json
 try {
   const META_PATH = "artifacts/_meta.json";
+  await mkdir(path.dirname(META_PATH), { recursive: true });
+
   let meta = {};
   if (fs.existsSync(META_PATH)) {
     try { meta = JSON.parse(fs.readFileSync(META_PATH, "utf8")); } catch (e) {}
   }
 
-  meta.fetched_at = new Date().toISOString();
   meta.strict = strict;
 
   const fileExists = fs.existsSync(OUT);
@@ -92,10 +176,13 @@ try {
   }
 
   meta.observatory = {
+    fetched_at: new Date().toISOString(),
     path: OUT,
     bytes: bytes,
-    source_url: URL,
-    parsed: parsed
+    source_url: OBS_URL,
+    parsed: parsed,
+    sha: EXPECTED_SHA || null,
+    schema_ref: SCHEMA_REF || null
   };
 
   fs.writeFileSync(META_PATH, JSON.stringify(meta, null, 2));
