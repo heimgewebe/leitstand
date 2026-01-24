@@ -104,9 +104,12 @@ app.post('/events', async (req, res) => {
 
     try {
       // Execute the fetch script with the provided URL
-      const env = { ...process.env, OBSERVATORY_URL: url };
-      if (sha) env.OBSERVATORY_SHA = sha;
-      if (schema_ref) env.OBSERVATORY_SCHEMA_REF = schema_ref;
+      const env = {
+        ...process.env,
+        OBSERVATORY_URL: url,
+        ...(sha && { OBSERVATORY_SHA: sha }),
+        ...(schema_ref && { OBSERVATORY_SCHEMA_REF: schema_ref })
+      };
 
       await execPromise('node scripts/fetch-observatory.mjs', { env });
 
@@ -193,10 +196,11 @@ app.post('/events', async (req, res) => {
                    console.debug('[Event] Meta-Datei nicht lesbar, verwende Standardwert');
                }
            }
-           if (!meta.plexer_report) meta.plexer_report = {};
-           meta.plexer_report.fetched_at = new Date().toISOString();
-           meta.plexer_report.source_kind = 'event';
-           meta.plexer_report.bytes = Buffer.byteLength(JSON.stringify(payload));
+           meta.plexer_report = {
+             fetched_at: new Date().toISOString(),
+             source_kind: 'event',
+             bytes: Buffer.byteLength(JSON.stringify(payload))
+           };
            fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
        } catch (metaErr) {
            console.warn('[Event] Failed to update forensics for plexer report:', metaErr);
