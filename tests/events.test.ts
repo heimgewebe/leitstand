@@ -118,7 +118,7 @@ invalid json line
 
     await loadRecentEvents(testDir, since, until);
 
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid timestamp'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringMatching(/\[Event\] \[.*invalid_ts\.jsonl\] Invalid timestamp/));
     consoleSpy.mockRestore();
   });
 

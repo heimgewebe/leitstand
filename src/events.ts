@@ -22,37 +22,41 @@ export interface EventLine {
 /**
  * Parses a single JSONL line into an EventLine
  */
-function parseEventLine(line: string, onWarn?: (msg: string) => void): EventLine | null {
+function parseEventLine(line: string): { event: EventLine | null; error?: string } {
   try {
     const trimmed = line.trim();
-    if (!trimmed) return null;
+    if (!trimmed) return { event: null };
     
     const data = JSON.parse(trimmed);
     
     // Basic validation
     if (!data.timestamp || !data.kind) {
-      return null;
+      return { event: null };
     }
     
     // Ensure timestamp is in canonical ISO 8601 format for lexicographical sorting
     const d = new Date(data.timestamp);
     if (Number.isNaN(d.getTime())) {
-      onWarn?.(`Invalid timestamp in line: ${line.substring(0, 100)}...`);
-      return null;
+      return {
+        event: null,
+        error: `Invalid timestamp in line: ${line.substring(0, 100)}...`
+      };
     }
     const timestamp = d.toISOString();
 
     return {
-      timestamp,
-      kind: data.kind,
-      repo: data.repo,
-      job: data.job,
-      severity: data.severity,
-      payload: data.payload,
+      event: {
+        timestamp,
+        kind: data.kind,
+        repo: data.repo,
+        job: data.job,
+        severity: data.severity,
+        payload: data.payload,
+      }
     };
   } catch {
     // Silently skip invalid lines
-    return null;
+    return { event: null };
   }
 }
 
@@ -97,12 +101,15 @@ export async function loadRecentEvents(
         // console.log('Processing', file, 'lines:', lines.length);
 
         for (const line of lines) {
-          const event = parseEventLine(line, (msg) => {
+          const { event, error } = parseEventLine(line);
+
+          if (error) {
             if (warnings < MAX_WARNINGS) {
-              console.warn(`[Event] [${file}] ${msg}`);
+              console.warn(`[Event] [${file}] ${error}`);
               warnings++;
             }
-          });
+          }
+
           if (!event) continue;
 
           if (event.timestamp >= sinceIso && event.timestamp < untilIso) {
@@ -120,7 +127,7 @@ export async function loadRecentEvents(
     
     // Sort by timestamp, newest first
     // Optimization: ISO 8601 strings can be compared lexicographically
-    events.sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0));
+    events.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     
     return events;
   } catch (error) {
