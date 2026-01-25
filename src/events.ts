@@ -65,6 +65,10 @@ export async function loadRecentEvents(
     const files = await readdir(dataDir);
     const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
 
+    // NOTE: Reading all files in parallel with Promise.all can cause memory spikes
+    // if there are many or very large JSONL files. For typical usage with a moderate
+    // number of event files, this provides better I/O performance. If memory becomes
+    // an issue, consider using sequential reading or a concurrency limit (e.g., p-limit).
     const fileContents = await Promise.all(
       jsonlFiles.map(file => {
         const filePath = join(dataDir, file);

@@ -73,6 +73,7 @@ if (fs.existsSync(OUT)) {
 // Update _meta.json
 try {
   const META_PATH = "artifacts/_meta.json";
+  await mkdir(path.dirname(META_PATH), { recursive: true });
   let meta = {};
   if (fs.existsSync(META_PATH)) {
     try { meta = JSON.parse(fs.readFileSync(META_PATH, "utf8")); } catch (e) {}
