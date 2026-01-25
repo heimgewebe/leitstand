@@ -109,7 +109,7 @@ export async function loadRecentEvents(
     
     // Sort by timestamp, newest first
     // Optimization: ISO 8601 strings can be compared lexicographically
-    events.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    events.sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0));
     
     return events;
   } catch (error) {
