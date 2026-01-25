@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { writeFile, rm, mkdtemp } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -31,10 +31,41 @@ describe('events', () => {
     const loaded = await loadRecentEvents(testDir, since, until);
     
     expect(loaded).toHaveLength(2);
-    expect(loaded[0].timestamp).toBe('2025-12-05T12:00:00Z'); // Newest first
-    expect(loaded[1].timestamp).toBe('2025-12-05T10:00:00Z');
+    expect(loaded[0].timestamp).toBe('2025-12-05T12:00:00.000Z'); // Newest first (normalized)
+    expect(loaded[1].timestamp).toBe('2025-12-05T10:00:00.000Z');
   });
   
+  it('should normalize and sort mixed timestamp formats', async () => {
+    const events = [
+      { timestamp: '2025-12-05T10:00:00Z', kind: 'utc.z', repo: 'test1' },
+      { timestamp: '2025-12-05T11:30:00+01:00', kind: 'offset', repo: 'test2' }, // 10:30 UTC
+      { timestamp: '2025-12-05T10:15:00.500Z', kind: 'millis', repo: 'test3' },
+    ];
+
+    const path = join(testDir, 'mixed.jsonl');
+    await writeFile(path, events.map(e => JSON.stringify(e)).join('\n'), 'utf-8');
+
+    const since = new Date('2025-12-05T00:00:00Z');
+    const until = new Date('2025-12-06T00:00:00Z');
+
+    const loaded = await loadRecentEvents(testDir, since, until);
+
+    expect(loaded).toHaveLength(3);
+    // Expected order:
+    // 1. 10:30 UTC (offset) -> 2025-12-05T10:30:00.000Z
+    // 2. 10:15:00.500 UTC -> 2025-12-05T10:15:00.500Z
+    // 3. 10:00 UTC -> 2025-12-05T10:00:00.000Z
+
+    expect(loaded[0].kind).toBe('offset');
+    expect(loaded[0].timestamp).toBe('2025-12-05T10:30:00.000Z');
+
+    expect(loaded[1].kind).toBe('millis');
+    expect(loaded[1].timestamp).toBe('2025-12-05T10:15:00.500Z');
+
+    expect(loaded[2].kind).toBe('utc.z');
+    expect(loaded[2].timestamp).toBe('2025-12-05T10:00:00.000Z');
+  });
+
   it('should handle multiple JSONL files', async () => {
     const events1 = [
       { timestamp: '2025-12-05T10:00:00Z', kind: 'ci.success', repo: 'test1' },
@@ -73,6 +104,41 @@ invalid json line
     const loaded = await loadRecentEvents(testDir, since, until);
     
     expect(loaded).toHaveLength(2); // Only valid events
+  });
+
+  it('should warn on invalid timestamp', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const content = `{"timestamp":"not-a-date","kind":"ci.success"}`;
+
+    const path = join(testDir, 'invalid_ts.jsonl');
+    await writeFile(path, content, 'utf-8');
+
+    const since = new Date('2025-12-05T00:00:00Z');
+    const until = new Date('2025-12-06T00:00:00Z');
+
+    await loadRecentEvents(testDir, since, until);
+
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid timestamp'));
+    consoleSpy.mockRestore();
+  });
+
+  it('should limit warning logs per file', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const content = `
+{"timestamp":"foo","kind":"test"}
+{"timestamp":"bar","kind":"test"}
+`;
+
+    const path = join(testDir, 'spam.jsonl');
+    await writeFile(path, content, 'utf-8');
+
+    const since = new Date('2025-12-05T00:00:00Z');
+    const until = new Date('2025-12-06T00:00:00Z');
+
+    await loadRecentEvents(testDir, since, until);
+
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    consoleSpy.mockRestore();
   });
   
   it('should handle empty directory', async () => {
