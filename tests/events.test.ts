@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { writeFile, rm, mkdtemp } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -104,6 +104,22 @@ invalid json line
     const loaded = await loadRecentEvents(testDir, since, until);
     
     expect(loaded).toHaveLength(2); // Only valid events
+  });
+
+  it('should warn on invalid timestamp', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const content = `{"timestamp":"invalid-date","kind":"ci.success"}`;
+
+    const path = join(testDir, 'invalid_ts.jsonl');
+    await writeFile(path, content, 'utf-8');
+
+    const since = new Date('2025-12-05T00:00:00Z');
+    const until = new Date('2025-12-06T00:00:00Z');
+
+    await loadRecentEvents(testDir, since, until);
+
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[Event] Invalid timestamp'));
+    consoleSpy.mockRestore();
   });
   
   it('should handle empty directory', async () => {

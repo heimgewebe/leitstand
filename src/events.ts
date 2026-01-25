@@ -36,7 +36,10 @@ function parseEventLine(line: string): EventLine | null {
     
     // Ensure timestamp is in canonical ISO 8601 format for lexicographical sorting
     const d = new Date(data.timestamp);
-    if (Number.isNaN(d.getTime())) return null;
+    if (Number.isNaN(d.getTime())) {
+      console.warn(`[Event] Invalid timestamp in line: ${line.substring(0, 100)}...`);
+      return null;
+    }
     const timestamp = d.toISOString();
 
     return {
