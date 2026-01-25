@@ -31,7 +31,6 @@ export interface ObservatoryViewData {
   integritySummaries: unknown[];
   fleetMetrics: unknown;
   selfState: SelfStateArtifact | null;
-  plexerDelivery: unknown;
   observatoryUrl: string;
   view_meta: {
     source_kind: string;
@@ -124,15 +123,6 @@ export async function getObservatoryData(): Promise<ObservatoryViewData> {
     }
   }
 
-  // Load Plexer Delivery Report
-  let plexerDelivery = null;
-  try {
-      const plexerPath = join(artifactDir, 'plexer.delivery.report.json');
-      plexerDelivery = await readJsonFile(plexerPath);
-  } catch (e) {
-      // Ignore if missing, view will handle null
-  }
-
   // Load forensic metadata
   let forensics = {};
   try {
@@ -146,7 +136,6 @@ export async function getObservatoryData(): Promise<ObservatoryViewData> {
     integritySummaries: integrityLoad.summaries,
     fleetMetrics,
     selfState,
-    plexerDelivery,
     observatoryUrl,
     view_meta: {
       source_kind: observatoryLoad.source,

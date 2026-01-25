@@ -8,7 +8,6 @@
   "scripts": {
     "fetch:observatory": "node scripts/fetch-observatory.mjs",
     "fetch:insights": "node scripts/fetch-insights-daily.mjs",
-    "vendor:contracts": "node scripts/vendor-contracts.mjs",
     "build:cf": "pnpm fetch:observatory && pnpm fetch:insights && node scripts/check-artifacts.mjs && pnpm build:static",
     "build": "tsc",
     "build:static": "node scripts/build-static.mjs",
@@ -25,8 +24,6 @@
   "dependencies": {
     "@types/ejs": "^3.1.5",
     "@types/express": "^5.0.6",
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
     "date-fns": "^3.0.0",
     "ejs": "^3.1.10",
     "express": "^5.2.1",

@@ -30,7 +30,9 @@ function parseEventLine(line: string): EventLine | null {
     const data = JSON.parse(trimmed);
 
     // Basic validation
-    if (!data.timestamp || !data.kind) return null;
+    if (!data.timestamp || !data.kind) {
+      return null;
+    }
 
     return {
       timestamp: data.timestamp,
@@ -61,18 +63,16 @@ export async function loadRecentEvents(
 ): Promise<EventLine[]> {
   try {
     const files = await readdir(dataDir);
-    const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'));
+    const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
 
-    const sinceIso = since.toISOString();
-    const untilIso = until.toISOString();
-
-    // Parallel file reading
     const fileContents = await Promise.all(
-      jsonlFiles.map((file) => readFile(join(dataDir, file), 'utf-8'))
+      jsonlFiles.map(file => {
+        const filePath = join(dataDir, file);
+        return readFile(filePath, 'utf-8');
+      })
     );
 
     const events: EventLine[] = [];
-
     for (const content of fileContents) {
       const lines = content.split('\n');
 
@@ -80,22 +80,20 @@ export async function loadRecentEvents(
         const event = parseEventLine(line);
         if (!event) continue;
 
-        // ISO 8601 string compare is safe if timestamps are normalized ISO strings
-        if (event.timestamp >= sinceIso && event.timestamp < untilIso) {
+        const eventTime = new Date(event.timestamp);
+        if (eventTime >= since && eventTime < until) {
           events.push(event);
         }
       }
     }
 
     // Sort by timestamp, newest first
-    events.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    events.sort((a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
 
     return events;
   } catch (error) {
-    throw new Error(
-      `Failed to load events: ${error instanceof Error ? error.message : String(error)}`
-    );
+    throw new Error(`Failed to load events: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

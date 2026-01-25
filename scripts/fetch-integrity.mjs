@@ -101,12 +101,13 @@ try {
     try { meta = JSON.parse(fs.readFileSync(META_PATH, "utf8")); } catch (e) {}
   }
 
+  meta.fetched_at = new Date().toISOString();
+
   // If we have multiple integrity files, we might want to store a map or list.
   // For now, let's store the last fetched one, or update a map if we want to be fancy.
   // Let's stick to simple "last fetched" for the _meta log to avoid complexity,
   // but maybe include the path so we know which one it was.
   meta.integrity = {
-    fetched_at: new Date().toISOString(),
     path: finalPath,
     bytes: bytes,
     source_url: URL,

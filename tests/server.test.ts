@@ -2,14 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/server.js';
 import { resetEnvConfig } from '../src/config.js';
-import { resetValidators } from '../src/validation/validators.js';
 
 // Mock child_process for fetch scripts
-import * as cp from 'child_process';
-vi.mock('child_process', async (importOriginal) => {
-  const actual = await importOriginal<typeof cp>();
+vi.mock('child_process', () => {
   return {
-    ...actual,
     exec: vi.fn((cmd, opts, callback) => {
       if (typeof opts === 'function') {
         callback = opts;
@@ -26,13 +22,11 @@ describe('POST /events', () => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
     resetEnvConfig(); // Force reload of env config
-    resetValidators(); // Clean up cached validators
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
     resetEnvConfig(); // Clean up
-    resetValidators(); // Clean up
   });
 
   it('should allow request with correct Bearer token', async () => {
@@ -158,77 +152,5 @@ describe('POST /events', () => {
       });
 
     expect(res.status).toBe(400);
-  });
-
-  it('should trigger fetch-observatory script on valid observatory event', async () => {
-    // 64-char hex SHA for strict validation
-    const validSha = 'a'.repeat(64);
-
-    const res = await request(app)
-      .post('/events')
-      .send({
-        type: 'knowledge.observatory.published.v1',
-        payload: {
-            url: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json',
-            sha: validSha,
-            schema_ref: 'https://schemas.heimgewebe.org/test.json'
-        }
-      });
-
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'refreshed', url: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json' });
-
-    // Verify exec was called with correct script and env
-    const { exec } = await import('child_process');
-    expect(exec).toHaveBeenCalledWith(
-      'node scripts/fetch-observatory.mjs',
-      expect.objectContaining({
-        env: expect.objectContaining({
-            OBSERVATORY_URL: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json',
-            OBSERVATORY_SHA: validSha,
-            OBSERVATORY_SCHEMA_REF: 'https://schemas.heimgewebe.org/test.json'
-        })
-      }),
-      expect.anything()
-    );
-  });
-
-  it('should accept and save valid plexer delivery report', async () => {
-    // Explicitly set strict mode to '0' to avoid potential flakiness if validator is missing
-    vi.stubEnv('LEITSTAND_STRICT', '0');
-    resetEnvConfig();
-    resetValidators();
-
-    const report = {
-        counts: { pending: 5, failed: 0 },
-        last_error: null,
-        last_retry_at: new Date().toISOString()
-    };
-
-    const res = await request(app)
-      .post('/events')
-      .send({
-        type: 'plexer.delivery.report.v1',
-        payload: report
-      });
-
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'saved' });
-  });
-
-  it('should reject invalid plexer delivery report (schema violation)', async () => {
-    const report = {
-        counts: { pending: -1 }, // Invalid negative
-    };
-
-    const res = await request(app)
-      .post('/events')
-      .send({
-        type: 'plexer.delivery.report.v1',
-        payload: report
-      });
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Schema violation');
   });
 });
