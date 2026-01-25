@@ -108,7 +108,7 @@ invalid json line
 
   it('should warn on invalid timestamp', async () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const content = `{"timestamp":"invalid-date","kind":"ci.success"}`;
+    const content = `{"timestamp":"not-a-date","kind":"ci.success"}`;
 
     const path = join(testDir, 'invalid_ts.jsonl');
     await writeFile(path, content, 'utf-8');
@@ -118,7 +118,26 @@ invalid json line
 
     await loadRecentEvents(testDir, since, until);
 
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[Event] Invalid timestamp'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid timestamp'));
+    consoleSpy.mockRestore();
+  });
+
+  it('should limit warning logs per file', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const content = `
+{"timestamp":"foo","kind":"test"}
+{"timestamp":"bar","kind":"test"}
+`;
+
+    const path = join(testDir, 'spam.jsonl');
+    await writeFile(path, content, 'utf-8');
+
+    const since = new Date('2025-12-05T00:00:00Z');
+    const until = new Date('2025-12-06T00:00:00Z');
+
+    await loadRecentEvents(testDir, since, until);
+
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
     consoleSpy.mockRestore();
   });
   

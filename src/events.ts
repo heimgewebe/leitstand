@@ -22,7 +22,7 @@ export interface EventLine {
 /**
  * Parses a single JSONL line into an EventLine
  */
-function parseEventLine(line: string): EventLine | null {
+function parseEventLine(line: string, onWarn?: (msg: string) => void): EventLine | null {
   try {
     const trimmed = line.trim();
     if (!trimmed) return null;
@@ -37,7 +37,7 @@ function parseEventLine(line: string): EventLine | null {
     // Ensure timestamp is in canonical ISO 8601 format for lexicographical sorting
     const d = new Date(data.timestamp);
     if (Number.isNaN(d.getTime())) {
-      console.warn(`[Event] Invalid timestamp in line: ${line.substring(0, 100)}...`);
+      onWarn?.(`Invalid timestamp in line: ${line.substring(0, 100)}...`);
       return null;
     }
     const timestamp = d.toISOString();
@@ -90,8 +90,19 @@ export async function loadRecentEvents(
         const lines = content.split('\n');
         
         const fileEvents: EventLine[] = [];
+        let warnings = 0;
+        const MAX_WARNINGS = 1;
+
+        // Debug
+        // console.log('Processing', file, 'lines:', lines.length);
+
         for (const line of lines) {
-          const event = parseEventLine(line);
+          const event = parseEventLine(line, (msg) => {
+            if (warnings < MAX_WARNINGS) {
+              console.warn(`[Event] [${file}] ${msg}`);
+              warnings++;
+            }
+          });
           if (!event) continue;
 
           if (event.timestamp >= sinceIso && event.timestamp < untilIso) {
