@@ -65,31 +65,38 @@ export async function loadRecentEvents(
     const files = await readdir(dataDir);
     const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
     
-    const events: EventLine[] = [];
     const sinceIso = since.toISOString();
     const untilIso = until.toISOString();
     
-    for (const file of jsonlFiles) {
+    const filePromises = jsonlFiles.map(async (file) => {
       const filePath = join(dataDir, file);
       // We read file directly since it is JSONL, not a single JSON object
       // So we don't use readJsonFile here
       const content = await readFile(filePath, 'utf-8');
       const lines = content.split('\n');
       
+      const fileEvents: EventLine[] = [];
       for (const line of lines) {
         const event = parseEventLine(line);
         if (!event) continue;
         
         if (event.timestamp >= sinceIso && event.timestamp < untilIso) {
-          events.push(event);
+          fileEvents.push(event);
         }
       }
-    }
+      return fileEvents;
+    });
+
+    const results = await Promise.all(filePromises);
+    const events = results.flat();
     
     // Sort by timestamp, newest first
-    events.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    // Optimization: ISO 8601 strings can be compared lexicographically
+    events.sort((a, b) => {
+      if (b.timestamp > a.timestamp) return 1;
+      if (b.timestamp < a.timestamp) return -1;
+      return 0;
+    });
     
     return events;
   } catch (error) {
