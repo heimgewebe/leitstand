@@ -35,7 +35,9 @@ function parseEventLine(line: string): EventLine | null {
     }
     
     // Ensure timestamp is in canonical ISO 8601 format for lexicographical sorting
-    const timestamp = new Date(data.timestamp).toISOString();
+    const d = new Date(data.timestamp);
+    if (Number.isNaN(d.getTime())) return null;
+    const timestamp = d.toISOString();
 
     return {
       timestamp,
