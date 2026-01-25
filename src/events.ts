@@ -34,8 +34,11 @@ function parseEventLine(line: string): EventLine | null {
       return null;
     }
     
+    // Ensure timestamp is in canonical ISO 8601 format for lexicographical sorting
+    const timestamp = new Date(data.timestamp).toISOString();
+
     return {
-      timestamp: data.timestamp,
+      timestamp,
       kind: data.kind,
       repo: data.repo,
       job: data.job,
@@ -68,35 +71,40 @@ export async function loadRecentEvents(
     const sinceIso = since.toISOString();
     const untilIso = until.toISOString();
     
-    const filePromises = jsonlFiles.map(async (file) => {
-      const filePath = join(dataDir, file);
-      // We read file directly since it is JSONL, not a single JSON object
-      // So we don't use readJsonFile here
-      const content = await readFile(filePath, 'utf-8');
-      const lines = content.split('\n');
-      
-      const fileEvents: EventLine[] = [];
-      for (const line of lines) {
-        const event = parseEventLine(line);
-        if (!event) continue;
-        
-        if (event.timestamp >= sinceIso && event.timestamp < untilIso) {
-          fileEvents.push(event);
-        }
-      }
-      return fileEvents;
-    });
+    // Process files in batches to limit concurrency
+    const BATCH_SIZE = 8;
+    const results: EventLine[][] = [];
 
-    const results = await Promise.all(filePromises);
+    for (let i = 0; i < jsonlFiles.length; i += BATCH_SIZE) {
+      const batch = jsonlFiles.slice(i, i + BATCH_SIZE);
+      const batchPromises = batch.map(async (file) => {
+        const filePath = join(dataDir, file);
+        // We read file directly since it is JSONL, not a single JSON object
+        // So we don't use readJsonFile here
+        const content = await readFile(filePath, 'utf-8');
+        const lines = content.split('\n');
+        
+        const fileEvents: EventLine[] = [];
+        for (const line of lines) {
+          const event = parseEventLine(line);
+          if (!event) continue;
+
+          if (event.timestamp >= sinceIso && event.timestamp < untilIso) {
+            fileEvents.push(event);
+          }
+        }
+        return fileEvents;
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
+    }
+
     const events = results.flat();
     
     // Sort by timestamp, newest first
     // Optimization: ISO 8601 strings can be compared lexicographically
-    events.sort((a, b) => {
-      if (b.timestamp > a.timestamp) return 1;
-      if (b.timestamp < a.timestamp) return -1;
-      return 0;
-    });
+    events.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     
     return events;
   } catch (error) {

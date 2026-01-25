@@ -31,10 +31,41 @@ describe('events', () => {
     const loaded = await loadRecentEvents(testDir, since, until);
     
     expect(loaded).toHaveLength(2);
-    expect(loaded[0].timestamp).toBe('2025-12-05T12:00:00Z'); // Newest first
-    expect(loaded[1].timestamp).toBe('2025-12-05T10:00:00Z');
+    expect(loaded[0].timestamp).toBe('2025-12-05T12:00:00.000Z'); // Newest first (normalized)
+    expect(loaded[1].timestamp).toBe('2025-12-05T10:00:00.000Z');
   });
   
+  it('should normalize and sort mixed timestamp formats', async () => {
+    const events = [
+      { timestamp: '2025-12-05T10:00:00Z', kind: 'utc.z', repo: 'test1' },
+      { timestamp: '2025-12-05T11:30:00+01:00', kind: 'offset', repo: 'test2' }, // 10:30 UTC
+      { timestamp: '2025-12-05T10:15:00.500Z', kind: 'millis', repo: 'test3' },
+    ];
+
+    const path = join(testDir, 'mixed.jsonl');
+    await writeFile(path, events.map(e => JSON.stringify(e)).join('\n'), 'utf-8');
+
+    const since = new Date('2025-12-05T00:00:00Z');
+    const until = new Date('2025-12-06T00:00:00Z');
+
+    const loaded = await loadRecentEvents(testDir, since, until);
+
+    expect(loaded).toHaveLength(3);
+    // Expected order:
+    // 1. 10:30 UTC (offset) -> 2025-12-05T10:30:00.000Z
+    // 2. 10:15:00.500 UTC -> 2025-12-05T10:15:00.500Z
+    // 3. 10:00 UTC -> 2025-12-05T10:00:00.000Z
+
+    expect(loaded[0].kind).toBe('offset');
+    expect(loaded[0].timestamp).toBe('2025-12-05T10:30:00.000Z');
+
+    expect(loaded[1].kind).toBe('millis');
+    expect(loaded[1].timestamp).toBe('2025-12-05T10:15:00.500Z');
+
+    expect(loaded[2].kind).toBe('utc.z');
+    expect(loaded[2].timestamp).toBe('2025-12-05T10:00:00.000Z');
+  });
+
   it('should handle multiple JSONL files', async () => {
     const events1 = [
       { timestamp: '2025-12-05T10:00:00Z', kind: 'ci.success', repo: 'test1' },
