@@ -1,4 +1,6 @@
-import { readdir, readFile } from 'fs/promises';
+import { readdir } from 'fs/promises';
+import { createReadStream } from 'fs';
+import { createInterface } from 'readline';
 import { join } from 'path';
 
 /**
@@ -84,19 +86,18 @@ export async function loadRecentEvents(
       const batch = jsonlFiles.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map(async (file) => {
         const filePath = join(dataDir, file);
-        // We read file directly since it is JSONL, not a single JSON object
-        // So we don't use readJsonFile here
-        const content = await readFile(filePath, 'utf-8');
-        const lines = content.split('\n');
         
         const fileEvents: EventLine[] = [];
         let warnings = 0;
         const MAX_WARNINGS = 1;
 
-        // Debug
-        // console.log('Processing', file, 'lines:', lines.length);
+        const fileStream = createReadStream(filePath, { encoding: 'utf-8' });
+        const rl = createInterface({
+          input: fileStream,
+          crlfDelay: Infinity,
+        });
 
-        for (const line of lines) {
+        for await (const line of rl) {
           const event = parseEventLine(line, (msg) => {
             if (warnings < MAX_WARNINGS) {
               console.warn(`[Event] [${file}] ${msg}`);
