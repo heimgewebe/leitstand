@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
 import { writeFile, rm, mkdtemp } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -6,13 +6,16 @@ import { loadRecentEvents } from '../src/events.js';
 
 describe('events', () => {
   let testDir: string;
+  let consoleSpy: MockInstance;
   
   beforeEach(async () => {
     testDir = await mkdtemp(join(tmpdir(), 'leitstand-test-events-'));
+    consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
   
   afterEach(async () => {
     await rm(testDir, { recursive: true, force: true });
+    consoleSpy.mockRestore();
   });
   
   it('should load events within time window', async () => {
@@ -107,7 +110,6 @@ invalid json line
   });
 
   it('should warn on invalid timestamp', async () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const content = `{"timestamp":"not-a-date","kind":"ci.success"}`;
 
     const path = join(testDir, 'invalid_ts.jsonl');
@@ -118,12 +120,10 @@ invalid json line
 
     await loadRecentEvents(testDir, since, until);
 
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid timestamp'));
-    consoleSpy.mockRestore();
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringMatching(/\[Event\] \[.*invalid_ts\.jsonl\] Invalid timestamp/));
   });
 
   it('should limit warning logs per file', async () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const content = `
 {"timestamp":"foo","kind":"test"}
 {"timestamp":"bar","kind":"test"}
@@ -138,7 +138,6 @@ invalid json line
     await loadRecentEvents(testDir, since, until);
 
     expect(consoleSpy).toHaveBeenCalledTimes(1);
-    consoleSpy.mockRestore();
   });
   
   it('should handle empty directory', async () => {
