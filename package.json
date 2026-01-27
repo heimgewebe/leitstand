@@ -17,7 +17,8 @@
     "lint": "eslint . --ext .ts",
     "daily-digest": "node dist/cli.js",
     "start:server": "node dist/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bench:events": "pnpm build && node scripts/bench-events.mjs"
   },
   "bin": {
     "leitstand": "./dist/cli.js"
