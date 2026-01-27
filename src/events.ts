@@ -1,4 +1,6 @@
-import { readdir, readFile } from 'fs/promises';
+import { readdir } from 'fs/promises';
+import { createReadStream } from 'fs';
+import { createInterface } from 'readline';
 import { join } from 'path';
 
 /**
@@ -81,6 +83,7 @@ export async function loadRecentEvents(
     const untilIso = until.toISOString();
     
     // Process files in batches to limit concurrency
+    // Max concurrently open streams; conservative to avoid FD exhaustion on typical systems.
     const BATCH_SIZE = 8;
     const results: EventLine[][] = [];
 
@@ -88,34 +91,35 @@ export async function loadRecentEvents(
       const batch = jsonlFiles.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map(async (file) => {
         const filePath = join(dataDir, file);
-        // We read file directly since it is JSONL, not a single JSON object
-        // So we don't use readJsonFile here
-        const content = await readFile(filePath, 'utf-8');
-        const lines = content.split('\n');
+        const fileStream = createReadStream(filePath, { encoding: 'utf-8' });
+        const rl = createInterface({ input: fileStream, crlfDelay: Infinity });
         
         const fileEvents: EventLine[] = [];
         let warnings = 0;
         const MAX_WARNINGS = 1;
 
-        // Debug
-        // console.log('Processing', file, 'lines:', lines.length);
+        try {
+          for await (const line of rl) {
+            const { event, error } = parseEventLine(line);
 
-        for (const line of lines) {
-          const { event, error } = parseEventLine(line);
+            if (error) {
+              if (warnings < MAX_WARNINGS) {
+                console.warn(`[Event] [${file}] ${error}`);
+                warnings++;
+              }
+            }
 
-          if (error) {
-            if (warnings < MAX_WARNINGS) {
-              console.warn(`[Event] [${file}] ${error}`);
-              warnings++;
+            if (!event) continue;
+
+            if (event.timestamp >= sinceIso && event.timestamp < untilIso) {
+              fileEvents.push(event);
             }
           }
-
-          if (!event) continue;
-
-          if (event.timestamp >= sinceIso && event.timestamp < untilIso) {
-            fileEvents.push(event);
-          }
+        } finally {
+          rl.close();
+          fileStream.destroy();
         }
+        
         return fileEvents;
       });
 
