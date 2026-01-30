@@ -136,6 +136,24 @@ describe('scripts/fetch-observatory.mjs', () => {
         }
     }, 10000);
 
+    it('should accept SCHEMA_REF with an allowlisted hostname', async () => {
+        const cmd = `node scripts/fetch-observatory.mjs`;
+
+        const env = {
+            ...process.env,
+            OBSERVATORY_URL: `${baseUrl}/valid.json`,
+            OBSERVATORY_ARTIFACT_PATH: artifactPath,
+            LEITSTAND_STRICT: '1',
+            OBSERVATORY_SCHEMA_REF: 'https://trusted.example.test/schema.json',
+            OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS: 'trusted.example.test, other.test'
+        };
+
+        const { stdout } = await execPromise(cmd, { env, cwd: process.cwd() });
+        expect(stdout).toContain('Fetch complete');
+        // Audit log should verify it was processed
+        expect(stdout).toContain('Audit: SCHEMA_REF provided');
+    }, 10000);
+
     it('should verify SHA checksum if provided (success case)', async () => {
         const cmd = `node scripts/fetch-observatory.mjs`;
         const env = {

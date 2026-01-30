@@ -21,11 +21,13 @@ function buildAjv(strict: boolean) {
   return ajv;
 }
 
-function compilePlexerReportValidator(): { ok: true } | { ok: false; error: string; status: 503 | 500 } {
+function compilePlexerReportValidator(): { ok: true; validate: AjvValidateFn } | { ok: false; error: string; status: 503 | 500 } {
   const wantStrict = envConfig.isStrict;
 
   // Reuse if already compiled for current strictness
-  if (plexerReportValidate && compiledStrict === wantStrict) return { ok: true };
+  if (plexerReportValidate && compiledStrict === wantStrict) {
+    return { ok: true, validate: plexerReportValidate };
+  }
 
   if (!fs.existsSync(PLEXER_REPORT_SCHEMA_PATH)) {
     plexerReportValidate = null;
@@ -36,10 +38,11 @@ function compilePlexerReportValidator(): { ok: true } | { ok: false; error: stri
   try {
     const schema = JSON.parse(fs.readFileSync(PLEXER_REPORT_SCHEMA_PATH, 'utf8'));
     const ajv = buildAjv(wantStrict);
-    plexerReportValidate = ajv.compile(schema) as AjvValidateFn;
+    const validate = ajv.compile(schema) as AjvValidateFn;
+    plexerReportValidate = validate;
     compiledStrict = wantStrict;
     console.log(`[Validation] Compiled plexer report validator (strict=${wantStrict})`);
-    return { ok: true };
+    return { ok: true, validate };
   } catch (e: any) {
     plexerReportValidate = null;
     compiledStrict = null;
@@ -60,13 +63,9 @@ export const validatePlexerReport = (data: unknown) => {
     return { valid: false, error: compiled.error, status: compiled.status };
   }
 
-  if (!plexerReportValidate) {
-    return { valid: false, error: "Validator not initialized", status: 503 };
-  }
-
-  const valid = plexerReportValidate(data);
+  const valid = compiled.validate(data);
   if (!valid) {
-    const errorMsg = plexerReportValidate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ');
+    const errorMsg = compiled.validate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ');
     return { valid: false, error: errorMsg, status: 400 };
   }
 

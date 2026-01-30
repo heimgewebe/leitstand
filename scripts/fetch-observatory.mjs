@@ -24,10 +24,18 @@ if (!OBS_URL) {
 let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_PATH || "artifacts/knowledge.observatory.json";
 const EXPECTED_SHA = process.env.OBSERVATORY_SHA;
 const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
-const SCHEMA_REF_ALLOWED_HOSTS = (process.env.OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS || 'schemas.heimgewebe.org')
+
+const RAW_ALLOWED = process.env.OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS;
+const SCHEMA_REF_ALLOWED_HOSTS = (RAW_ALLOWED || 'schemas.heimgewebe.org')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
+
+// Harden against empty allowlist configuration
+if (RAW_ALLOWED !== undefined && SCHEMA_REF_ALLOWED_HOSTS.length === 0) {
+    console.error("[leitstand] FATAL: OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS is set but empty after parsing. Unset it to use default, or provide at least one hostname.");
+    process.exit(1);
+}
 
 // Enforce SCHEMA_REF allowlist if provided
 if (SCHEMA_REF) {
