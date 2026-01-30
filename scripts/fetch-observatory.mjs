@@ -3,7 +3,7 @@ import path from "path";
 import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL as NodeURL } from 'url';
 import { createHash } from "crypto";
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -24,9 +24,22 @@ if (!OBS_URL) {
 let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_PATH || "artifacts/knowledge.observatory.json";
 const EXPECTED_SHA = process.env.OBSERVATORY_SHA;
 const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
+const SCHEMA_REF_ALLOWED_HOSTS = (process.env.OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS || 'schemas.heimgewebe.org')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 
-// Log SCHEMA_REF for forensics if provided
+// Enforce SCHEMA_REF allowlist if provided
 if (SCHEMA_REF) {
+    try {
+        const u = new NodeURL(SCHEMA_REF);
+        if (!SCHEMA_REF_ALLOWED_HOSTS.includes(u.hostname)) {
+             throw new Error(`SCHEMA_REF hostname '${u.hostname}' not in allowlist.`);
+        }
+    } catch (e) {
+        console.error(`[leitstand] FATAL: Invalid SCHEMA_REF: ${e.message}`);
+        process.exit(1);
+    }
     // Note: We intentionally do NOT validate or fetch against this URL to avoid strictness traps.
     // We rely on the vendored contract for actual validation.
     // This value is merely recorded in _meta.json for audit trails.
@@ -43,6 +56,7 @@ await mkdir(path.dirname(OUT), { recursive: true });
 console.log(`[leitstand] Fetch source: ${OBS_URL}`);
 console.log(`[leitstand] Output path: ${OUT}`);
 console.log(`[leitstand] strict=${strict}`);
+if (SCHEMA_REF) console.log(`[leitstand] schema_ref allowlist=${SCHEMA_REF_ALLOWED_HOSTS.join(',')}`);
 
 try {
   const res = await fetch(OBS_URL);

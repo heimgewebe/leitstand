@@ -2,61 +2,73 @@ import Ajv from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { envConfig } from '../config.js';
 
-const CONTRACTS_DIR = path.resolve(process.cwd(), 'vendor', 'contracts');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CONTRACTS_DIR = path.resolve(__dirname, '..', '..', 'vendor', 'contracts');
+
 const PLEXER_REPORT_SCHEMA_PATH = path.join(CONTRACTS_DIR, 'plexer', 'delivery.report.v1.schema.json');
 
-// Lazy-loaded instances
-let ajv: Ajv | null = null;
-let plexerReportValidate: any = null;
+type AjvValidateFn = ((data: unknown) => boolean) & { errors?: any[] };
 
-const getAjv = () => {
-    if (!ajv) {
-        ajv = new Ajv({ strict: envConfig.isStrict });
-        addFormats(ajv);
-    }
-    return ajv;
-};
+let plexerReportValidate: AjvValidateFn | null = null;
+let compiledStrict: boolean | null = null;
 
-const getPlexerReportValidator = () => {
-    if (plexerReportValidate) return plexerReportValidate;
+function buildAjv(strict: boolean) {
+  const ajv = new Ajv({ strict, allErrors: true });
+  addFormats(ajv);
+  return ajv;
+}
 
-    if (fs.existsSync(PLEXER_REPORT_SCHEMA_PATH)) {
-        try {
-            const schema = JSON.parse(fs.readFileSync(PLEXER_REPORT_SCHEMA_PATH, 'utf8'));
-            const validator = getAjv().compile(schema);
-            plexerReportValidate = validator;
-            console.log('[Validation] Compiled plexer report validator');
-        } catch (e: any) {
-            console.warn('[Validation] Failed to compile plexer report validator:', e.message);
-        }
-    } else {
-        console.warn('[Validation] Plexer report schema missing at', PLEXER_REPORT_SCHEMA_PATH);
-    }
-    return plexerReportValidate;
-};
+function compilePlexerReportValidator(): { ok: true } | { ok: false; error: string; status: 503 | 500 } {
+  const wantStrict = envConfig.isStrict;
 
-/**
- * Resets the validators. Call this in tests when changing envConfig.
- */
-export const resetValidators = () => {
-    ajv = null;
+  // Reuse if already compiled for current strictness
+  if (plexerReportValidate && compiledStrict === wantStrict) return { ok: true };
+
+  if (!fs.existsSync(PLEXER_REPORT_SCHEMA_PATH)) {
     plexerReportValidate = null;
-};
+    compiledStrict = null;
+    return { ok: false, error: `Schema missing at ${PLEXER_REPORT_SCHEMA_PATH}`, status: 503 };
+  }
+
+  try {
+    const schema = JSON.parse(fs.readFileSync(PLEXER_REPORT_SCHEMA_PATH, 'utf8'));
+    const ajv = buildAjv(wantStrict);
+    plexerReportValidate = ajv.compile(schema) as AjvValidateFn;
+    compiledStrict = wantStrict;
+    console.log(`[Validation] Compiled plexer report validator (strict=${wantStrict})`);
+    return { ok: true };
+  } catch (e: any) {
+    plexerReportValidate = null;
+    compiledStrict = null;
+    return { ok: false, error: `Failed to compile validator: ${e?.message ?? String(e)}`, status: 500 };
+  }
+}
+
+export function resetValidators() {
+  plexerReportValidate = null;
+  compiledStrict = null;
+}
 
 export const validatePlexerReport = (data: unknown) => {
-    const validate = getPlexerReportValidator();
+  const compiled = compilePlexerReportValidator();
+  if (!compiled.ok) {
+    console.log('[Validation] validatePlexerReport unavailable:', compiled.error);
+    // 503 for missing schema; 500 for compile failure
+    return { valid: false, error: compiled.error, status: compiled.status };
+  }
 
-    if (!validate) {
-        console.log('[Validation] validatePlexerReport called but validator is null');
-        return { valid: false, error: "Validator not initialized (schema missing or invalid)", status: 503 };
-    }
+  if (!plexerReportValidate) {
+    return { valid: false, error: "Validator not initialized", status: 503 };
+  }
 
-    const valid = validate(data);
-    if (!valid) {
-        const errorMsg = validate.errors?.map((e: any) => `${e.instancePath} ${e.message}`).join(', ');
-        return { valid: false, error: errorMsg, status: 400 };
-    }
-    return { valid: true, status: 200 };
+  const valid = plexerReportValidate(data);
+  if (!valid) {
+    const errorMsg = plexerReportValidate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ');
+    return { valid: false, error: errorMsg, status: 400 };
+  }
+
+  return { valid: true, status: 200 };
 };

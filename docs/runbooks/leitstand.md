@@ -8,6 +8,7 @@ Leitstand aggregates data from multiple sources to provide a unified dashboard.
 - **Source:** SemantAH (`knowledge.observatory.json`)
 - **Ingest:** Via Plexer Event (`knowledge.observatory.published.v1`) -> `scripts/fetch-observatory.mjs`
 - **Validation:** Strict AJV against `vendor/contracts/knowledge/observatory.schema.json` (Vendored snapshot from metarepo SSOT)
+  - **Schema Ref Hardening:** `OBSERVATORY_SCHEMA_REF` is allowlisted by host. Configure via `OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS` (comma-separated). Default: `schemas.heimgewebe.org`.
 
 ### 2. System Integrity
 - **Source:** Chronik/WGX (`artifacts/integrity/*.summary.json`)

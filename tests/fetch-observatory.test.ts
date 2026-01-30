@@ -112,6 +112,30 @@ describe('scripts/fetch-observatory.mjs', () => {
         }
     }, 10000);
 
+    it('should reject SCHEMA_REF with a non-allowlisted hostname', async () => {
+        const cmd = `node scripts/fetch-observatory.mjs`;
+
+        const env = {
+            ...process.env,
+            OBSERVATORY_URL: `${baseUrl}/valid.json`,
+            OBSERVATORY_ARTIFACT_PATH: artifactPath,
+            LEITSTAND_STRICT: '1',
+            OBSERVATORY_SCHEMA_REF: 'https://evil.example.test/schema.json',
+            // default is schemas.heimgewebe.org; set explicitly to avoid surprises
+            OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS: 'schemas.heimgewebe.org'
+        };
+
+        try {
+            await execPromise(cmd, { env, cwd: process.cwd() });
+            throw new Error("Script should have failed due to SCHEMA_REF allowlist violation");
+        } catch (error: any) {
+            expect(error.code).not.toBe(0);
+            const output = (error.stderr || '') + (error.stdout || '');
+            // Either the hostname message or the wrapper "Invalid SCHEMA_REF" is acceptable
+            expect(output).toMatch(/not in allowlist|Invalid SCHEMA_REF/i);
+        }
+    }, 10000);
+
     it('should verify SHA checksum if provided (success case)', async () => {
         const cmd = `node scripts/fetch-observatory.mjs`;
         const env = {
