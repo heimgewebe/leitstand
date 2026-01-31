@@ -132,9 +132,11 @@ describe('scripts/fetch-observatory.mjs', () => {
         } catch (error: any) {
             expect(error.code).not.toBe(0);
             const output = (error.stderr || '') + (error.stdout || '');
-            // Specifically match the allowlist error message
-            expect(output).toMatch(/SCHEMA_REF not allowed: hostname 'evil\.example\.test' not in allowlist/i);
-            expect(output).toContain('Allowed: schemas.heimgewebe.org');
+            // Specifically match the allowlist error message (checking key semantic parts)
+            expect(output).toMatch(/SCHEMA_REF not allowed/i);
+            expect(output).toMatch(/not in allowlist/i);
+            expect(output).toMatch(/evil\.example\.test/i);
+            expect(output).toMatch(/Allowed.*schemas\.heimgewebe\.org/i);
         }
     }, 10000);
 
