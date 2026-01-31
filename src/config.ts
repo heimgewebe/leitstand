@@ -27,6 +27,8 @@ const EnvSchema = z.object({
       }
     }, { message: "Must be a valid HTTP/HTTPS URL or empty string" })
     .default(''),
+  LEITSTAND_OPS_ALLOW_JOB_FALLBACK: z.string().optional(),
+  LEITSTAND_REPOS: z.string().optional(),
 });
 
 type EnvType = z.infer<typeof EnvSchema>;
@@ -52,7 +54,9 @@ const parsedEnv = (): EnvType => {
         OBSERVATORY_STRICT_FAIL: undefined,
         OBSERVATORY_ARTIFACT_PATH: undefined,
         INTEGRITY_URL: undefined,
-        LEITSTAND_ACS_URL: '' // Default to disabled for safety
+        LEITSTAND_ACS_URL: '', // Default to disabled for safety
+        LEITSTAND_OPS_ALLOW_JOB_FALLBACK: undefined,
+        LEITSTAND_REPOS: undefined
     };
 
     if (!parsed.success) {
@@ -81,6 +85,7 @@ export const envConfig = {
     get OBSERVATORY_ARTIFACT_PATH() { return parsedEnv().OBSERVATORY_ARTIFACT_PATH; },
     get INTEGRITY_URL() { return parsedEnv().INTEGRITY_URL; },
     get acsUrl() { return parsedEnv().LEITSTAND_ACS_URL; },
+    get allowJobFallback() { return parsedEnv().LEITSTAND_OPS_ALLOW_JOB_FALLBACK === 'true'; },
 
     get isStrict() {
         const env = parsedEnv();
@@ -96,8 +101,16 @@ export const envConfig = {
       fixtures: join(process.cwd(), 'src', 'fixtures'),
     },
 
-    // Repositories known to the fleet (hardcoded SoT for now until Artifact ingestion)
-    repos: ['metarepo', 'wgx', 'leitstand']
+    // Repositories known to the fleet.
+    // LEITSTAND_REPOS env var overrides hardcoded defaults if present.
+    get repos() {
+        const envRepos = parsedEnv().LEITSTAND_REPOS;
+        if (envRepos) {
+            return envRepos.split(',').map(r => r.trim()).filter(r => r.length > 0);
+        }
+        // Fallback SoT for now
+        return ['metarepo', 'wgx', 'leitstand'];
+    }
 };
 
 

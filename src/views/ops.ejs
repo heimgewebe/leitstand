@@ -38,6 +38,16 @@
         color: #856404;
         border-radius: 5px;
     }
+
+    .error-box {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
@@ -56,6 +66,9 @@
     </div>
   <% } else { %>
     <div class="panel">
+      <!-- Error container for inline diagnostics -->
+      <div id="errorContainer"></div>
+
       <div class="header">
         <h2>Git Health Audit</h2>
         <label>
@@ -74,6 +87,14 @@
 
       <div class="acs-info">
           Data source: <strong>Agent Control Surface (<%= locals.acsUrl %>)</strong>
+          <br/>
+          <span style="color: #666; font-size: 0.9em;">
+             <% if (locals.allowJobFallback) { %>
+                Sync fetch preferred; Job triggers enabled as fallback.
+             <% } else { %>
+                Viewer-only mode (Job triggers disabled).
+             <% } %>
+          </span>
       </div>
 
       <div id="auditResult" style="display: none;">
@@ -103,17 +124,26 @@
       const statusSummary = document.getElementById('statusSummary');
       const routinesSection = document.getElementById('routinesSection');
       const routinesList = document.getElementById('routinesList');
+      const errorContainer = document.getElementById('errorContainer');
 
       // Injected by server
       const ACS_URL = <%- JSON.stringify(locals.acsUrl) %>;
+      const ALLOW_JOB_FALLBACK = <%- JSON.stringify(locals.allowJobFallback || false) %>;
       const POLL_INTERVAL = 1000;
       const MAX_POLLS = 30; // 30 seconds timeout
 
       let currentAudit = null;
 
       runAuditBtn.addEventListener('click', async () => {
+        // Pre-flight check for Mixed Content to avoid network spam
+        if (window.location.protocol === 'https:' && ACS_URL.startsWith('http:')) {
+            showError("Mixed Content Blocked: Leitstand is running on HTTPS, but configured ACS URL is HTTP.\n\nBrowser security prevents this request. Please configure LEITSTAND_ACS_URL to use HTTPS or deploy ACS behind a secure proxy.");
+            return;
+        }
+
         const repo = repoSelect.value;
         startLoading();
+        clearError();
 
         try {
           // Step 1: Try GET /sync (Pragmatic Viewer Approach)
@@ -124,11 +154,15 @@
 
           // Only fallback if the endpoint is truly missing or method not allowed
           if (res.status === 404 || res.status === 405) {
-              // Sync endpoint not available, fallback to Job Flow (POST)
-              console.log("Sync endpoint missing (404/405), falling back to Job Flow (POST)");
-              res = await fetch(`${ACS_URL}/api/audit/git?repo=${repo}`, {
-                  method: 'POST'
-              });
+              if (ALLOW_JOB_FALLBACK) {
+                  // Sync endpoint not available, fallback to Job Flow (POST)
+                  console.log("Sync endpoint missing (404/405), falling back to Job Flow (POST)");
+                  res = await fetch(`${ACS_URL}/api/audit/git?repo=${repo}`, {
+                      method: 'POST'
+                  });
+              } else {
+                  throw new Error("Sync endpoint unavailable (404/405) and Job Fallback is disabled.");
+              }
           }
 
           if (!res.ok) {
@@ -225,6 +259,16 @@
         pollIndicator.style.display = 'none';
       }
 
+      function showError(msg) {
+          errorContainer.textContent = msg;
+          errorContainer.style.display = 'block';
+      }
+
+      function clearError() {
+          errorContainer.style.display = 'none';
+          errorContainer.textContent = '';
+      }
+
       function handleError(e) {
           console.error(e);
           let msg = e.toString();
@@ -239,14 +283,14 @@
                   msg += '\n- CORS is blocked (ACS must allow Leitstand origin in ACS_CORS_ALLOW_ORIGINS)';
               }
           }
-          alert('Failed to fetch audit from ACS.\n\nError: ' + msg);
+          showError(msg);
       }
 
       function renderAudit(data) {
           // Validate Kind (Minimal Type Safety)
           if (data.kind !== 'audit.git') {
               console.warn('Received unknown data kind:', data.kind);
-              alert('Received invalid data format (expected audit.git). Check console.');
+              showError('Received invalid data format (expected audit.git). Check console.');
               return;
           }
 

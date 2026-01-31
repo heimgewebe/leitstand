@@ -221,7 +221,8 @@ app.post('/events', async (req, res) => {
 app.get('/ops', (_req, res) => {
   res.render('ops', {
     acsUrl: envConfig.acsUrl,
-    configuredRepos: envConfig.repos
+    configuredRepos: envConfig.repos,
+    allowJobFallback: envConfig.allowJobFallback
   });
 });
 
