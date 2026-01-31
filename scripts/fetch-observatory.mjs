@@ -3,7 +3,7 @@ import path from "path";
 import { mkdir } from "fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL as NodeURL } from 'url';
 import { createHash } from "crypto";
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -25,8 +25,34 @@ let OUT = process.env.OBSERVATORY_ARTIFACT_PATH || process.env.OBSERVATORY_OUT_P
 const EXPECTED_SHA = process.env.OBSERVATORY_SHA;
 const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
 
-// Log SCHEMA_REF for forensics if provided
+const RAW_ALLOWED = process.env.OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS;
+const SCHEMA_REF_ALLOWED_HOSTS = (RAW_ALLOWED || 'schemas.heimgewebe.org')
+  .split(',')
+  .map(s => s.trim().toLowerCase().replace(/\.$/, ''))
+  .filter(Boolean);
+
+// Harden against empty allowlist configuration
+if (RAW_ALLOWED !== undefined && SCHEMA_REF_ALLOWED_HOSTS.length === 0) {
+    console.error("[leitstand] FATAL: OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS is set but empty after parsing. Unset it to use default, or provide at least one hostname.");
+    process.exit(1);
+}
+
+// Enforce SCHEMA_REF allowlist if provided
 if (SCHEMA_REF) {
+    let u;
+    try {
+        u = new NodeURL(SCHEMA_REF);
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[leitstand] FATAL: Invalid SCHEMA_REF: ${msg}`);
+        process.exit(1);
+    }
+
+    const normalizedHost = u.hostname.toLowerCase().replace(/\.$/, '');
+    if (!SCHEMA_REF_ALLOWED_HOSTS.includes(normalizedHost)) {
+         console.error(`[leitstand] FATAL: SCHEMA_REF not allowed: hostname '${normalizedHost}' not in allowlist. Allowed: ${SCHEMA_REF_ALLOWED_HOSTS.join(', ')}`);
+         process.exit(1);
+    }
     // Note: We intentionally do NOT validate or fetch against this URL to avoid strictness traps.
     // We rely on the vendored contract for actual validation.
     // This value is merely recorded in _meta.json for audit trails.
@@ -43,6 +69,7 @@ await mkdir(path.dirname(OUT), { recursive: true });
 console.log(`[leitstand] Fetch source: ${OBS_URL}`);
 console.log(`[leitstand] Output path: ${OUT}`);
 console.log(`[leitstand] strict=${strict}`);
+if (SCHEMA_REF) console.log(`[leitstand] schema_ref allowlist=${SCHEMA_REF_ALLOWED_HOSTS.join(',')}`);
 
 try {
   const res = await fetch(OBS_URL);

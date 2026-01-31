@@ -3,7 +3,8 @@ import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { join } from 'path';
-import { mkdir } from 'fs/promises';
+import { mkdir, rm } from 'fs/promises';
+import { existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { createHash } from 'crypto';
 
@@ -109,6 +110,75 @@ describe('scripts/fetch-observatory.mjs', () => {
         } catch (error: any) {
             expect(error.code).not.toBe(0);
             expect(error.stderr).toContain('SHA mismatch');
+        }
+    }, 10000);
+
+    it('should reject SCHEMA_REF with a non-allowlisted hostname', async () => {
+        const cmd = `node scripts/fetch-observatory.mjs`;
+
+        const env = {
+            ...process.env,
+            OBSERVATORY_URL: `${baseUrl}/valid.json`,
+            OBSERVATORY_ARTIFACT_PATH: artifactPath,
+            LEITSTAND_STRICT: '1',
+            OBSERVATORY_SCHEMA_REF: 'https://evil.example.test/schema.json',
+            // default is schemas.heimgewebe.org; set explicitly to avoid surprises
+            OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS: 'schemas.heimgewebe.org'
+        };
+
+        try {
+            await execPromise(cmd, { env, cwd: process.cwd() });
+            throw new Error("Script should have failed due to SCHEMA_REF allowlist violation");
+        } catch (error: any) {
+            expect(error.code).not.toBe(0);
+            const output = (error.stderr || '') + (error.stdout || '');
+            // Specifically match the allowlist error message (checking key semantic parts)
+            expect(output).toMatch(/SCHEMA_REF not allowed/i);
+            expect(output).toMatch(/not in allowlist/i);
+            expect(output).toMatch(/evil\.example\.test/i);
+            expect(output).toMatch(/Allowed.*schemas\.heimgewebe\.org/i);
+        }
+    }, 10000);
+
+    it('should accept SCHEMA_REF with an allowlisted hostname', async () => {
+        // Ensure clean state before running
+        await rm(artifactPath, { force: true });
+
+        const cmd = `node scripts/fetch-observatory.mjs`;
+
+        const env = {
+            ...process.env,
+            OBSERVATORY_URL: `${baseUrl}/valid.json`,
+            OBSERVATORY_ARTIFACT_PATH: artifactPath,
+            LEITSTAND_STRICT: '1',
+            OBSERVATORY_SCHEMA_REF: 'https://trusted.example.test/schema.json',
+            OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS: 'trusted.example.test, other.test'
+        };
+
+        await execPromise(cmd, { env, cwd: process.cwd() });
+
+        // Verify artifact was created (implicit success check)
+        expect(existsSync(artifactPath)).toBe(true);
+    }, 10000);
+
+    it('should fail fatally if allowlist is configured but empty', async () => {
+        const cmd = `node scripts/fetch-observatory.mjs`;
+
+        const env = {
+            ...process.env,
+            OBSERVATORY_URL: `${baseUrl}/valid.json`,
+            OBSERVATORY_ARTIFACT_PATH: artifactPath,
+            OBSERVATORY_SCHEMA_REF: 'https://trusted.example.test/schema.json',
+            OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS: '   ' // Empty/whitespace string
+        };
+
+        try {
+            await execPromise(cmd, { env, cwd: process.cwd() });
+            throw new Error("Script should have failed due to empty allowlist");
+        } catch (error: any) {
+            expect(error.code).not.toBe(0);
+            const output = (error.stderr || '') + (error.stdout || '');
+            expect(output).toContain('set but empty');
         }
     }, 10000);
 
