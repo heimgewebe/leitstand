@@ -45,7 +45,8 @@ if (SCHEMA_REF) {
              throw new Error(`SCHEMA_REF hostname '${u.hostname}' not in allowlist.`);
         }
     } catch (e) {
-        console.error(`[leitstand] FATAL: Invalid SCHEMA_REF: ${e.message}`);
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[leitstand] FATAL: Invalid SCHEMA_REF: ${msg}`);
         process.exit(1);
     }
     // Note: We intentionally do NOT validate or fetch against this URL to avoid strictness traps.

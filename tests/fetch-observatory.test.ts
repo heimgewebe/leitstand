@@ -4,6 +4,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { createHash } from 'crypto';
 
@@ -151,7 +152,6 @@ describe('scripts/fetch-observatory.mjs', () => {
         await execPromise(cmd, { env, cwd: process.cwd() });
 
         // Verify artifact was created (implicit success check)
-        const { existsSync } = await import('fs');
         expect(existsSync(artifactPath)).toBe(true);
     }, 10000);
 
