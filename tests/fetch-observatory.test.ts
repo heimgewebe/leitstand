@@ -162,6 +162,7 @@ describe('scripts/fetch-observatory.mjs', () => {
             ...process.env,
             OBSERVATORY_URL: `${baseUrl}/valid.json`,
             OBSERVATORY_ARTIFACT_PATH: artifactPath,
+            OBSERVATORY_SCHEMA_REF: 'https://trusted.example.test/schema.json',
             OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS: '   ' // Empty/whitespace string
         };
 
