@@ -155,6 +155,26 @@ describe('scripts/fetch-observatory.mjs', () => {
         expect(existsSync(artifactPath)).toBe(true);
     }, 10000);
 
+    it('should fail fatally if allowlist is configured but empty', async () => {
+        const cmd = `node scripts/fetch-observatory.mjs`;
+
+        const env = {
+            ...process.env,
+            OBSERVATORY_URL: `${baseUrl}/valid.json`,
+            OBSERVATORY_ARTIFACT_PATH: artifactPath,
+            OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS: '   ' // Empty/whitespace string
+        };
+
+        try {
+            await execPromise(cmd, { env, cwd: process.cwd() });
+            throw new Error("Script should have failed due to empty allowlist");
+        } catch (error: any) {
+            expect(error.code).not.toBe(0);
+            const output = (error.stderr || '') + (error.stdout || '');
+            expect(output).toContain('set but empty');
+        }
+    }, 10000);
+
     it('should verify SHA checksum if provided (success case)', async () => {
         const cmd = `node scripts/fetch-observatory.mjs`;
         const env = {
