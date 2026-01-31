@@ -6,8 +6,8 @@ export interface AuditGitV1 {
   cwd: string;
   status: 'ok' | 'warn' | 'error';
   facts: {
-    head_sha: string;
-    head_ref: string;
+    head_sha: string | null;
+    head_ref: string | null;
     is_detached_head: boolean;
     local_branch: string | null;
     upstream: { name: string; exists_locally: boolean } | null;

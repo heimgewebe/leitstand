@@ -27,6 +27,8 @@
     .acs-link { color: #0056b3; font-weight: bold; text-decoration: none; display: inline-block; }
     .acs-link:hover { text-decoration: underline; }
     .acs-info { font-size: 0.85em; color: #555; margin-top: 5px; }
+
+    .poll-indicator { margin-left: 10px; color: #666; font-style: italic; display: none; }
   </style>
 </head>
 <body>
@@ -49,7 +51,10 @@
           <option value="leitstand">leitstand</option>
         </select>
       </label>
-      <button id="runAuditBtn" class="primary">Refresh View (via ACS)</button>
+      <div style="display: flex; align-items: center;">
+        <span id="pollIndicator" class="poll-indicator">Waiting for job...</span>
+        <button id="runAuditBtn" class="primary">Refresh View (via ACS)</button>
+      </div>
     </div>
 
     <div class="acs-info">
@@ -77,6 +82,7 @@
   <script>
     const repoSelect = document.getElementById('repoSelect');
     const runAuditBtn = document.getElementById('runAuditBtn');
+    const pollIndicator = document.getElementById('pollIndicator');
     const auditResult = document.getElementById('auditResult');
     const auditJson = document.getElementById('auditJson');
     const statusSummary = document.getElementById('statusSummary');
@@ -85,34 +91,126 @@
 
     // Injected by server
     const ACS_URL = "<%= locals.acsUrl %>";
+    const POLL_INTERVAL = 1000;
+    const MAX_POLLS = 30; // 30 seconds timeout
 
     let currentAudit = null;
 
     runAuditBtn.addEventListener('click', async () => {
       const repo = repoSelect.value;
+      startLoading();
+
+      try {
+        // Try Sync-Audit endpoint first (if available)
+        // Note: This matches the "Pragmatic" approach, but falls back to Job flow if needed.
+        // Actually, ACS API spec says /api/audit/git is a POST returning a job.
+        // Let's implement the robust Job flow as primary.
+
+        const res = await fetch(`${ACS_URL}/api/audit/git?repo=${repo}`, {
+            method: 'POST',
+            // Typically POST requires empty body or params if arguments are query-based
+            // Assuming ACS accepts query params for POST as per typical FastAPI behavior or body
+        });
+
+        if (!res.ok) {
+           // Maybe method not allowed (405)? Fallback to GET/Sync if POST fails?
+           throw new Error(`HTTP ${res.status}`);
+        }
+
+        const initialData = await res.json();
+
+        // Check if we got a Job ID (202 Accepted) or direct result
+        if (res.status === 202 && initialData.job_id) {
+            pollIndicator.style.display = 'inline';
+            pollIndicator.textContent = `Job started (${initialData.job_id}). Polling...`;
+            await pollJob(initialData.job_id);
+        } else if (initialData.kind === 'audit.git') {
+            // Direct result
+            renderAudit(initialData);
+        } else {
+            // Unexpected response
+            throw new Error("Unknown response format from ACS");
+        }
+
+      } catch (e) {
+        handleError(e);
+      } finally {
+        stopLoading();
+      }
+    });
+
+    async function pollJob(jobId) {
+        let attempts = 0;
+
+        while (attempts < MAX_POLLS) {
+            attempts++;
+            await new Promise(r => setTimeout(r, POLL_INTERVAL));
+
+            try {
+                const res = await fetch(`${ACS_URL}/api/jobs/${jobId}`);
+                if (!res.ok) continue; // Retry on transient network error? or fail?
+
+                const job = await res.json();
+
+                if (job.status === 'completed' || job.state === 'completed' || job.status === 'success') {
+                    // Extract audit result.
+                    // ACS job result structure typically: results: [{ action: 'audit.git', audit: {...} }]
+                    // Or sometimes directly in result.
+
+                    let audit = null;
+                    if (job.result && job.result.audit && job.result.audit.kind === 'audit.git') {
+                        audit = job.result.audit;
+                    } else if (Array.isArray(job.results)) {
+                        const item = job.results.find(r => r.audit && r.audit.kind === 'audit.git');
+                        if (item) audit = item.audit;
+                    }
+
+                    if (audit) {
+                        renderAudit(audit);
+                        return;
+                    } else {
+                        throw new Error("Job completed but no audit artifact found.");
+                    }
+                } else if (job.status === 'failed' || job.state === 'failed' || job.status === 'error') {
+                    throw new Error(`Job failed: ${job.error || 'Unknown error'}`);
+                }
+
+                // Still running...
+                pollIndicator.textContent = `Job running... (${attempts}/${MAX_POLLS})`;
+
+            } catch (pollErr) {
+                console.warn("Poll error", pollErr);
+                // Continue polling? or fail?
+            }
+        }
+        throw new Error("Polling timed out.");
+    }
+
+    function startLoading() {
       runAuditBtn.disabled = true;
       runAuditBtn.textContent = 'Fetching from ACS...';
       auditResult.style.display = 'none';
       routinesSection.style.display = 'none';
+      pollIndicator.style.display = 'none';
+    }
 
-      try {
-        // Direct call to ACS (CORS must be allowed on ACS side)
-        // If this is a skeleton without ACS running, this will fail.
-        const res = await fetch(`${ACS_URL}/api/audit/git?repo=${repo}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        currentAudit = data;
-        renderAudit(data);
-      } catch (e) {
-        alert('Failed to fetch audit from ACS.\nMake sure ACS is running at ' + ACS_URL + '\n\nError: ' + e);
+    function stopLoading() {
+      runAuditBtn.disabled = false;
+      runAuditBtn.textContent = 'Refresh View (via ACS)';
+      pollIndicator.style.display = 'none';
+    }
+
+    function handleError(e) {
         console.error(e);
-      } finally {
-        runAuditBtn.disabled = false;
-        runAuditBtn.textContent = 'Refresh View (via ACS)';
-      }
-    });
+        let msg = e.toString();
+        if (msg.includes('Failed to fetch')) {
+            msg += '\n\nLikely Causes:\n1. ACS is not running at ' + ACS_URL + '\n2. CORS is blocked (Access-Control-Allow-Origin missing in ACS)';
+        }
+        alert('Failed to fetch audit from ACS.\n\nError: ' + msg);
+    }
 
     function renderAudit(data) {
+      currentAudit = data;
       auditResult.style.display = 'block';
       auditJson.textContent = JSON.stringify(data, null, 2);
 
