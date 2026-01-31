@@ -9,7 +9,7 @@ import { envConfig } from './config.js';
 import { getObservatoryData } from './controllers/observatory.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
-import { getGitAudit, previewRoutine, applyRoutine } from './controllers/ops.js';
+import { getGitAudit } from './controllers/ops.js';
 
 const execPromise = promisify(exec);
 
@@ -228,26 +228,6 @@ app.get('/api/ops/audit/git', async (req, res) => {
   try {
     const audit = await getGitAudit(repo);
     res.json(audit);
-  } catch (error) {
-    res.status(500).json({ error: String(error) });
-  }
-});
-
-app.post('/api/ops/routine/preview', async (req, res) => {
-  const { repo, routine_id } = req.body;
-  try {
-    const preview = await previewRoutine(repo, routine_id);
-    res.json(preview);
-  } catch (error) {
-    res.status(500).json({ error: String(error) });
-  }
-});
-
-app.post('/api/ops/routine/apply', async (req, res) => {
-  const { repo, routine_id, confirm_token } = req.body;
-  try {
-    const result = await applyRoutine(repo, routine_id, confirm_token);
-    res.json(result);
   } catch (error) {
     res.status(500).json({ error: String(error) });
   }

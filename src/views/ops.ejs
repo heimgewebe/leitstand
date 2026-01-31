@@ -12,7 +12,6 @@
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     button { padding: 8px 16px; cursor: pointer; }
     button.primary { background: #007bff; color: white; border: none; border-radius: 4px; }
-    button.danger { background: #dc3545; color: white; border: none; border-radius: 4px; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
 
     pre { background: #333; color: #eee; padding: 15px; border-radius: 4px; overflow: auto; max-height: 400px; }
@@ -23,7 +22,10 @@
 
     .routine-card { background: white; border: 1px solid #ccc; padding: 15px; margin-top: 10px; border-radius: 4px; }
     .routine-header { display: flex; justify-content: space-between; font-weight: bold; }
-    .routine-actions { margin-top: 10px; }
+    .routine-actions { margin-top: 10px; background: #e3f2fd; padding: 10px; border-radius: 4px; border: 1px solid #bbdefb; }
+
+    .acs-link { color: #0056b3; font-weight: bold; text-decoration: none; display: inline-block; }
+    .acs-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -33,7 +35,7 @@
     <a href="/ops">Ops</a>
   </nav>
 
-  <h1>Agent Control Surface (ACS)</h1>
+  <h1>Ops (Read-Only Viewer)</h1>
 
   <div class="panel">
     <div class="header">
@@ -46,7 +48,7 @@
           <option value="leitstand">leitstand</option>
         </select>
       </label>
-      <button id="runAuditBtn" class="primary">Run Audit</button>
+      <button id="runAuditBtn" class="primary">Refresh View</button>
     </div>
 
     <div id="auditResult" style="display: none;">
@@ -59,6 +61,9 @@
 
       <div id="routinesSection" style="margin-top: 20px; display: none;">
         <h3>Suggested Repair Routines</h3>
+        <p style="color: #666; font-style: italic; margin-bottom: 15px;">
+           ⚠️ Leitstand is a viewer. To apply routines, use the Agent Control Surface (ACS).
+        </p>
         <div id="routinesList"></div>
       </div>
     </div>
@@ -78,7 +83,7 @@
     runAuditBtn.addEventListener('click', async () => {
       const repo = repoSelect.value;
       runAuditBtn.disabled = true;
-      runAuditBtn.textContent = 'Auditing...';
+      runAuditBtn.textContent = 'Refreshing...';
       auditResult.style.display = 'none';
       routinesSection.style.display = 'none';
 
@@ -88,10 +93,10 @@
         currentAudit = data;
         renderAudit(data);
       } catch (e) {
-        alert('Audit failed: ' + e);
+        alert('Audit fetch failed: ' + e);
       } finally {
         runAuditBtn.disabled = false;
-        runAuditBtn.textContent = 'Run Audit';
+        runAuditBtn.textContent = 'Refresh View';
       }
     });
 
@@ -115,71 +120,14 @@
             </div>
             <p>${routine.reason}</p>
             <div class="routine-actions">
-              <button onclick="previewRoutine('${routine.id}')">Preview Dry-Run</button>
-            </div>
-            <div id="preview-${routine.id}" style="margin-top: 10px; display: none;">
-              <pre style="background: #eee; color: #333; max-height: 200px;"></pre>
-              <button class="danger" onclick="applyRoutine('${routine.id}')">Confirm & Apply</button>
+              <span>Action required in ACS:</span>
+              <a href="#" class="acs-link" onclick="alert('TODO: Link to ACS for ${routine.id}'); return false;">Open in ACS &rarr;</a>
             </div>
           `;
           routinesList.appendChild(card);
         });
       }
     }
-
-    window.previewRoutine = async (id) => {
-      const repo = repoSelect.value;
-      const previewDiv = document.getElementById(`preview-${id}`);
-      const pre = previewDiv.querySelector('pre');
-      const applyBtn = previewDiv.querySelector('button');
-
-      try {
-        pre.textContent = 'Generating preview...';
-        previewDiv.style.display = 'block';
-
-        const res = await fetch('/api/ops/routine/preview', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ repo, routine_id: id })
-        });
-        const data = await res.json();
-        pre.textContent = JSON.stringify(data.steps, null, 2);
-
-        // Store token on button
-        applyBtn.dataset.token = data.confirm_token;
-      } catch (e) {
-        pre.textContent = 'Preview failed: ' + e;
-      }
-    };
-
-    window.applyRoutine = async (id) => {
-      const repo = repoSelect.value;
-      const previewDiv = document.getElementById(`preview-${id}`);
-      const applyBtn = previewDiv.querySelector('button');
-      const token = applyBtn.dataset.token;
-
-      if (!confirm('Are you sure you want to mutate the system state?')) return;
-
-      try {
-        applyBtn.disabled = true;
-        applyBtn.textContent = 'Applying...';
-
-        const res = await fetch('/api/ops/routine/apply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ repo, routine_id: id, confirm_token: token })
-        });
-        const data = await res.json();
-
-        alert(`Success! Routine ${id} applied.\n\nChanges:\n${data.stdout}`);
-        // Re-run audit
-        runAuditBtn.click();
-      } catch (e) {
-        alert('Apply failed: ' + e);
-        applyBtn.disabled = false;
-        applyBtn.textContent = 'Confirm & Apply';
-      }
-    };
   </script>
 </body>
 </html>

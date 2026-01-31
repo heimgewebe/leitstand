@@ -1,4 +1,4 @@
-import { AuditGitV1, RoutinePreviewV1, RoutineResultV1 } from '../types/ops.js';
+import { AuditGitV1 } from '../types/ops.js';
 
 export async function getGitAudit(repo: string): Promise<AuditGitV1> {
   // STUB: Simulate the specific error case requested in the blueprint
@@ -58,49 +58,5 @@ export async function getGitAudit(repo: string): Promise<AuditGitV1> {
         reason: 'origin/HEAD missing/dangling; restore remote head + refs.'
       }
     ]
-  };
-}
-
-export async function previewRoutine(_repo: string, routineId: string): Promise<RoutinePreviewV1> {
-  // STUB: Preview for git.repair.remote-head
-  if (routineId === 'git.repair.remote-head') {
-    return {
-      kind: 'routine.preview',
-      id: routineId,
-      mode: 'dry-run',
-      mutating: true,
-      risk: 'low',
-      steps: [
-        { cmd: 'git remote set-head origin --auto', why: 'Restore origin/HEAD from remote HEAD' },
-        { cmd: 'git fetch origin --prune', why: 'Rebuild remote-tracking refs after head repair' }
-      ],
-      confirm_token: 'valid-token-123'
-    };
-  }
-
-  throw new Error(`Routine ${routineId} not found`);
-}
-
-export async function applyRoutine(_repo: string, routineId: string, token?: string): Promise<RoutineResultV1> {
-  // STUB: Apply success
-  if (token !== 'valid-token-123') {
-    throw new Error('Invalid or missing confirmation token');
-  }
-
-  return {
-    kind: 'routine.result',
-    id: routineId,
-    mode: 'apply',
-    mutating: true,
-    risk: 'low',
-    steps: [
-      { cmd: 'git remote set-head origin --auto', why: 'Restore origin/HEAD from remote HEAD' },
-      { cmd: 'git fetch origin --prune', why: 'Rebuild remote-tracking refs after head repair' }
-    ],
-    state_hash: {
-      before: 'e5f6...',
-      after: 'a1b2...'
-    },
-    stdout: 'origin/HEAD set to master\nFrom github.com:heimgewebe/metarepo\n * [new branch]      main       -> origin/main'
   };
 }
