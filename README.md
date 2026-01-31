@@ -86,6 +86,32 @@ Create a `leitstand.config.json` file in your project root:
 
 **Environment Variables**: Paths support environment variable expansion using `$VAR_NAME` syntax.
 
+## Ops Viewer Setup
+
+The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the Agent Control Surface (ACS). It is designed as a strict viewer but can optionally trigger audit jobs if configured.
+
+### Environment Variables
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `LEITSTAND_ACS_URL` | `''` (disabled) | Base URL of the Agent Control Surface. Must be a valid HTTP/HTTPS URL. |
+| `LEITSTAND_OPS_ALLOW_JOB_FALLBACK` | `false` | If `true`, the viewer falls back to triggering async jobs (`POST /api/audit/git`) if the sync endpoint is missing. |
+| `LEITSTAND_REPOS` | `metarepo,wgx,leitstand` | Comma-separated list of repositories to display in the selector. |
+
+### Deployment & Security Notes
+
+1.  **Mixed Content Warning**:
+    If Leitstand is served via **HTTPS**, the browser will block requests to an **HTTP** ACS URL.
+    - **Fix:** Deploy ACS behind an HTTPS reverse proxy (e.g., Caddy, Nginx) or configure `LEITSTAND_ACS_URL` to use HTTPS.
+
+2.  **CORS Configuration (ACS Side)**:
+    The ACS must explicitly allow the Leitstand origin to make requests, especially if credentials or cookies are involved.
+    - **ACS Config:** Ensure `ACS_CORS_ALLOW_ORIGINS` includes your Leitstand URL (e.g., `https://leitstand.internal`).
+    - *Avoid using `*` if possible.*
+
+3.  **Viewer vs. Actor**:
+    By default (`ALLOW_JOB_FALLBACK=false`), Leitstand only attempts non-mutating fetches (`GET /sync` or `GET /latest`). Enabling fallback allows it to trigger jobs, which is a state-changing action (even if just starting an audit). The UI will display a disclaimer reflecting the current mode.
+
 ## Usage
 
 ### Generate Today's Digest
@@ -289,39 +315,6 @@ This is the initial iteration focused on generating daily digests. Future versio
 - Custom alert rules
 - Multi-day trend analysis
 - Integration with hausKI for AI-powered insights
-
-## Data Flow & Contracts
-
-Leitstand ist die **visuelle Schaltzentrale** des Heimgewebes.  
-Damit Leitstand korrekte und stabile Ansichten liefern kann, stützt es sich
-auf klar definierte Datenverträge.
-
-Die verbindliche Sicht auf die Datenströme, die Leitstand konsumiert, steht in:
-
-- `docs/data-flow.md`
-
-Dort sind die zentralen Eingänge beschrieben:
-
-- `fleet.health` – Fleet-Gesundheit (wgx / metarepo Contracts)
-- `insights.daily` – semantische Tages-Insights aus semantAH
-- `event.line` – Event-Backbone aus chronik
-
-Die zugrunde liegenden JSON-Schemas sind im **metarepo** dokumentiert:
-
-- `contracts/fleet.health.schema.json`
-- `contracts/insights.daily.schema.json`
-- `contracts/insights.schema.json`
-- `contracts/event.line.schema.json`
-
-Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
-
-- `docs/contracts-index.md`
-
-Hinweis:
-
-- Neue Leitstand-Features, die zusätzliche Datenquellen nutzen, sollten
-  sowohl in `docs/data-flow.md` als auch im Contracts-Index des metarepos
-  verankert werden.
 
 ## License
 MIT
