@@ -90,7 +90,7 @@
     const routinesList = document.getElementById('routinesList');
 
     // Injected by server
-    const ACS_URL = "<%= locals.acsUrl %>";
+    const ACS_URL = <%- JSON.stringify(locals.acsUrl) %>;
     const POLL_INTERVAL = 1000;
     const MAX_POLLS = 30; // 30 seconds timeout
 
