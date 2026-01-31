@@ -39,16 +39,19 @@ if (RAW_ALLOWED !== undefined && SCHEMA_REF_ALLOWED_HOSTS.length === 0) {
 
 // Enforce SCHEMA_REF allowlist if provided
 if (SCHEMA_REF) {
+    let u;
     try {
-        const u = new NodeURL(SCHEMA_REF);
-        const normalizedHost = u.hostname.toLowerCase();
-        if (!SCHEMA_REF_ALLOWED_HOSTS.includes(normalizedHost)) {
-             throw new Error(`SCHEMA_REF hostname '${normalizedHost}' not in allowlist. Allowed: ${SCHEMA_REF_ALLOWED_HOSTS.join(', ')}`);
-        }
+        u = new NodeURL(SCHEMA_REF);
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error(`[leitstand] FATAL: Invalid SCHEMA_REF: ${msg}`);
         process.exit(1);
+    }
+
+    const normalizedHost = u.hostname.toLowerCase();
+    if (!SCHEMA_REF_ALLOWED_HOSTS.includes(normalizedHost)) {
+         console.error(`[leitstand] FATAL: SCHEMA_REF not allowed: hostname '${normalizedHost}' not in allowlist. Allowed: ${SCHEMA_REF_ALLOWED_HOSTS.join(', ')}`);
+         process.exit(1);
     }
     // Note: We intentionally do NOT validate or fetch against this URL to avoid strictness traps.
     // We rely on the vendored contract for actual validation.
