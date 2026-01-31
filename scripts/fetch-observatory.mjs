@@ -28,7 +28,7 @@ const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
 const RAW_ALLOWED = process.env.OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS;
 const SCHEMA_REF_ALLOWED_HOSTS = (RAW_ALLOWED || 'schemas.heimgewebe.org')
   .split(',')
-  .map(s => s.trim().toLowerCase())
+  .map(s => s.trim().toLowerCase().replace(/\.$/, ''))
   .filter(Boolean);
 
 // Harden against empty allowlist configuration
@@ -48,7 +48,7 @@ if (SCHEMA_REF) {
         process.exit(1);
     }
 
-    const normalizedHost = u.hostname.toLowerCase();
+    const normalizedHost = u.hostname.toLowerCase().replace(/\.$/, '');
     if (!SCHEMA_REF_ALLOWED_HOSTS.includes(normalizedHost)) {
          console.error(`[leitstand] FATAL: SCHEMA_REF not allowed: hostname '${normalizedHost}' not in allowlist. Allowed: ${SCHEMA_REF_ALLOWED_HOSTS.join(', ')}`);
          process.exit(1);
