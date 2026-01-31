@@ -41,8 +41,9 @@ if (RAW_ALLOWED !== undefined && SCHEMA_REF_ALLOWED_HOSTS.length === 0) {
 if (SCHEMA_REF) {
     try {
         const u = new NodeURL(SCHEMA_REF);
-        if (!SCHEMA_REF_ALLOWED_HOSTS.includes(u.hostname.toLowerCase())) {
-             throw new Error(`SCHEMA_REF hostname '${u.hostname}' not in allowlist.`);
+        const normalizedHost = u.hostname.toLowerCase();
+        if (!SCHEMA_REF_ALLOWED_HOSTS.includes(normalizedHost)) {
+             throw new Error(`SCHEMA_REF hostname '${normalizedHost}' not in allowlist. Allowed: ${SCHEMA_REF_ALLOWED_HOSTS.join(', ')}`);
         }
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);

@@ -132,8 +132,8 @@ describe('scripts/fetch-observatory.mjs', () => {
         } catch (error: any) {
             expect(error.code).not.toBe(0);
             const output = (error.stderr || '') + (error.stdout || '');
-            // Either the hostname message or the wrapper "Invalid SCHEMA_REF" is acceptable
-            expect(output).toMatch(/not in allowlist|Invalid SCHEMA_REF/i);
+            // Specifically match the allowlist error message
+            expect(output).toMatch(/hostname .* not in allowlist/i);
         }
     }, 10000);
 
