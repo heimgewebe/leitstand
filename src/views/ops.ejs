@@ -38,7 +38,7 @@
     <a href="/ops">Ops</a>
   </nav>
 
-  <h1>Ops (Read-Only Viewer)</h1>
+  <h1>Ops Viewer (may trigger audit jobs)</h1>
 
   <div class="panel">
     <div class="header">
@@ -210,13 +210,28 @@
     function handleError(e) {
         console.error(e);
         let msg = e.toString();
-        if (msg.includes('Failed to fetch')) {
-            msg += '\n\nLikely Causes:\n1. ACS is not running at ' + ACS_URL + '\n2. CORS is blocked (Access-Control-Allow-Origin missing in ACS)';
+        const isMixedContent = window.location.protocol === 'https:' && ACS_URL.startsWith('http:');
+
+        if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+            msg += '\n\nLikely Causes:';
+            if (isMixedContent) {
+                msg += '\n- Mixed Content Block: Leitstand is HTTPS but ACS is HTTP. Use HTTPS for ACS or a Reverse Proxy.';
+            } else {
+                msg += '\n- ACS is not running at ' + ACS_URL;
+                msg += '\n- CORS is blocked (ACS must allow Leitstand origin in ACS_CORS_ALLOW_ORIGINS)';
+            }
         }
         alert('Failed to fetch audit from ACS.\n\nError: ' + msg);
     }
 
     function renderAudit(data) {
+        // Validate Kind (Minimal Type Safety)
+        if (data.kind !== 'audit.git') {
+            console.warn('Received unknown data kind:', data.kind);
+            alert('Received invalid data format (expected audit.git). Check console.');
+            return;
+        }
+
       currentAudit = data;
       auditResult.style.display = 'block';
       auditJson.textContent = JSON.stringify(data, null, 2);
