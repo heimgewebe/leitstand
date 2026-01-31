@@ -133,7 +133,8 @@ describe('scripts/fetch-observatory.mjs', () => {
             expect(error.code).not.toBe(0);
             const output = (error.stderr || '') + (error.stdout || '');
             // Specifically match the allowlist error message
-            expect(output).toMatch(/SCHEMA_REF not allowed: hostname .* not in allowlist/i);
+            expect(output).toMatch(/SCHEMA_REF not allowed: hostname 'evil\.example\.test' not in allowlist/i);
+            expect(output).toContain('Allowed: schemas.heimgewebe.org');
         }
     }, 10000);
 
