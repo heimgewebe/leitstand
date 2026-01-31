@@ -44,6 +44,37 @@ describe('config', () => {
         // safeParse fails -> returns defaults -> 3000
         expect(envConfig.PORT).toBe(3000);
       });
+
+      describe('LEITSTAND_ACS_URL', () => {
+        it('should accept valid HTTP/HTTPS URLs', () => {
+          vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
+          resetEnvConfig();
+          expect(envConfig.acsUrl).toBe('http://localhost:8000');
+
+          vi.stubEnv('LEITSTAND_ACS_URL', 'https://acs.internal');
+          resetEnvConfig();
+          expect(envConfig.acsUrl).toBe('https://acs.internal');
+        });
+
+        it('should allow empty string (disabled/unconfigured)', () => {
+          vi.stubEnv('LEITSTAND_ACS_URL', '');
+          resetEnvConfig();
+          expect(envConfig.acsUrl).toBe('');
+        });
+
+        it('should reject invalid URLs (non-http/s)', () => {
+          vi.stubEnv('LEITSTAND_ACS_URL', 'ftp://malicious-server.com');
+          resetEnvConfig();
+          // Validation fails -> fallback to defaults which is now empty string (disabled)
+          expect(envConfig.acsUrl).toBe('');
+        });
+
+        it('should reject invalid URL strings', () => {
+          vi.stubEnv('LEITSTAND_ACS_URL', 'not-a-url');
+          resetEnvConfig();
+          expect(envConfig.acsUrl).toBe('');
+        });
+      });
   });
   
   it('should load valid configuration', async () => {

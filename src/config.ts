@@ -15,7 +15,18 @@ const EnvSchema = z.object({
   OBSERVATORY_URL: z.string().default('https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json'),
   OBSERVATORY_ARTIFACT_PATH: z.string().optional(),
   INTEGRITY_URL: z.string().optional(),
-  LEITSTAND_ACS_URL: z.string().default('http://localhost:8000'),
+  LEITSTAND_ACS_URL: z.string()
+    .refine((val) => {
+      // Empty string is allowed (disabled/unconfigured)
+      if (val === '') return true;
+      try {
+        const url = new URL(val);
+        return ['http:', 'https:'].includes(url.protocol);
+      } catch {
+        return false;
+      }
+    }, { message: "Must be a valid HTTP/HTTPS URL or empty string" })
+    .default(''),
 });
 
 type EnvType = z.infer<typeof EnvSchema>;
@@ -41,7 +52,7 @@ const parsedEnv = (): EnvType => {
         OBSERVATORY_STRICT_FAIL: undefined,
         OBSERVATORY_ARTIFACT_PATH: undefined,
         INTEGRITY_URL: undefined,
-        LEITSTAND_ACS_URL: 'http://localhost:8000'
+        LEITSTAND_ACS_URL: '' // Default to disabled for safety
     };
 
     if (!parsed.success) {
@@ -83,7 +94,10 @@ export const envConfig = {
     paths: {
       artifacts: join(process.cwd(), 'artifacts'),
       fixtures: join(process.cwd(), 'src', 'fixtures'),
-    }
+    },
+
+    // Repositories known to the fleet (hardcoded SoT for now until Artifact ingestion)
+    repos: ['metarepo', 'wgx', 'leitstand']
 };
 
 
