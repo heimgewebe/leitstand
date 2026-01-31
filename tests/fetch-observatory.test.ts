@@ -3,7 +3,7 @@ import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { join } from 'path';
-import { mkdir } from 'fs/promises';
+import { mkdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { createHash } from 'crypto';
@@ -139,7 +139,6 @@ describe('scripts/fetch-observatory.mjs', () => {
 
     it('should accept SCHEMA_REF with an allowlisted hostname', async () => {
         // Ensure clean state before running
-        const { rm } = await import('fs/promises');
         await rm(artifactPath, { force: true });
 
         const cmd = `node scripts/fetch-observatory.mjs`;
