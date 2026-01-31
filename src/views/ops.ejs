@@ -101,19 +101,21 @@
       startLoading();
 
       try {
-        // Try Sync-Audit endpoint first (if available)
-        // Note: This matches the "Pragmatic" approach, but falls back to Job flow if needed.
-        // Actually, ACS API spec says /api/audit/git is a POST returning a job.
-        // Let's implement the robust Job flow as primary.
-
-        const res = await fetch(`${ACS_URL}/api/audit/git?repo=${repo}`, {
-            method: 'POST',
-            // Typically POST requires empty body or params if arguments are query-based
-            // Assuming ACS accepts query params for POST as per typical FastAPI behavior or body
+        // Step 1: Try GET /sync (Pragmatic Viewer Approach)
+        // This is preferred for a read-only viewer to avoid creating jobs if possible.
+        let res = await fetch(`${ACS_URL}/api/audit/git/sync?repo=${repo}`, {
+            method: 'GET'
         });
 
+        if (res.status === 404 || res.status === 405) {
+            // Sync endpoint not available, fallback to Job Flow (POST)
+            console.log("Sync endpoint failed, falling back to Job Flow (POST)");
+            res = await fetch(`${ACS_URL}/api/audit/git?repo=${repo}`, {
+                method: 'POST'
+            });
+        }
+
         if (!res.ok) {
-           // Maybe method not allowed (405)? Fallback to GET/Sync if POST fails?
            throw new Error(`HTTP ${res.status}`);
         }
 
@@ -122,7 +124,7 @@
         // Check if we got a Job ID (202 Accepted) or direct result
         if (res.status === 202 && initialData.job_id) {
             pollIndicator.style.display = 'inline';
-            pollIndicator.textContent = `Job started (${initialData.job_id}). Polling...`;
+            pollIndicator.textContent = `Job queued (${initialData.job_id})...`;
             await pollJob(initialData.job_id);
         } else if (initialData.kind === 'audit.git') {
             // Direct result
@@ -177,7 +179,11 @@
                 }
 
                 // Still running...
-                pollIndicator.textContent = `Job running... (${attempts}/${MAX_POLLS})`;
+                let stateLabel = job.status || job.state || 'running';
+                if (stateLabel === 'queued') stateLabel = 'queued';
+                else if (stateLabel === 'running') stateLabel = 'running';
+
+                pollIndicator.textContent = `Job ${stateLabel}... (${attempts}/${MAX_POLLS})`;
 
             } catch (pollErr) {
                 console.warn("Poll error", pollErr);
