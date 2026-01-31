@@ -28,7 +28,7 @@ const SCHEMA_REF = process.env.OBSERVATORY_SCHEMA_REF;
 const RAW_ALLOWED = process.env.OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS;
 const SCHEMA_REF_ALLOWED_HOSTS = (RAW_ALLOWED || 'schemas.heimgewebe.org')
   .split(',')
-  .map(s => s.trim())
+  .map(s => s.trim().toLowerCase())
   .filter(Boolean);
 
 // Harden against empty allowlist configuration
@@ -41,7 +41,7 @@ if (RAW_ALLOWED !== undefined && SCHEMA_REF_ALLOWED_HOSTS.length === 0) {
 if (SCHEMA_REF) {
     try {
         const u = new NodeURL(SCHEMA_REF);
-        if (!SCHEMA_REF_ALLOWED_HOSTS.includes(u.hostname)) {
+        if (!SCHEMA_REF_ALLOWED_HOSTS.includes(u.hostname.toLowerCase())) {
              throw new Error(`SCHEMA_REF hostname '${u.hostname}' not in allowlist.`);
         }
     } catch (e) {
