@@ -15,6 +15,7 @@ const EnvSchema = z.object({
   OBSERVATORY_URL: z.string().default('https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json'),
   OBSERVATORY_ARTIFACT_PATH: z.string().optional(),
   INTEGRITY_URL: z.string().optional(),
+  LEITSTAND_ACS_URL: z.string().default('http://localhost:8000'),
 });
 
 type EnvType = z.infer<typeof EnvSchema>;
@@ -39,7 +40,8 @@ const parsedEnv = (): EnvType => {
         OBSERVATORY_STRICT: undefined,
         OBSERVATORY_STRICT_FAIL: undefined,
         OBSERVATORY_ARTIFACT_PATH: undefined,
-        INTEGRITY_URL: undefined
+        INTEGRITY_URL: undefined,
+        LEITSTAND_ACS_URL: 'http://localhost:8000'
     };
 
     if (!parsed.success) {
@@ -67,6 +69,7 @@ export const envConfig = {
     get token() { return parsedEnv().LEITSTAND_EVENTS_TOKEN; },
     get OBSERVATORY_ARTIFACT_PATH() { return parsedEnv().OBSERVATORY_ARTIFACT_PATH; },
     get INTEGRITY_URL() { return parsedEnv().INTEGRITY_URL; },
+    get acsUrl() { return parsedEnv().LEITSTAND_ACS_URL; },
 
     get isStrict() {
         const env = parsedEnv();

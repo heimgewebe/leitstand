@@ -9,7 +9,6 @@ import { envConfig } from './config.js';
 import { getObservatoryData } from './controllers/observatory.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
-import { getGitAudit } from './controllers/ops.js';
 
 const execPromise = promisify(exec);
 
@@ -220,17 +219,7 @@ app.post('/events', async (req, res) => {
 });
 
 app.get('/ops', (_req, res) => {
-  res.render('ops');
-});
-
-app.get('/api/ops/audit/git', async (req, res) => {
-  const repo = req.query.repo as string || 'metarepo';
-  try {
-    const audit = await getGitAudit(repo);
-    res.json(audit);
-  } catch (error) {
-    res.status(500).json({ error: String(error) });
-  }
+  res.render('ops', { acsUrl: envConfig.acsUrl });
 });
 
 app.get('/', (_req, res) => {

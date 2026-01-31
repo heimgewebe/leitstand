@@ -26,6 +26,7 @@
 
     .acs-link { color: #0056b3; font-weight: bold; text-decoration: none; display: inline-block; }
     .acs-link:hover { text-decoration: underline; }
+    .acs-info { font-size: 0.85em; color: #555; margin-top: 5px; }
   </style>
 </head>
 <body>
@@ -48,7 +49,11 @@
           <option value="leitstand">leitstand</option>
         </select>
       </label>
-      <button id="runAuditBtn" class="primary">Refresh View</button>
+      <button id="runAuditBtn" class="primary">Refresh View (via ACS)</button>
+    </div>
+
+    <div class="acs-info">
+        Data fetched from Agent Control Surface at: <strong><%= locals.acsUrl %></strong>
     </div>
 
     <div id="auditResult" style="display: none;">
@@ -78,25 +83,32 @@
     const routinesSection = document.getElementById('routinesSection');
     const routinesList = document.getElementById('routinesList');
 
+    // Injected by server
+    const ACS_URL = "<%= locals.acsUrl %>";
+
     let currentAudit = null;
 
     runAuditBtn.addEventListener('click', async () => {
       const repo = repoSelect.value;
       runAuditBtn.disabled = true;
-      runAuditBtn.textContent = 'Refreshing...';
+      runAuditBtn.textContent = 'Fetching from ACS...';
       auditResult.style.display = 'none';
       routinesSection.style.display = 'none';
 
       try {
-        const res = await fetch(`/api/ops/audit/git?repo=${repo}`);
+        // Direct call to ACS (CORS must be allowed on ACS side)
+        // If this is a skeleton without ACS running, this will fail.
+        const res = await fetch(`${ACS_URL}/api/audit/git?repo=${repo}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         currentAudit = data;
         renderAudit(data);
       } catch (e) {
-        alert('Audit fetch failed: ' + e);
+        alert('Failed to fetch audit from ACS.\nMake sure ACS is running at ' + ACS_URL + '\n\nError: ' + e);
+        console.error(e);
       } finally {
         runAuditBtn.disabled = false;
-        runAuditBtn.textContent = 'Refresh View';
+        runAuditBtn.textContent = 'Refresh View (via ACS)';
       }
     });
 
@@ -121,7 +133,7 @@
             <p>${routine.reason}</p>
             <div class="routine-actions">
               <span>Action required in ACS:</span>
-              <a href="#" class="acs-link" onclick="alert('TODO: Link to ACS for ${routine.id}'); return false;">Open in ACS &rarr;</a>
+              <a href="${ACS_URL}/ops" class="acs-link" target="_blank">Open in ACS &rarr;</a>
             </div>
           `;
           routinesList.appendChild(card);
