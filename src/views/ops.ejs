@@ -152,7 +152,8 @@
 
                 const job = await res.json();
 
-                if (job.status === 'completed' || job.state === 'completed' || job.status === 'success') {
+                // Match on 'done', 'error', 'completed', 'success' to cover potential ACS variations
+                if (job.status === 'done' || job.state === 'done' || job.status === 'completed' || job.status === 'success') {
                     // Extract audit result.
                     // ACS job result structure typically: results: [{ action: 'audit.git', audit: {...} }]
                     // Or sometimes directly in result.
@@ -171,7 +172,7 @@
                     } else {
                         throw new Error("Job completed but no audit artifact found.");
                     }
-                } else if (job.status === 'failed' || job.state === 'failed' || job.status === 'error') {
+                } else if (job.status === 'error' || job.status === 'failed' || job.state === 'failed') {
                     throw new Error(`Job failed: ${job.error || 'Unknown error'}`);
                 }
 
@@ -231,7 +232,7 @@
             <p>${routine.reason}</p>
             <div class="routine-actions">
               <span>Action required in ACS:</span>
-              <a href="${ACS_URL}/ops" class="acs-link" target="_blank">Open in ACS &rarr;</a>
+              <a href="${ACS_URL}/#ops-panel" class="acs-link" target="_blank">Open in ACS &rarr;</a>
             </div>
           `;
           routinesList.appendChild(card);
