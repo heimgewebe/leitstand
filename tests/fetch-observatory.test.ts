@@ -138,6 +138,10 @@ describe('scripts/fetch-observatory.mjs', () => {
     }, 10000);
 
     it('should accept SCHEMA_REF with an allowlisted hostname', async () => {
+        // Ensure clean state before running
+        const { rm } = await import('fs/promises');
+        await rm(artifactPath, { force: true });
+
         const cmd = `node scripts/fetch-observatory.mjs`;
 
         const env = {
