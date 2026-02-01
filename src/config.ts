@@ -95,7 +95,7 @@ export const envConfig = {
     get token() { return parsedEnv().LEITSTAND_EVENTS_TOKEN; },
     get OBSERVATORY_ARTIFACT_PATH() { return parsedEnv().OBSERVATORY_ARTIFACT_PATH; },
     get INTEGRITY_URL() { return parsedEnv().INTEGRITY_URL; },
-    get acsUrl() { return parsedEnv().LEITSTAND_ACS_URL; },
+    get acsUrl() { return parsedEnv().LEITSTAND_ACS_URL.replace(/\/+$/, ''); },
     get allowJobFallback() { return isTruthy(parsedEnv().LEITSTAND_OPS_ALLOW_JOB_FALLBACK); },
     get acsViewerToken() { return parsedEnv().LEITSTAND_ACS_VIEWER_TOKEN; },
 

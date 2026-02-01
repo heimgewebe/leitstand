@@ -219,11 +219,8 @@ app.post('/events', async (req, res) => {
 });
 
 app.get('/ops', (_req, res) => {
-  // Normalize ACS URL by stripping trailing slashes to prevent //api issues
-  const normalizedAcsUrl = envConfig.acsUrl.replace(/\/+$/, '');
-
   res.render('ops', {
-    acsUrl: normalizedAcsUrl,
+    acsUrl: envConfig.acsUrl,
     configuredRepos: envConfig.repos,
     allowJobFallback: envConfig.allowJobFallback,
     acsViewerToken: envConfig.acsViewerToken

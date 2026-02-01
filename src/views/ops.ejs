@@ -367,10 +367,15 @@
           data.suggested_routines.forEach(routine => {
             const card = document.createElement('div');
             card.className = 'routine-card';
+
+            let riskColor = 'red'; // default high
+            if (routine.risk === 'low') riskColor = 'green';
+            if (routine.risk === 'medium') riskColor = 'orange';
+
             card.innerHTML = `
               <div class="routine-header">
                 <span>${routine.id}</span>
-                <span style="color: ${routine.risk === 'low' ? 'green' : 'red'}">Risk: ${routine.risk}</span>
+                <span style="color: ${riskColor}">Risk: ${routine.risk}</span>
               </div>
               <p>${routine.reason}</p>
               <div class="routine-actions">
