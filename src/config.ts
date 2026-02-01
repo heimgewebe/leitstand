@@ -29,6 +29,7 @@ const EnvSchema = z.object({
     .default(''),
   LEITSTAND_OPS_ALLOW_JOB_FALLBACK: z.string().optional(),
   LEITSTAND_REPOS: z.string().optional(),
+  LEITSTAND_ACS_VIEWER_TOKEN: z.string().optional(),
 });
 
 type EnvType = z.infer<typeof EnvSchema>;
@@ -56,7 +57,8 @@ const parsedEnv = (): EnvType => {
         INTEGRITY_URL: undefined,
         LEITSTAND_ACS_URL: '', // Default to disabled for safety
         LEITSTAND_OPS_ALLOW_JOB_FALLBACK: undefined,
-        LEITSTAND_REPOS: undefined
+        LEITSTAND_REPOS: undefined,
+        LEITSTAND_ACS_VIEWER_TOKEN: undefined
     };
 
     if (!parsed.success) {
@@ -95,6 +97,7 @@ export const envConfig = {
     get INTEGRITY_URL() { return parsedEnv().INTEGRITY_URL; },
     get acsUrl() { return parsedEnv().LEITSTAND_ACS_URL; },
     get allowJobFallback() { return isTruthy(parsedEnv().LEITSTAND_OPS_ALLOW_JOB_FALLBACK); },
+    get acsViewerToken() { return parsedEnv().LEITSTAND_ACS_VIEWER_TOKEN; },
 
     get isStrict() {
         const env = parsedEnv();
@@ -112,6 +115,7 @@ export const envConfig = {
 
     // Repositories known to the fleet.
     // LEITSTAND_REPOS env var overrides hardcoded defaults if present.
+    // Default list for local dev; set LEITSTAND_REPOS in production
     get repos() {
         const envRepos = parsedEnv().LEITSTAND_REPOS;
         if (envRepos) {

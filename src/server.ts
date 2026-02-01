@@ -225,7 +225,8 @@ app.get('/ops', (_req, res) => {
   res.render('ops', {
     acsUrl: normalizedAcsUrl,
     configuredRepos: envConfig.repos,
-    allowJobFallback: envConfig.allowJobFallback
+    allowJobFallback: envConfig.allowJobFallback,
+    acsViewerToken: envConfig.acsViewerToken
   });
 });
 

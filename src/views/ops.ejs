@@ -68,12 +68,12 @@
   <% } %>
 
   <% if (!locals.acsUrl) { %>
-    <div class="not-configured">
+    <div class="not-configured" data-testid="ops-not-configured">
       <h2>Ops Viewer Not Configured</h2>
       <p>The Agent Control Surface (ACS) URL is not set. Please configure <code>LEITSTAND_ACS_URL</code>.</p>
     </div>
   <% } else { %>
-    <div class="panel">
+    <div class="panel" data-testid="ops-panel">
       <!-- Error container for inline diagnostics -->
       <div id="errorContainer"></div>
 
@@ -101,6 +101,9 @@
 
       <div class="acs-info">
           Data source: <strong>Agent Control Surface (<%= locals.acsUrl %>)</strong>
+          <% if (locals.acsViewerToken) { %>
+             <span style="margin-left: 10px; color: #007bff;" title="Optional viewer token configured">🔒</span>
+          <% } %>
           <br/>
           <span style="color: #666; font-size: 0.9em;">
              <% if (locals.allowJobFallback) { %>
@@ -143,10 +146,19 @@
       // Injected by server
       const ACS_URL = <%- JSON.stringify(locals.acsUrl) %>;
       const ALLOW_JOB_FALLBACK = <%- JSON.stringify(locals.allowJobFallback || false) %>;
+      const ACS_VIEWER_TOKEN = <%- JSON.stringify(locals.acsViewerToken || null) %>;
       const POLL_INTERVAL = 1000;
       const MAX_POLLS = 30; // 30 seconds timeout
 
       let currentAudit = null;
+
+      function getAuthHeaders() {
+          const headers = {};
+          if (ACS_VIEWER_TOKEN) {
+              headers['X-ACS-Viewer-Token'] = ACS_VIEWER_TOKEN;
+          }
+          return headers;
+      }
 
       runAuditBtn.addEventListener('click', async () => {
         // Pre-flight check for Mixed Content to avoid network spam
@@ -163,7 +175,8 @@
           // Step 1: Try GET /sync (Pragmatic Viewer Approach)
           // This is preferred for a read-only viewer to avoid creating jobs if possible.
           let res = await fetch(`${ACS_URL}/api/audit/git/sync?repo=${encodeURIComponent(repo)}`, {
-              method: 'GET'
+              method: 'GET',
+              headers: getAuthHeaders()
           });
 
           // Only fallback if the endpoint is truly missing (404), method not allowed (405), or explicitly not implemented (501)
@@ -172,7 +185,8 @@
                   // Sync endpoint not available, fallback to Job Flow (POST)
                   console.log(`Sync endpoint missing (${res.status}), falling back to Job Flow (POST)`);
                   res = await fetch(`${ACS_URL}/api/audit/git?repo=${encodeURIComponent(repo)}`, {
-                      method: 'POST'
+                      method: 'POST',
+                      headers: getAuthHeaders()
                   });
               } else {
                   throw new Error(`Sync endpoint unavailable (${res.status}) and Job Fallback is disabled.`);
@@ -217,7 +231,9 @@
               await new Promise(r => setTimeout(r, POLL_INTERVAL));
 
               try {
-                  const res = await fetch(`${ACS_URL}/api/jobs/${jobId}`);
+                  const res = await fetch(`${ACS_URL}/api/jobs/${jobId}`, {
+                      headers: getAuthHeaders()
+                  });
                   if (!res.ok) {
                       consecutiveFailures++;
                       pollIndicator.textContent = `Job status fetch failed (HTTP ${res.status}), retrying... (${consecutiveFailures}/${MAX_FAILURES})`;

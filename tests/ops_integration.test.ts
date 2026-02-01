@@ -21,7 +21,7 @@ describe('GET /ops', () => {
     const res = await request(app).get('/ops');
 
     expect(res.status).toBe(200);
-    expect(res.text).toContain('Ops Viewer Not Configured');
+    expect(res.text).toContain('data-testid="ops-not-configured"');
     expect(res.text).toContain('Please configure <code>LEITSTAND_ACS_URL</code>');
 
     expect(res.text).not.toContain('const ACS_URL =');
@@ -38,6 +38,9 @@ describe('GET /ops', () => {
     expect(res.status).toBe(200);
     // Should contain specific "read-only" title by default
     expect(res.text).toContain('<title>Ops Viewer (read-only)</title>');
+
+    // Check main panel presence via data-testid
+    expect(res.text).toContain('data-testid="ops-panel"');
 
     // Check injection using regex
     expect(res.text).toMatch(/const ACS_URL = "http:\/\/localhost:8000"/);
@@ -104,6 +107,17 @@ describe('GET /ops', () => {
     expect(res.text).toContain('<title>Ops Viewer (read-only)</title>');
   });
 
+  it('should inject ACS_VIEWER_TOKEN if configured', async () => {
+    vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
+    vi.stubEnv('LEITSTAND_ACS_VIEWER_TOKEN', 'secret-viewer-token');
+    resetEnvConfig();
+
+    const res = await request(app).get('/ops');
+    expect(res.text).toMatch(/const ACS_VIEWER_TOKEN = "secret-viewer-token"/);
+    // Check if the lock icon/indicator is rendered
+    expect(res.text).toContain('title="Optional viewer token configured"');
+  });
+
   it('should respect LEITSTAND_REPOS overrides', async () => {
     vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
     vi.stubEnv('LEITSTAND_REPOS', 'custom-repo-1, custom-repo-2');
@@ -123,6 +137,6 @@ describe('GET /ops', () => {
 
     const res = await request(app).get('/ops');
     expect(res.status).toBe(200);
-    expect(res.text).toContain('Ops Viewer Not Configured');
+    expect(res.text).toContain('data-testid="ops-not-configured"');
   });
 });
