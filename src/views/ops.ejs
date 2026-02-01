@@ -152,16 +152,16 @@
               method: 'GET'
           });
 
-          // Only fallback if the endpoint is truly missing or method not allowed
-          if (res.status === 404 || res.status === 405) {
+          // Only fallback if the endpoint is truly missing (404), method not allowed (405), or explicitly not implemented (501)
+          if (res.status === 404 || res.status === 405 || res.status === 501) {
               if (ALLOW_JOB_FALLBACK) {
                   // Sync endpoint not available, fallback to Job Flow (POST)
-                  console.log("Sync endpoint missing (404/405), falling back to Job Flow (POST)");
+                  console.log(`Sync endpoint missing (${res.status}), falling back to Job Flow (POST)`);
                   res = await fetch(`${ACS_URL}/api/audit/git?repo=${repo}`, {
                       method: 'POST'
                   });
               } else {
-                  throw new Error("Sync endpoint unavailable (404/405) and Job Fallback is disabled.");
+                  throw new Error(`Sync endpoint unavailable (${res.status}) and Job Fallback is disabled.`);
               }
           }
 
@@ -206,18 +206,19 @@
 
                   const job = await res.json();
 
-                  // Match on 'done', 'error', 'completed', 'success' to cover potential ACS variations
-                  if (job.status === 'done' || job.state === 'done' || job.status === 'completed' || job.status === 'success') {
+                  // Strict Contract: job.status must be one of: done, error, queued, running
+                  if (job.status === 'done') {
                       // Extract audit result.
-                      // ACS job result structure typically: results: [{ action: 'audit.git', audit: {...} }]
-                      // Or sometimes directly in result.
+                      // ACS job result structure: results: [{ action: 'audit.git', audit: {...} }]
+                      // Or legacy/simple: result.audit
 
                       let audit = null;
-                      if (job.result && job.result.audit && job.result.audit.kind === 'audit.git') {
-                          audit = job.result.audit;
-                      } else if (Array.isArray(job.results)) {
+                      if (Array.isArray(job.results)) {
                           const item = job.results.find(r => r.audit && r.audit.kind === 'audit.git');
                           if (item) audit = item.audit;
+                      } else if (job.result && job.result.audit && job.result.audit.kind === 'audit.git') {
+                          // Legacy compatibility
+                          audit = job.result.audit;
                       }
 
                       if (audit) {
@@ -226,16 +227,16 @@
                       } else {
                           throw new Error("Job completed but no audit artifact found.");
                       }
-                  } else if (job.status === 'error' || job.status === 'failed' || job.state === 'failed') {
+                  } else if (job.status === 'error') {
                       throw new Error(`Job failed: ${job.error || 'Unknown error'}`);
+                  } else if (job.status === 'queued' || job.status === 'running') {
+                      // Still running...
+                      pollIndicator.textContent = `Job ${job.status}... (${attempts}/${MAX_POLLS})`;
+                  } else {
+                      // Unknown/Invalid status
+                      pollIndicator.textContent = "Unknown job status; aborting.";
+                      throw new Error(`Job returned unknown status '${job.status}'; ACS contract mismatch`);
                   }
-
-                  // Still running...
-                  let stateLabel = job.status || job.state || 'running';
-                  if (stateLabel === 'queued') stateLabel = 'queued';
-                  else if (stateLabel === 'running') stateLabel = 'running';
-
-                  pollIndicator.textContent = `Job ${stateLabel}... (${attempts}/${MAX_POLLS})`;
 
               } catch (pollErr) {
                   console.warn("Poll error", pollErr);
