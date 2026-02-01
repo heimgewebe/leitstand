@@ -71,8 +71,9 @@ export interface RoutineResultV1 {
   id: string;
   mode: 'apply';
   mutating: boolean;
-  risk: 'low' | 'medium' | 'high';
-  steps: Array<{
+  ok?: boolean;
+  risk?: 'low' | 'medium' | 'high';
+  steps?: Array<{
     cmd: string;
     why: string;
   }>;

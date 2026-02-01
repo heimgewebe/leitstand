@@ -242,7 +242,7 @@
                   // Continue polling? or fail?
               }
           }
-          throw new Error("Polling timed out.");
+          throw new Error("Polling timed out. Please check ACS logs or try again later.");
       }
 
       function startLoading() {
@@ -260,11 +260,13 @@
       }
 
       function showError(msg) {
+          errorContainer.className = 'error-box';
           errorContainer.textContent = msg;
           errorContainer.style.display = 'block';
       }
 
       function clearError() {
+          errorContainer.className = '';
           errorContainer.style.display = 'none';
           errorContainer.textContent = '';
       }

@@ -48,6 +48,18 @@ describe('GET /ops', () => {
     expect(res.text).toContain('<option value="leitstand">leitstand</option>');
   });
 
+  it('should normalize ACS URL by stripping trailing slashes', async () => {
+    vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000/'); // With slash
+    resetEnvConfig();
+
+    const res = await request(app).get('/ops');
+
+    expect(res.status).toBe(200);
+    // Should NOT have trailing slash in the injected string
+    expect(res.text).toMatch(/const ACS_URL = "http:\/\/localhost:8000"/);
+    expect(res.text).not.toMatch(/const ACS_URL = "http:\/\/localhost:8000\/"/);
+  });
+
   it('should inject ALLOW_JOB_FALLBACK flag correctly', async () => {
     vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
     vi.stubEnv('LEITSTAND_OPS_ALLOW_JOB_FALLBACK', 'true');
