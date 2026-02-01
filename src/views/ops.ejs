@@ -89,7 +89,13 @@
         </label>
         <div style="display: flex; align-items: center;">
           <span id="pollIndicator" class="poll-indicator">Waiting for job...</span>
-          <button id="runAuditBtn" class="primary">Refresh View (via ACS)</button>
+          <button id="runAuditBtn" class="primary">
+            <% if (locals.allowJobFallback) { %>
+              Refresh (may create job)
+            <% } else { %>
+              Refresh View (via ACS)
+            <% } %>
+          </button>
         </div>
       </div>
 
@@ -156,7 +162,7 @@
         try {
           // Step 1: Try GET /sync (Pragmatic Viewer Approach)
           // This is preferred for a read-only viewer to avoid creating jobs if possible.
-          let res = await fetch(`${ACS_URL}/api/audit/git/sync?repo=${repo}`, {
+          let res = await fetch(`${ACS_URL}/api/audit/git/sync?repo=${encodeURIComponent(repo)}`, {
               method: 'GET'
           });
 
@@ -165,7 +171,7 @@
               if (ALLOW_JOB_FALLBACK) {
                   // Sync endpoint not available, fallback to Job Flow (POST)
                   console.log(`Sync endpoint missing (${res.status}), falling back to Job Flow (POST)`);
-                  res = await fetch(`${ACS_URL}/api/audit/git?repo=${repo}`, {
+                  res = await fetch(`${ACS_URL}/api/audit/git?repo=${encodeURIComponent(repo)}`, {
                       method: 'POST'
                   });
               } else {
@@ -245,11 +251,13 @@
 
                       if (audit) {
                           renderAudit(audit);
+                          pollIndicator.style.display = 'none';
                           return;
                       } else {
                           throw new Error("Job completed but no audit artifact found.");
                       }
                   } else if (job.status === 'error') {
+                      pollIndicator.style.display = 'none';
                       throw new Error(`Job failed: ${job.error || 'Unknown error'}`);
                   } else if (job.status === 'queued' || job.status === 'running') {
                       // Still running...
@@ -273,12 +281,13 @@
                   }
               }
           }
+          pollIndicator.style.display = 'none';
           throw new Error("Polling timed out. Please check ACS logs or try again later.");
       }
 
       function startLoading() {
         runAuditBtn.disabled = true;
-        runAuditBtn.textContent = 'Fetching from ACS...';
+        runAuditBtn.textContent = ALLOW_JOB_FALLBACK ? 'Fetching (may create job)...' : 'Fetching from ACS...';
         auditResult.style.display = 'none';
         routinesSection.style.display = 'none';
         pollIndicator.style.display = 'none';
@@ -286,8 +295,9 @@
 
       function stopLoading() {
         runAuditBtn.disabled = false;
-        runAuditBtn.textContent = 'Refresh View (via ACS)';
-        pollIndicator.style.display = 'none';
+        runAuditBtn.textContent = ALLOW_JOB_FALLBACK ? 'Refresh (may create job)' : 'Refresh View (via ACS)';
+        // pollIndicator visibility is managed by success (renderAudit) or error handlers
+        // We do NOT hide it here blindly to avoid "magic disappearing" during polling
       }
 
       function showError(msg) {
@@ -316,6 +326,7 @@
                   msg += '\n- CORS is blocked (ACS must allow Leitstand origin in ACS_CORS_ALLOW_ORIGINS)';
               }
           }
+          pollIndicator.style.display = 'none';
           showError(msg);
       }
 
