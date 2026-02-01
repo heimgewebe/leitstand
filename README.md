@@ -97,7 +97,7 @@ The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly 
 | `LEITSTAND_ACS_URL` | `''` (disabled) | Base URL of the Agent Control Surface. Must be a valid HTTP/HTTPS URL. |
 | `LEITSTAND_OPS_ALLOW_JOB_FALLBACK` | `false` | If `true`, the viewer falls back to triggering async jobs (`POST /api/audit/git`) if the sync endpoint is missing. |
 | `LEITSTAND_REPOS` | `metarepo,wgx,leitstand` | Comma-separated list of repositories to display in the selector. |
-| `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. ACS can be configured to require this header (recommended in internal deployments). |
+| `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. **Note:** Enforcement depends on ACS configuration (e.g., via reverse proxy or middleware); Leitstand merely sends it. |
 
 ### Deployment & Security Notes
 

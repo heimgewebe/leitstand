@@ -113,9 +113,9 @@ export const envConfig = {
       fixtures: join(process.cwd(), 'src', 'fixtures'),
     },
 
-    // Repositories known to the fleet.
+    // Default repos shown in Ops selector.
     // LEITSTAND_REPOS env var overrides hardcoded defaults if present.
-    // Default list for local dev; set LEITSTAND_REPOS in production
+    // Fallback defaults
     get repos() {
         const envRepos = parsedEnv().LEITSTAND_REPOS;
         if (envRepos) {
