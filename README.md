@@ -88,7 +88,7 @@ Create a `leitstand.config.json` file in your project root:
 
 ## Ops Viewer Setup
 
-The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the Agent Control Surface (ACS). It is designed as a strict viewer but can optionally trigger audit jobs if configured.
+The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the Agent Control Surface (ACS). It is designed as a strict viewer but can optionally trigger audit jobs if configured. This integration adheres to the established architectural roles: Leitstand visualizes, ACS orchestrates (see "Data Flow & Contracts" below).
 
 ### Environment Variables
 
@@ -111,6 +111,37 @@ The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly 
 
 3.  **Viewer vs. Actor**:
     By default (`ALLOW_JOB_FALLBACK=false`), Leitstand only attempts non-mutating fetches (`GET /sync` or `GET /latest`). Enabling fallback allows it to trigger jobs, which is a state-changing action (even if just starting an audit). The UI will display a disclaimer reflecting the current mode.
+
+## Data Flow & Contracts
+
+Leitstand ist die **visuelle Schaltzentrale** des Heimgewebes.
+Damit Leitstand korrekte und stabile Ansichten liefern kann, stützt es sich
+auf klar definierte Datenverträge.
+
+Die verbindliche Sicht auf die Datenströme, die Leitstand konsumiert, steht in:
+
+- `docs/data-flow.md`
+
+Dort sind die zentralen Eingänge beschrieben:
+
+- `fleet.health` – Fleet-Gesundheit (wgx / metarepo Contracts)
+- `insights.daily` – semantische Tages-Insights aus semantAH
+- `event.line` – Event-Backbone aus chronik
+
+Die zugrunde liegenden JSON-Schemas sind im **metarepo** dokumentiert:
+
+- `contracts/fleet.health.schema.json`
+- `contracts/insights.daily.schema.json`
+- `contracts/insights.schema.json`
+- `contracts/event.line.schema.json`
+
+Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
+
+- `docs/contracts-index.md`
+
+Hinweis:
+
+- Neue Leitstand-Features (wie der Ops Viewer) fügen sich in dieses Modell ein: Sie visualisieren Daten (Artefakte), ohne die Hoheit über die Erzeugung oder Mutation (WGX/ACS) zu verletzen.
 
 ## Usage
 
@@ -191,41 +222,6 @@ pnpm typecheck
 pnpm lint
 ```
 
----
-
-## Data Flow & Contracts
-
-Leitstand ist die **visuelle Schaltzentrale** des Heimgewebes.
-Damit Leitstand korrekte und stabile Ansichten liefern kann, stützt es sich
-auf klar definierte Datenverträge.
-
-Die verbindliche Sicht auf die Datenströme, die Leitstand konsumiert, steht in:
-
-- `docs/data-flow.md`
-
-Dort sind die zentralen Eingänge beschrieben:
-
-- `fleet.health` – Fleet-Gesundheit (wgx / metarepo Contracts)
-- `insights.daily` – semantische Tages-Insights aus semantAH
-- `event.line` – Event-Backbone aus chronik
-
-Die zugrunde liegenden JSON-Schemas sind im **metarepo** dokumentiert:
-
-- `contracts/fleet.health.schema.json`
-- `contracts/insights.daily.schema.json`
-- `contracts/insights.schema.json`
-- `contracts/event.line.schema.json`
-
-Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
-
-- `docs/contracts-index.md`
-
-Hinweis:
-
-- Neue Leitstand-Features, die zusätzliche Datenquellen nutzen, sollten
-  sowohl in `docs/data-flow.md` als auch im Contracts-Index des metarepos
-  verankert werden.
-
 ## Project Structure
 
 ```
@@ -253,7 +249,7 @@ leitstand/
 └── leitstand.config.json  # Example configuration
 ```
 
-## Data Contracts
+## Data Contracts (Legacy View)
 
 ### Daily Insights (semantAH)
 
