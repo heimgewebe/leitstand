@@ -77,6 +77,15 @@ export const resetEnvConfig = () => {
     cachedEnv = null;
 };
 
+/**
+ * Robust boolean parser for environment variables.
+ * Handles 'true', '1', 'yes', 'on' (case-insensitive).
+ */
+function isTruthy(val?: string): boolean {
+    if (!val) return false;
+    return ['true', '1', 'yes', 'on'].includes(val.toLowerCase());
+}
+
 export const envConfig = {
     get PORT() { return parsedEnv().PORT; },
     get NODE_ENV() { return parsedEnv().NODE_ENV; },
@@ -85,7 +94,7 @@ export const envConfig = {
     get OBSERVATORY_ARTIFACT_PATH() { return parsedEnv().OBSERVATORY_ARTIFACT_PATH; },
     get INTEGRITY_URL() { return parsedEnv().INTEGRITY_URL; },
     get acsUrl() { return parsedEnv().LEITSTAND_ACS_URL; },
-    get allowJobFallback() { return parsedEnv().LEITSTAND_OPS_ALLOW_JOB_FALLBACK === 'true'; },
+    get allowJobFallback() { return isTruthy(parsedEnv().LEITSTAND_OPS_ALLOW_JOB_FALLBACK); },
 
     get isStrict() {
         const env = parsedEnv();

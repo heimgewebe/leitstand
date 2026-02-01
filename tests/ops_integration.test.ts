@@ -36,7 +36,8 @@ describe('GET /ops', () => {
     const res = await request(app).get('/ops');
 
     expect(res.status).toBe(200);
-    expect(res.text).toContain('Ops Viewer (may trigger audit jobs)');
+    // Should contain specific "read-only" title by default
+    expect(res.text).toContain('<title>Ops Viewer (read-only)</title>');
 
     // Check injection using regex
     expect(res.text).toMatch(/const ACS_URL = "http:\/\/localhost:8000"/);
@@ -67,7 +68,26 @@ describe('GET /ops', () => {
 
     const res = await request(app).get('/ops');
     expect(res.text).toMatch(/const ALLOW_JOB_FALLBACK = true/);
-    expect(res.text).toContain('Sync fetch preferred; Job triggers enabled as fallback.');
+    expect(res.text).toContain('Sync fetch preferred; Job triggers enabled as fallback (may POST /api/audit/git).');
+
+    // Verify dynamic title for fallback mode
+    expect(res.text).toContain('<title>Ops Viewer (may trigger audit jobs)</title>');
+  });
+
+  it('should parse ALLOW_JOB_FALLBACK robustly (1/yes/on)', async () => {
+    vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
+
+    // Test '1'
+    vi.stubEnv('LEITSTAND_OPS_ALLOW_JOB_FALLBACK', '1');
+    resetEnvConfig();
+    let res = await request(app).get('/ops');
+    expect(res.text).toMatch(/const ALLOW_JOB_FALLBACK = true/);
+
+    // Test 'on'
+    vi.stubEnv('LEITSTAND_OPS_ALLOW_JOB_FALLBACK', 'on');
+    resetEnvConfig();
+    res = await request(app).get('/ops');
+    expect(res.text).toMatch(/const ALLOW_JOB_FALLBACK = true/);
   });
 
   it('should default ALLOW_JOB_FALLBACK to false', async () => {
@@ -78,7 +98,10 @@ describe('GET /ops', () => {
 
     const res = await request(app).get('/ops');
     expect(res.text).toMatch(/const ALLOW_JOB_FALLBACK = false/);
-    expect(res.text).toContain('Viewer-only mode (Job triggers disabled).');
+    expect(res.text).toContain('Viewer-only mode. No job triggers.');
+
+    // Verify dynamic title for read-only mode
+    expect(res.text).toContain('<title>Ops Viewer (read-only)</title>');
   });
 
   it('should respect LEITSTAND_REPOS overrides', async () => {

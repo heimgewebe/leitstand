@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Ops Viewer (may trigger audit jobs)</title>
+  <% if (locals.allowJobFallback) { %>
+    <title>Ops Viewer (may trigger audit jobs)</title>
+  <% } else { %>
+    <title>Ops Viewer (read-only)</title>
+  <% } %>
   <style>
     body { font-family: sans-serif; padding: 20px; }
     nav { margin-bottom: 20px; padding: 10px; background: #f0f0f0; }
@@ -57,7 +61,11 @@
     <a href="/ops">Ops</a>
   </nav>
 
-  <h1>Ops Viewer (may trigger audit jobs)</h1>
+  <% if (locals.allowJobFallback) { %>
+    <h1>Ops Viewer (may trigger audit jobs)</h1>
+  <% } else { %>
+    <h1>Ops Viewer (read-only)</h1>
+  <% } %>
 
   <% if (!locals.acsUrl) { %>
     <div class="not-configured">
@@ -90,9 +98,9 @@
           <br/>
           <span style="color: #666; font-size: 0.9em;">
              <% if (locals.allowJobFallback) { %>
-                Sync fetch preferred; Job triggers enabled as fallback.
+                Sync fetch preferred; Job triggers enabled as fallback (may POST /api/audit/git).
              <% } else { %>
-                Viewer-only mode (Job triggers disabled).
+                Viewer-only mode. No job triggers.
              <% } %>
           </span>
       </div>
@@ -195,6 +203,8 @@
 
       async function pollJob(jobId) {
           let attempts = 0;
+          const MAX_FAILURES = 3;
+          let consecutiveFailures = 0;
 
           while (attempts < MAX_POLLS) {
               attempts++;
@@ -202,7 +212,19 @@
 
               try {
                   const res = await fetch(`${ACS_URL}/api/jobs/${jobId}`);
-                  if (!res.ok) continue; // Retry on transient network error? or fail?
+                  if (!res.ok) {
+                      consecutiveFailures++;
+                      pollIndicator.textContent = `Job status fetch failed (HTTP ${res.status}), retrying... (${consecutiveFailures}/${MAX_FAILURES})`;
+                      console.warn(`Job poll failed (HTTP ${res.status})`);
+
+                      if (consecutiveFailures >= MAX_FAILURES) {
+                          throw new Error(`Polling failed: ACS returned errors ${MAX_FAILURES} times in a row.`);
+                      }
+                      continue;
+                  }
+
+                  // Reset failure counter on success
+                  consecutiveFailures = 0;
 
                   const job = await res.json();
 
@@ -239,8 +261,16 @@
                   }
 
               } catch (pollErr) {
-                  console.warn("Poll error", pollErr);
-                  // Continue polling? or fail?
+                  // Re-throw if it's our own Max Failures error
+                  if (pollErr.message && pollErr.message.includes('Polling failed:')) {
+                      throw pollErr;
+                  }
+
+                  console.warn("Poll exception", pollErr);
+                  consecutiveFailures++;
+                  if (consecutiveFailures >= MAX_FAILURES) {
+                      throw new Error(`Polling failed: Exception ${MAX_FAILURES} times in a row.`);
+                  }
               }
           }
           throw new Error("Polling timed out. Please check ACS logs or try again later.");
