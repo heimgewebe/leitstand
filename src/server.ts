@@ -218,6 +218,7 @@ app.post('/events', async (req, res) => {
   }
 });
 
+// Ops Viewer Route
 app.get('/ops', (_req, res) => {
   res.render('ops', {
     acsUrl: envConfig.acsUrl,

@@ -1,3 +1,6 @@
+/**
+ * Types for Ops Viewer / ACS Integration
+ */
 export interface AuditGitV1 {
   kind: 'audit.git';
   schema_version: 'v1';

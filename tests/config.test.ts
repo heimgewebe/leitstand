@@ -46,6 +46,7 @@ describe('config', () => {
       });
 
       describe('LEITSTAND_ACS_URL', () => {
+        // Ops Viewer specific config tests
         it('should accept valid HTTP/HTTPS URLs', () => {
           vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
           resetEnvConfig();

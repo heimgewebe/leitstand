@@ -15,6 +15,7 @@ const EnvSchema = z.object({
   OBSERVATORY_URL: z.string().default('https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json'),
   OBSERVATORY_ARTIFACT_PATH: z.string().optional(),
   INTEGRITY_URL: z.string().optional(),
+  // Ops Viewer Configuration
   LEITSTAND_ACS_URL: z.string()
     .refine((val) => {
       // Empty string is allowed (disabled/unconfigured)

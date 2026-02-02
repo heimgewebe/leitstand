@@ -3,7 +3,7 @@ import request from 'supertest';
 import { app } from '../src/server.js';
 import { resetEnvConfig } from '../src/config.js';
 
-describe('GET /ops', () => {
+describe('GET /ops (Ops Viewer Integration)', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
     resetEnvConfig(); // Force reload of env config
