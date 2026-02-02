@@ -99,6 +99,8 @@ The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly 
 | `LEITSTAND_REPOS` | `metarepo,wgx,leitstand` | Comma-separated list of repositories to display in the selector. |
 | `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. **Note:** Enforcement depends on ACS configuration (e.g., via reverse proxy or middleware); Leitstand merely sends it. |
 
+**Note:** If any environment variable validation fails (e.g., invalid ACS URL format), the system falls back to safe defaults (disabling ACS integration entirely).
+
 ### Deployment & Security Notes
 
 1.  **Mixed Content Warning**:
@@ -115,7 +117,7 @@ The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly 
 
 ## Data Flow & Contracts
 
-Leitstand serves as the **visual control center** of the Heimgewebe organism.
+Leitstand is the **visual control center** of the Heimgewebe organism.
 To provide accurate and stable views, Leitstand relies on clearly defined data contracts.
 
 The authoritative view of the data streams consumed by Leitstand is documented in:
@@ -135,13 +137,13 @@ The underlying JSON schemas are documented in the **metarepo**:
 - `contracts/insights.schema.json`
 - `contracts/event.line.schema.json`
 
-A curated overview of all contracts can be found in the metarepo at:
+Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
 
 - `docs/contracts-index.md`
 
-**Note:**
+Hinweis:
 
-- New Leitstand features (like the Ops Viewer) align with this model: they visualize data (artifacts) without violating the authority of creation or mutation (WGX/ACS).
+- Neue Leitstand-Features (wie der Ops Viewer) fügen sich in dieses Modell ein: Sie visualisieren Daten (Artefakte), ohne die Hoheit über die Erzeugung oder Mutation (WGX/ACS) zu verletzen.
 
 ## Usage
 
