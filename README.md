@@ -115,34 +115,33 @@ The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly 
 
 ## Data Flow & Contracts
 
-Leitstand ist die **visuelle Schaltzentrale** des Heimgewebes.
-Damit Leitstand korrekte und stabile Ansichten liefern kann, stützt es sich
-auf klar definierte Datenverträge.
+Leitstand serves as the **visual control center** of the Heimgewebe organism.
+To provide accurate and stable views, Leitstand relies on clearly defined data contracts.
 
-Die verbindliche Sicht auf die Datenströme, die Leitstand konsumiert, steht in:
+The authoritative view of the data streams consumed by Leitstand is documented in:
 
 - `docs/data-flow.md`
 
-Dort sind die zentralen Eingänge beschrieben:
+The central inputs described there are:
 
-- `fleet.health` – Fleet-Gesundheit (wgx / metarepo Contracts)
-- `insights.daily` – semantische Tages-Insights aus semantAH
-- `event.line` – Event-Backbone aus chronik
+- `fleet.health` – Fleet health (wgx / metarepo contracts)
+- `insights.daily` – Semantic daily insights from semantAH
+- `event.line` – Event backbone from chronik
 
-Die zugrunde liegenden JSON-Schemas sind im **metarepo** dokumentiert:
+The underlying JSON schemas are documented in the **metarepo**:
 
 - `contracts/fleet.health.schema.json`
 - `contracts/insights.daily.schema.json`
 - `contracts/insights.schema.json`
 - `contracts/event.line.schema.json`
 
-Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
+A curated overview of all contracts can be found in the metarepo at:
 
 - `docs/contracts-index.md`
 
-Hinweis:
+**Note:**
 
-- Neue Leitstand-Features (wie der Ops Viewer) fügen sich in dieses Modell ein: Sie visualisieren Daten (Artefakte), ohne die Hoheit über die Erzeugung oder Mutation (WGX/ACS) zu verletzen.
+- New Leitstand features (like the Ops Viewer) align with this model: they visualize data (artifacts) without violating the authority of creation or mutation (WGX/ACS).
 
 ## Usage
 
@@ -365,14 +364,13 @@ flowchart TD
 
 In short: `leitstand` is the place where the organism looks at itself once per day and formulates a coherent story about its current state.
 
-## Organismus-Kontext
+## Organism Context
 
-Dieses Repository ist Teil des **Heimgewebe-Organismus**.
+This repository is part of the **Heimgewebe Organism**.
 
-Die übergeordnete Architektur, Achsen, Rollen und Contracts sind zentral beschrieben im  
-👉 [`metarepo/docs/heimgewebe-organismus.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-organismus.md)  
-sowie im Zielbild  
+The overarching architecture, axes, roles, and contracts are centrally described in:
+👉 [`metarepo/docs/heimgewebe-organismus.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-organismus.md)
+and the target vision:
 👉 [`metarepo/docs/heimgewebe-zielbild.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-zielbild.md).
 
-Alle Rollen-Definitionen, Datenflüsse und Contract-Zuordnungen dieses Repos
-sind dort verankert.
+All role definitions, data flows, and contract assignments for this repo are anchored there.

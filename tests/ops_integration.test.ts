@@ -115,7 +115,7 @@ describe('GET /ops', () => {
     const res = await request(app).get('/ops');
     expect(res.text).toMatch(/const ACS_VIEWER_TOKEN = "secret-viewer-token"/);
     // Check if the lock icon/indicator is rendered
-    expect(res.text).toContain('title="Optional viewer token configured"');
+    expect(res.text).toContain('title="Optional token configured (sent, not strictly enforced by default)"');
   });
 
   it('should respect LEITSTAND_REPOS overrides', async () => {

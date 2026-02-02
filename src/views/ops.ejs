@@ -102,7 +102,7 @@
       <div class="acs-info">
           Data source: <strong>Agent Control Surface (<%= locals.acsUrl %>)</strong>
           <% if (locals.acsViewerToken) { %>
-             <span style="margin-left: 10px; color: #007bff;" title="Optional viewer token configured">🔒</span>
+             <span style="margin-left: 10px; color: #007bff;" title="Optional token configured (sent, not strictly enforced by default)">🔒</span>
           <% } %>
           <br/>
           <span style="color: #666; font-size: 0.9em;">
@@ -380,7 +380,7 @@
               <p>${routine.reason}</p>
               <div class="routine-actions">
                 <span>Action required in ACS:</span>
-                <a href="${ACS_URL}/#ops-panel" class="acs-link" target="_blank">Open in ACS &rarr;</a>
+                <a href="${ACS_URL}/" class="acs-link" target="_blank">Open in ACS &rarr;</a>
               </div>
             `;
             routinesList.appendChild(card);
