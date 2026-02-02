@@ -15,6 +15,21 @@ const EnvSchema = z.object({
   OBSERVATORY_URL: z.string().default('https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json'),
   OBSERVATORY_ARTIFACT_PATH: z.string().optional(),
   INTEGRITY_URL: z.string().optional(),
+  LEITSTAND_ACS_URL: z.string()
+    .refine((val) => {
+      // Empty string is allowed (disabled/unconfigured)
+      if (val === '') return true;
+      try {
+        const url = new URL(val);
+        return ['http:', 'https:'].includes(url.protocol);
+      } catch {
+        return false;
+      }
+    }, { message: "Must be a valid HTTP/HTTPS URL or empty string" })
+    .default(''),
+  LEITSTAND_OPS_ALLOW_JOB_FALLBACK: z.string().optional(),
+  LEITSTAND_REPOS: z.string().optional(),
+  LEITSTAND_ACS_VIEWER_TOKEN: z.string().optional(),
 });
 
 type EnvType = z.infer<typeof EnvSchema>;
@@ -39,7 +54,11 @@ const parsedEnv = (): EnvType => {
         OBSERVATORY_STRICT: undefined,
         OBSERVATORY_STRICT_FAIL: undefined,
         OBSERVATORY_ARTIFACT_PATH: undefined,
-        INTEGRITY_URL: undefined
+        INTEGRITY_URL: undefined,
+        LEITSTAND_ACS_URL: '', // Default to disabled for safety
+        LEITSTAND_OPS_ALLOW_JOB_FALLBACK: undefined,
+        LEITSTAND_REPOS: undefined,
+        LEITSTAND_ACS_VIEWER_TOKEN: undefined
     };
 
     if (!parsed.success) {
@@ -60,6 +79,15 @@ export const resetEnvConfig = () => {
     cachedEnv = null;
 };
 
+/**
+ * Robust boolean parser for environment variables.
+ * Handles 'true', '1', 'yes', 'on' (case-insensitive).
+ */
+function isTruthy(val?: string): boolean {
+    if (!val) return false;
+    return ['true', '1', 'yes', 'on'].includes(val.toLowerCase());
+}
+
 export const envConfig = {
     get PORT() { return parsedEnv().PORT; },
     get NODE_ENV() { return parsedEnv().NODE_ENV; },
@@ -67,6 +95,9 @@ export const envConfig = {
     get token() { return parsedEnv().LEITSTAND_EVENTS_TOKEN; },
     get OBSERVATORY_ARTIFACT_PATH() { return parsedEnv().OBSERVATORY_ARTIFACT_PATH; },
     get INTEGRITY_URL() { return parsedEnv().INTEGRITY_URL; },
+    get acsUrl() { return parsedEnv().LEITSTAND_ACS_URL.replace(/\/+$/, ''); },
+    get allowJobFallback() { return isTruthy(parsedEnv().LEITSTAND_OPS_ALLOW_JOB_FALLBACK); },
+    get acsViewerToken() { return parsedEnv().LEITSTAND_ACS_VIEWER_TOKEN; },
 
     get isStrict() {
         const env = parsedEnv();
@@ -80,6 +111,18 @@ export const envConfig = {
     paths: {
       artifacts: join(process.cwd(), 'artifacts'),
       fixtures: join(process.cwd(), 'src', 'fixtures'),
+    },
+
+    // Default repos shown in Ops selector.
+    // LEITSTAND_REPOS env var overrides hardcoded defaults if present.
+    // Fallback defaults
+    get repos() {
+        const envRepos = parsedEnv().LEITSTAND_REPOS;
+        if (envRepos) {
+            return envRepos.split(',').map(r => r.trim()).filter(r => r.length > 0);
+        }
+        // Fallback SoT for now
+        return ['metarepo', 'wgx', 'leitstand'];
     }
 };
 

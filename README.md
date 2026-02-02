@@ -86,6 +86,65 @@ Create a `leitstand.config.json` file in your project root:
 
 **Environment Variables**: Paths support environment variable expansion using `$VAR_NAME` syntax.
 
+## Ops Viewer Setup
+
+The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the Agent Control Surface (ACS). It is designed as a strict viewer but can optionally trigger audit jobs if configured. This integration adheres to the established architectural roles: Leitstand visualizes, ACS orchestrates (see "Data Flow & Contracts" below).
+
+### Environment Variables
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `LEITSTAND_ACS_URL` | `''` (disabled) | Base URL of the Agent Control Surface. Must be a valid HTTP/HTTPS URL. |
+| `LEITSTAND_OPS_ALLOW_JOB_FALLBACK` | `false` | If `true`, the viewer falls back to triggering async jobs (`POST /api/audit/git`) if the sync endpoint is missing. |
+| `LEITSTAND_REPOS` | `metarepo,wgx,leitstand` | Comma-separated list of repositories to display in the selector. |
+| `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. **Note:** Enforcement depends on ACS configuration (e.g., via reverse proxy or middleware); Leitstand merely sends it. |
+
+**Note:** If any environment variable validation fails (e.g., invalid ACS URL format), the system falls back to safe defaults (disabling ACS integration entirely).
+
+### Deployment & Security Notes
+
+1.  **Mixed Content Warning**:
+    If Leitstand is served via **HTTPS**, the browser will block requests to an **HTTP** ACS URL.
+    - **Fix:** Deploy ACS behind an HTTPS reverse proxy (e.g., Caddy, Nginx) or configure `LEITSTAND_ACS_URL` to use HTTPS.
+
+2.  **CORS Configuration (ACS Side)**:
+    The ACS must explicitly allow the Leitstand origin to make requests, especially if credentials or cookies are involved.
+    - **ACS Config:** Ensure `ACS_CORS_ALLOW_ORIGINS` includes your Leitstand URL (e.g., `https://leitstand.internal`).
+    - *Avoid using `*` if possible.*
+
+3.  **Viewer vs. Actor**:
+    By default (`ALLOW_JOB_FALLBACK=false`), Leitstand only attempts non-mutating fetches (`GET /sync` or `GET /latest`). Enabling fallback allows it to trigger jobs, which is a state-changing action (even if just starting an audit). The UI will display a disclaimer reflecting the current mode.
+
+## Data Flow & Contracts
+
+Leitstand is the **visual control center** of the Heimgewebe organism.
+To provide accurate and stable views, Leitstand relies on clearly defined data contracts.
+
+The authoritative view of the data streams consumed by Leitstand is documented in:
+
+- `docs/data-flow.md`
+
+The central inputs described there are:
+
+- `fleet.health` – Fleet health (wgx / metarepo contracts)
+- `insights.daily` – Semantic daily insights from semantAH
+- `event.line` – Event backbone from chronik
+
+The underlying JSON schemas are documented in the **metarepo**:
+
+- `contracts/fleet.health.schema.json`
+- `contracts/insights.daily.schema.json`
+- `contracts/insights.schema.json`
+- `contracts/event.line.schema.json`
+
+Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
+
+- `docs/contracts-index.md`
+
+Hinweis:
+
+- Neue Leitstand-Features (wie der Ops Viewer) fügen sich in dieses Modell ein: Sie visualisieren Daten (Artefakte), ohne die Hoheit über die Erzeugung oder Mutation (WGX/ACS) zu verletzen.
+
 ## Usage
 
 ### Generate Today's Digest
@@ -165,41 +224,6 @@ pnpm typecheck
 pnpm lint
 ```
 
----
-
-## Data Flow & Contracts
-
-Leitstand ist die **visuelle Schaltzentrale** des Heimgewebes.
-Damit Leitstand korrekte und stabile Ansichten liefern kann, stützt es sich
-auf klar definierte Datenverträge.
-
-Die verbindliche Sicht auf die Datenströme, die Leitstand konsumiert, steht in:
-
-- `docs/data-flow.md`
-
-Dort sind die zentralen Eingänge beschrieben:
-
-- `fleet.health` – Fleet-Gesundheit (wgx / metarepo Contracts)
-- `insights.daily` – semantische Tages-Insights aus semantAH
-- `event.line` – Event-Backbone aus chronik
-
-Die zugrunde liegenden JSON-Schemas sind im **metarepo** dokumentiert:
-
-- `contracts/fleet.health.schema.json`
-- `contracts/insights.daily.schema.json`
-- `contracts/insights.schema.json`
-- `contracts/event.line.schema.json`
-
-Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
-
-- `docs/contracts-index.md`
-
-Hinweis:
-
-- Neue Leitstand-Features, die zusätzliche Datenquellen nutzen, sollten
-  sowohl in `docs/data-flow.md` als auch im Contracts-Index des metarepos
-  verankert werden.
-
 ## Project Structure
 
 ```
@@ -227,7 +251,7 @@ leitstand/
 └── leitstand.config.json  # Example configuration
 ```
 
-## Data Contracts
+## Data Contracts (Legacy View)
 
 ### Daily Insights (semantAH)
 
@@ -290,39 +314,6 @@ This is the initial iteration focused on generating daily digests. Future versio
 - Multi-day trend analysis
 - Integration with hausKI for AI-powered insights
 
-## Data Flow & Contracts
-
-Leitstand ist die **visuelle Schaltzentrale** des Heimgewebes.  
-Damit Leitstand korrekte und stabile Ansichten liefern kann, stützt es sich
-auf klar definierte Datenverträge.
-
-Die verbindliche Sicht auf die Datenströme, die Leitstand konsumiert, steht in:
-
-- `docs/data-flow.md`
-
-Dort sind die zentralen Eingänge beschrieben:
-
-- `fleet.health` – Fleet-Gesundheit (wgx / metarepo Contracts)
-- `insights.daily` – semantische Tages-Insights aus semantAH
-- `event.line` – Event-Backbone aus chronik
-
-Die zugrunde liegenden JSON-Schemas sind im **metarepo** dokumentiert:
-
-- `contracts/fleet.health.schema.json`
-- `contracts/insights.daily.schema.json`
-- `contracts/insights.schema.json`
-- `contracts/event.line.schema.json`
-
-Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
-
-- `docs/contracts-index.md`
-
-Hinweis:
-
-- Neue Leitstand-Features, die zusätzliche Datenquellen nutzen, sollten
-  sowohl in `docs/data-flow.md` als auch im Contracts-Index des metarepos
-  verankert werden.
-
 ## License
 MIT
 
@@ -375,14 +366,13 @@ flowchart TD
 
 In short: `leitstand` is the place where the organism looks at itself once per day and formulates a coherent story about its current state.
 
-## Organismus-Kontext
+## Organism Context
 
-Dieses Repository ist Teil des **Heimgewebe-Organismus**.
+This repository is part of the **Heimgewebe Organism**.
 
-Die übergeordnete Architektur, Achsen, Rollen und Contracts sind zentral beschrieben im  
-👉 [`metarepo/docs/heimgewebe-organismus.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-organismus.md)  
-sowie im Zielbild  
+The overarching architecture, axes, roles, and contracts are centrally described in:
+👉 [`metarepo/docs/heimgewebe-organismus.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-organismus.md)
+and the target vision:
 👉 [`metarepo/docs/heimgewebe-zielbild.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-zielbild.md).
 
-Alle Rollen-Definitionen, Datenflüsse und Contract-Zuordnungen dieses Repos
-sind dort verankert.
+All role definitions, data flows, and contract assignments for this repo are anchored there.

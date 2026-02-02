@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <% if (locals.allowJobFallback) { %>
+    <title>Ops Viewer (may trigger audit jobs)</title>
+  <% } else { %>
+    <title>Ops Viewer (read-only)</title>
+  <% } %>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    nav { margin-bottom: 20px; padding: 10px; background: #f0f0f0; }
+    nav a { margin-right: 15px; text-decoration: none; color: #333; font-weight: bold; }
+    nav a:hover { text-decoration: underline; }
+
+    .panel { border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; background: #fafafa; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    button { padding: 8px 16px; cursor: pointer; }
+    button.primary { background: #007bff; color: white; border: none; border-radius: 4px; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    pre { background: #333; color: #eee; padding: 15px; border-radius: 4px; overflow: auto; max-height: 400px; }
+
+    .status-ok { color: green; font-weight: bold; }
+    .status-warn { color: orange; font-weight: bold; }
+    .status-error { color: red; font-weight: bold; }
+
+    .routine-card { background: white; border: 1px solid #ccc; padding: 15px; margin-top: 10px; border-radius: 4px; }
+    .routine-header { display: flex; justify-content: space-between; font-weight: bold; }
+    .routine-actions { margin-top: 10px; background: #e3f2fd; padding: 10px; border-radius: 4px; border: 1px solid #bbdefb; }
+
+    .acs-link { color: #0056b3; font-weight: bold; text-decoration: none; display: inline-block; }
+    .acs-link:hover { text-decoration: underline; }
+    .acs-info { font-size: 0.85em; color: #555; margin-top: 5px; }
+
+    .poll-indicator { margin-left: 10px; color: #666; font-style: italic; display: none; }
+
+    .not-configured {
+        padding: 30px;
+        text-align: center;
+        background: #fff3cd;
+        border: 1px solid #ffeeba;
+        color: #856404;
+        border-radius: 5px;
+    }
+
+    .error-box {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/observatory">Observatorium</a>
+    <a href="/ops">Ops</a>
+  </nav>
+
+  <% if (locals.allowJobFallback) { %>
+    <h1>Ops Viewer (may trigger audit jobs)</h1>
+  <% } else { %>
+    <h1>Ops Viewer (read-only)</h1>
+  <% } %>
+
+  <% if (!locals.acsUrl) { %>
+    <div class="not-configured" data-testid="ops-not-configured">
+      <h2>Ops Viewer Not Configured</h2>
+      <p>The Agent Control Surface (ACS) URL is not set. Please configure <code>LEITSTAND_ACS_URL</code>.</p>
+    </div>
+  <% } else { %>
+    <div class="panel" data-testid="ops-panel">
+      <!-- Error container for inline diagnostics -->
+      <div id="errorContainer"></div>
+
+      <div class="header">
+        <h2>Git Health Audit</h2>
+        <label>
+          Repo:
+          <select id="repoSelect">
+            <% locals.configuredRepos.forEach(function(repo) { %>
+                <option value="<%= repo %>"><%= repo %></option>
+            <% }); %>
+          </select>
+        </label>
+        <div style="display: flex; align-items: center;">
+          <span id="pollIndicator" class="poll-indicator">Waiting for job...</span>
+          <button id="runAuditBtn" class="primary">
+            <% if (locals.allowJobFallback) { %>
+              Refresh (may create job)
+            <% } else { %>
+              Refresh View (via ACS)
+            <% } %>
+          </button>
+        </div>
+      </div>
+
+      <div class="acs-info">
+          Data source: <strong>Agent Control Surface (<%= locals.acsUrl %>)</strong>
+          <% if (locals.acsViewerToken) { %>
+             <span style="margin-left: 10px; color: #007bff;" title="Optional token configured (sent, not strictly enforced by default)">🔒</span>
+          <% } %>
+          <br/>
+          <span style="color: #666; font-size: 0.9em;">
+             <% if (locals.allowJobFallback) { %>
+                Sync fetch preferred; Job triggers enabled as fallback (may POST /api/audit/git).
+             <% } else { %>
+                Viewer-only mode. No job triggers.
+             <% } %>
+          </span>
+      </div>
+
+      <div id="auditResult" style="display: none;">
+        <div id="statusSummary" style="margin-bottom: 10px; font-size: 1.2em;"></div>
+
+        <details open>
+          <summary>Audit Artifact (JSON)</summary>
+          <pre id="auditJson"></pre>
+        </details>
+
+        <div id="routinesSection" style="margin-top: 20px; display: none;">
+          <h3>Suggested Repair Routines</h3>
+          <p style="color: #666; font-style: italic; margin-bottom: 15px;">
+             ⚠️ Leitstand is a viewer. To apply routines, use the Agent Control Surface (ACS).
+          </p>
+          <div id="routinesList"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const repoSelect = document.getElementById('repoSelect');
+      const runAuditBtn = document.getElementById('runAuditBtn');
+      const pollIndicator = document.getElementById('pollIndicator');
+      const auditResult = document.getElementById('auditResult');
+      const auditJson = document.getElementById('auditJson');
+      const statusSummary = document.getElementById('statusSummary');
+      const routinesSection = document.getElementById('routinesSection');
+      const routinesList = document.getElementById('routinesList');
+      const errorContainer = document.getElementById('errorContainer');
+
+      // Injected by server
+      const ACS_URL = <%- JSON.stringify(locals.acsUrl) %>;
+      const ALLOW_JOB_FALLBACK = <%- JSON.stringify(locals.allowJobFallback || false) %>;
+      const ACS_VIEWER_TOKEN = <%- JSON.stringify(locals.acsViewerToken || null) %>;
+      const POLL_INTERVAL = 1000;
+      const MAX_POLLS = 30; // 30 seconds timeout
+
+      let currentAudit = null;
+
+      function getAuthHeaders() {
+          const headers = {};
+          if (ACS_VIEWER_TOKEN) {
+              headers['X-ACS-Viewer-Token'] = ACS_VIEWER_TOKEN;
+          }
+          return headers;
+      }
+
+      runAuditBtn.addEventListener('click', async () => {
+        // Pre-flight check for Mixed Content to avoid network spam
+        if (window.location.protocol === 'https:' && ACS_URL.startsWith('http:')) {
+            showError("Mixed Content Blocked: Leitstand is running on HTTPS, but configured ACS URL is HTTP.\n\nBrowser security prevents this request. Please configure LEITSTAND_ACS_URL to use HTTPS or deploy ACS behind a secure proxy.");
+            return;
+        }
+
+        const repo = repoSelect.value;
+        startLoading();
+        clearError();
+
+        try {
+          // Step 1: Try GET /sync (Pragmatic Viewer Approach)
+          // This is preferred for a read-only viewer to avoid creating jobs if possible.
+          let res = await fetch(`${ACS_URL}/api/audit/git/sync?repo=${encodeURIComponent(repo)}`, {
+              method: 'GET',
+              headers: getAuthHeaders()
+          });
+
+          // Only fallback if the endpoint is truly missing (404), method not allowed (405), or explicitly not implemented (501)
+          if (res.status === 404 || res.status === 405 || res.status === 501) {
+              if (ALLOW_JOB_FALLBACK) {
+                  // Sync endpoint not available, fallback to Job Flow (POST)
+                  console.log(`Sync endpoint missing (${res.status}), falling back to Job Flow (POST)`);
+                  res = await fetch(`${ACS_URL}/api/audit/git?repo=${encodeURIComponent(repo)}`, {
+                      method: 'POST',
+                      headers: getAuthHeaders()
+                  });
+              } else {
+                  throw new Error(`Sync endpoint unavailable (${res.status}) and Job Fallback is disabled.`);
+              }
+          }
+
+          if (!res.ok) {
+             // If we got here, it's a real error (e.g. 500), not just a missing endpoint.
+             // Do NOT silent fallback.
+             throw new Error(`ACS Error: HTTP ${res.status} (${res.statusText})`);
+          }
+
+          const initialData = await res.json();
+
+          // Check if we got a Job ID (202 Accepted) or direct result
+          if (res.status === 202 && initialData.job_id) {
+              pollIndicator.style.display = 'inline';
+              pollIndicator.textContent = `Job queued (${initialData.job_id})...`;
+              await pollJob(initialData.job_id);
+          } else if (initialData.kind === 'audit.git') {
+              // Direct result
+              renderAudit(initialData);
+          } else {
+              // Unexpected response
+              throw new Error("Unknown response format from ACS: Missing kind='audit.git' or job_id");
+          }
+
+        } catch (e) {
+          handleError(e);
+        } finally {
+          stopLoading();
+        }
+      });
+
+      async function pollJob(jobId) {
+          let attempts = 0;
+          const MAX_FAILURES = 3;
+          let consecutiveFailures = 0;
+
+          while (attempts < MAX_POLLS) {
+              attempts++;
+              await new Promise(r => setTimeout(r, POLL_INTERVAL));
+
+              try {
+                  const res = await fetch(`${ACS_URL}/api/jobs/${jobId}`, {
+                      headers: getAuthHeaders()
+                  });
+                  if (!res.ok) {
+                      consecutiveFailures++;
+                      pollIndicator.textContent = `Job status fetch failed (HTTP ${res.status}), retrying... (${consecutiveFailures}/${MAX_FAILURES})`;
+                      console.warn(`Job poll failed (HTTP ${res.status})`);
+
+                      if (consecutiveFailures >= MAX_FAILURES) {
+                          throw new Error(`Polling failed: ACS returned errors ${MAX_FAILURES} times in a row.`);
+                      }
+                      continue;
+                  }
+
+                  // Reset failure counter on success
+                  consecutiveFailures = 0;
+
+                  const job = await res.json();
+
+                  // Strict Contract: job.status must be one of: done, error, queued, running
+                  if (job.status === 'done') {
+                      // Extract audit result.
+                      // ACS job result structure: results: [{ action: 'audit.git', audit: {...} }]
+                      // Or legacy/simple: result.audit
+
+                      let audit = null;
+                      if (Array.isArray(job.results)) {
+                          const item = job.results.find(r => r.audit && r.audit.kind === 'audit.git');
+                          if (item) audit = item.audit;
+                      } else if (job.result && job.result.audit && job.result.audit.kind === 'audit.git') {
+                          // Legacy compatibility
+                          audit = job.result.audit;
+                      }
+
+                      if (audit) {
+                          renderAudit(audit);
+                          pollIndicator.style.display = 'none';
+                          return;
+                      } else {
+                          throw new Error("Job completed but no audit artifact found.");
+                      }
+                  } else if (job.status === 'error') {
+                      pollIndicator.style.display = 'none';
+                      throw new Error(`Job failed: ${job.error || 'Unknown error'}`);
+                  } else if (job.status === 'queued' || job.status === 'running') {
+                      // Still running...
+                      pollIndicator.textContent = `Job ${job.status}... (${attempts}/${MAX_POLLS})`;
+                  } else {
+                      // Unknown/Invalid status
+                      pollIndicator.textContent = "Unknown job status; aborting.";
+                      throw new Error(`Job returned unknown status '${job.status}'; ACS contract mismatch`);
+                  }
+
+              } catch (pollErr) {
+                  // Re-throw if it's our own Max Failures error
+                  if (pollErr.message && pollErr.message.includes('Polling failed:')) {
+                      throw pollErr;
+                  }
+
+                  console.warn("Poll exception", pollErr);
+                  consecutiveFailures++;
+                  if (consecutiveFailures >= MAX_FAILURES) {
+                      throw new Error(`Polling failed: Exception ${MAX_FAILURES} times in a row.`);
+                  }
+              }
+          }
+          pollIndicator.style.display = 'none';
+          throw new Error("Polling timed out. Please check ACS logs or try again later.");
+      }
+
+      function startLoading() {
+        runAuditBtn.disabled = true;
+        runAuditBtn.textContent = ALLOW_JOB_FALLBACK ? 'Fetching (may create job)...' : 'Fetching from ACS...';
+        auditResult.style.display = 'none';
+        routinesSection.style.display = 'none';
+        pollIndicator.style.display = 'none';
+      }
+
+      function stopLoading() {
+        runAuditBtn.disabled = false;
+        runAuditBtn.textContent = ALLOW_JOB_FALLBACK ? 'Refresh (may create job)' : 'Refresh View (via ACS)';
+        // pollIndicator visibility is managed by success (renderAudit) or error handlers
+        // We do NOT hide it here blindly to avoid "magic disappearing" during polling
+      }
+
+      function showError(msg) {
+          errorContainer.className = 'error-box';
+          errorContainer.textContent = msg;
+          errorContainer.style.display = 'block';
+      }
+
+      function clearError() {
+          errorContainer.className = '';
+          errorContainer.style.display = 'none';
+          errorContainer.textContent = '';
+      }
+
+      function handleError(e) {
+          console.error(e);
+          let msg = e.toString();
+          const isMixedContent = window.location.protocol === 'https:' && ACS_URL.startsWith('http:');
+
+          if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+              msg += '\n\nLikely Causes:';
+              if (isMixedContent) {
+                  msg += '\n- Mixed Content Block: Leitstand is HTTPS but ACS is HTTP. Use HTTPS for ACS or a Reverse Proxy.';
+              } else {
+                  msg += '\n- ACS is not running at ' + ACS_URL;
+                  msg += '\n- CORS is blocked (ACS must allow Leitstand origin in ACS_CORS_ALLOW_ORIGINS)';
+              }
+          }
+          pollIndicator.style.display = 'none';
+          showError(msg);
+      }
+
+      function renderAudit(data) {
+          // Validate Kind (Minimal Type Safety)
+          if (data.kind !== 'audit.git') {
+              console.warn('Received unknown data kind:', data.kind);
+              showError('Received invalid data format (expected audit.git). Check console.');
+              return;
+          }
+
+        currentAudit = data;
+        auditResult.style.display = 'block';
+        auditJson.textContent = JSON.stringify(data, null, 2);
+
+        statusSummary.className = `status-${data.status}`;
+        statusSummary.textContent = `Status: ${data.status.toUpperCase()}`;
+
+        routinesList.innerHTML = '';
+        if (data.suggested_routines && data.suggested_routines.length > 0) {
+          routinesSection.style.display = 'block';
+          data.suggested_routines.forEach(routine => {
+            const card = document.createElement('div');
+            card.className = 'routine-card';
+
+            let riskColor = 'red'; // default high
+            if (routine.risk === 'low') riskColor = 'green';
+            if (routine.risk === 'medium') riskColor = 'orange';
+
+            card.innerHTML = `
+              <div class="routine-header">
+                <span>${routine.id}</span>
+                <span style="color: ${riskColor}">Risk: ${routine.risk}</span>
+              </div>
+              <p>${routine.reason}</p>
+              <div class="routine-actions">
+                <span>Action required in ACS:</span>
+                <a href="${ACS_URL}/" class="acs-link" target="_blank">Open in ACS &rarr;</a>
+              </div>
+            `;
+            routinesList.appendChild(card);
+          });
+        }
+      }
+    </script>
+  <% } %>
+</body>
+</html>

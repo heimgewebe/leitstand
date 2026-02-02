@@ -218,6 +218,15 @@ app.post('/events', async (req, res) => {
   }
 });
 
+app.get('/ops', (_req, res) => {
+  res.render('ops', {
+    acsUrl: envConfig.acsUrl,
+    configuredRepos: envConfig.repos,
+    allowJobFallback: envConfig.allowJobFallback,
+    acsViewerToken: envConfig.acsViewerToken
+  });
+});
+
 app.get('/', (_req, res) => {
   res.render('index');
 });
