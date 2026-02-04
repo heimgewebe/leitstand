@@ -48,6 +48,8 @@ verification/*.png
 # --- Security / Secrets (MUST NOT be committed) ---
 .env
 .env.*
+!.env.example
+!.env.template
 *.secret
 *.secrets.*
 *.key
