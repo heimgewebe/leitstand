@@ -9,6 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Fail on forbidden files (env, keys, secrets, config)
+        shell: bash
         run: |
           set -euo pipefail
 
