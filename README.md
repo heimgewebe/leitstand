@@ -136,7 +136,7 @@ flowchart TD
 
 ### Roles in the flow
 
-- **leitstand**: Reads inputs from `semantAH`, `chronik`, and `ACS` to visualize state. It combines them into daily digests or dashboards.
+- **leitstand**: Visualizes state by reading artifacts from `semantAH` and `chronik`. The Ops Viewer (`/ops`) may additionally fetch live operational data from `ACS` when configured.
 - **chronik**: Event log and audit store.
 - **semantAH**: Builds the semantic index and writes daily insights.
 - **wgx**: Generates fleet metrics snapshots.
@@ -150,7 +150,7 @@ The authoritative view of the data streams is documented in `docs/data-flow.md`.
 - `fleet.health` – Fleet health (wgx / metarepo contracts)
 - `insights.daily` – Semantic daily insights from semantAH
 - `event.line` – Event backbone from chronik
-- `audit.git.v1` – Git health audits from ACS (via Ops Viewer)
+- `audit.git.v1` – Live ops data from ACS (Ops Viewer only; not part of chronik event backbone unless explicitly exported)
 
 ### JSON Schemas
 
