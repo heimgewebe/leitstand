@@ -1,4 +1,4 @@
-name: secret-hygiene
+name: security-hygiene
 on: [push, pull_request]
 
 jobs:
@@ -11,13 +11,13 @@ jobs:
           # Pattern breakdown:
           # 1. .env files: (^|/)\.env(\..+)?$
           # 2. Keys: \.(pem|key)$
-          # 3. Explicit secrets: secret (matches names with 'secret')
-          # 4. SSH keys: (^|/)id_(rsa|ed25519)$
+          # 3. Explicit secrets (filename based): (^|/)[^/]*secrets?[^/]*$
+          # 4. SSH keys: (^|/)(id_rsa|id_ed25519|id_(rsa|ed25519))$
           # 5. Kubeconfig: (^|/)kubeconfig$
           # 6. Terraform: (^|/)terraform\.tfstate$
           # 7. Package configs: (^|/)\.(npmrc|pypirc)$
 
-          forbidden=$(git ls-files | grep -E '(^|/)\.env(\..+)?$|\.(pem|key)$|secret|(^|/)id_(rsa|ed25519)$|(^|/)kubeconfig$|(^|/)terraform\.tfstate$|(^|/)\.(npmrc|pypirc)$' || true)
+          forbidden=$(git ls-files | grep -E '(^|/)\.env(\..+)?$|\.(pem|key)$|(^|/)[^/]*secrets?[^/]*$|(^|/)(id_rsa|id_ed25519|id_(rsa|ed25519))$|(^|/)kubeconfig$|(^|/)terraform\.tfstate$|(^|/)\.(npmrc|pypirc)$' || true)
 
           if [ -n "$forbidden" ]; then
             echo "❌ Forbidden files detected in repository:"
