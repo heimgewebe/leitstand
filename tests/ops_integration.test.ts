@@ -44,7 +44,7 @@ describe('GET /ops (Ops Viewer Integration)', () => {
 
     // Check injection using regex
     expect(res.text).toMatch(/const ACS_URL = "http:\/\/localhost:8000"/);
-    expect(res.text).toContain(`Data source: <strong>Agent Control Surface (${customUrl})</strong>`);
+    expect(res.text).toContain(`Data source: <strong>agent-control-surface (${customUrl})</strong>`);
 
     // Check default hardcoded repo list rendering
     expect(res.text).toContain('<option value="metarepo">metarepo</option>');
