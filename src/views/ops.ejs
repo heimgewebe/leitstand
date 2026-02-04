@@ -71,7 +71,7 @@
   <% if (!locals.acsUrl) { %>
     <div class="not-configured" data-testid="ops-not-configured">
       <h2>Ops Viewer Not Configured</h2>
-      <p>The Agent Control Surface (ACS) URL is not set. Please configure <code>LEITSTAND_ACS_URL</code>.</p>
+      <p>The agent-control-surface (acs) URL is not set. Please configure <code>LEITSTAND_ACS_URL</code>.</p>
     </div>
   <% } else { %>
     <div class="panel" data-testid="ops-panel">
@@ -94,14 +94,14 @@
             <% if (locals.allowJobFallback) { %>
               Refresh (may create job)
             <% } else { %>
-              Refresh View (via ACS)
+              Refresh View (via acs)
             <% } %>
           </button>
         </div>
       </div>
 
       <div class="acs-info">
-          Data source: <strong>Agent Control Surface (<%= locals.acsUrl %>)</strong>
+          Data source: <strong>agent-control-surface (<%= locals.acsUrl %>)</strong>
           <% if (locals.acsViewerToken) { %>
              <span style="margin-left: 10px; color: #007bff;" title="Optional token configured (sent, not strictly enforced by default)">🔒</span>
           <% } %>
@@ -126,7 +126,7 @@
         <div id="routinesSection" style="margin-top: 20px; display: none;">
           <h3>Suggested Repair Routines</h3>
           <p style="color: #666; font-style: italic; margin-bottom: 15px;">
-             ⚠️ Leitstand is a viewer. To apply routines, use the Agent Control Surface (ACS).
+             ⚠️ Leitstand is a viewer. To apply routines, use the agent-control-surface (acs).
           </p>
           <div id="routinesList"></div>
         </div>
@@ -164,7 +164,7 @@
       runAuditBtn.addEventListener('click', async () => {
         // Pre-flight check for Mixed Content to avoid network spam
         if (window.location.protocol === 'https:' && ACS_URL.startsWith('http:')) {
-            showError("Mixed Content Blocked: Leitstand is running on HTTPS, but configured ACS URL is HTTP.\n\nBrowser security prevents this request. Please configure LEITSTAND_ACS_URL to use HTTPS or deploy ACS behind a secure proxy.");
+            showError("Mixed Content Blocked: Leitstand is running on HTTPS, but configured LEITSTAND_ACS_URL is HTTP.\n\nBrowser security prevents this request. Please configure LEITSTAND_ACS_URL to use HTTPS or deploy acs behind a secure proxy.");
             return;
         }
 
@@ -197,7 +197,7 @@
           if (!res.ok) {
              // If we got here, it's a real error (e.g. 500), not just a missing endpoint.
              // Do NOT silent fallback.
-             throw new Error(`ACS Error: HTTP ${res.status} (${res.statusText})`);
+             throw new Error(`acs Error: HTTP ${res.status} (${res.statusText})`);
           }
 
           const initialData = await res.json();
@@ -212,7 +212,7 @@
               renderAudit(initialData);
           } else {
               // Unexpected response
-              throw new Error("Unknown response format from ACS: Missing kind='audit.git' or job_id");
+              throw new Error("Unknown response format from acs: Missing kind='audit.git' or job_id");
           }
 
         } catch (e) {
@@ -241,7 +241,7 @@
                       console.warn(`Job poll failed (HTTP ${res.status})`);
 
                       if (consecutiveFailures >= MAX_FAILURES) {
-                          throw new Error(`Polling failed: ACS returned errors ${MAX_FAILURES} times in a row.`);
+                          throw new Error(`Polling failed: acs returned errors ${MAX_FAILURES} times in a row.`);
                       }
                       continue;
                   }
@@ -282,7 +282,7 @@
                   } else {
                       // Unknown/Invalid status
                       pollIndicator.textContent = "Unknown job status; aborting.";
-                      throw new Error(`Job returned unknown status '${job.status}'; ACS contract mismatch`);
+                      throw new Error(`Job returned unknown status '${job.status}'; acs contract mismatch`);
                   }
 
               } catch (pollErr) {
@@ -299,12 +299,12 @@
               }
           }
           pollIndicator.style.display = 'none';
-          throw new Error("Polling timed out. Please check ACS logs or try again later.");
+          throw new Error("Polling timed out. Please check acs logs or try again later.");
       }
 
       function startLoading() {
         runAuditBtn.disabled = true;
-        runAuditBtn.textContent = ALLOW_JOB_FALLBACK ? 'Fetching (may create job)...' : 'Fetching from ACS...';
+        runAuditBtn.textContent = ALLOW_JOB_FALLBACK ? 'Fetching (may create job)...' : 'Fetching from acs...';
         auditResult.style.display = 'none';
         routinesSection.style.display = 'none';
         pollIndicator.style.display = 'none';
@@ -312,7 +312,7 @@
 
       function stopLoading() {
         runAuditBtn.disabled = false;
-        runAuditBtn.textContent = ALLOW_JOB_FALLBACK ? 'Refresh (may create job)' : 'Refresh View (via ACS)';
+        runAuditBtn.textContent = ALLOW_JOB_FALLBACK ? 'Refresh (may create job)' : 'Refresh View (via acs)';
         // pollIndicator visibility is managed by success (renderAudit) or error handlers
         // We do NOT hide it here blindly to avoid "magic disappearing" during polling
       }
@@ -337,10 +337,10 @@
           if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
               msg += '\n\nLikely Causes:';
               if (isMixedContent) {
-                  msg += '\n- Mixed Content Block: Leitstand is HTTPS but ACS is HTTP. Use HTTPS for ACS or a Reverse Proxy.';
+                  msg += '\n- Mixed Content Block: Leitstand is HTTPS but acs is HTTP. Use HTTPS for acs or a Reverse Proxy.';
               } else {
-                  msg += '\n- ACS is not running at ' + ACS_URL;
-                  msg += '\n- CORS is blocked (ACS must allow Leitstand origin in ACS_CORS_ALLOW_ORIGINS)';
+                  msg += '\n- acs is not running at ' + ACS_URL;
+                  msg += '\n- CORS is blocked (acs must allow Leitstand origin in ACS_CORS_ALLOW_ORIGINS)';
               }
           }
           pollIndicator.style.display = 'none';
@@ -380,8 +380,8 @@
               </div>
               <p>${routine.reason}</p>
               <div class="routine-actions">
-                <span>Action required in ACS:</span>
-                <a href="${ACS_URL}/" class="acs-link" target="_blank">Open in ACS &rarr;</a>
+                <span>Action required in acs:</span>
+                <a href="${ACS_URL}/" class="acs-link" target="_blank">Open in acs &rarr;</a>
               </div>
             `;
             routinesList.appendChild(card);

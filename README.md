@@ -88,28 +88,28 @@ Create a `leitstand.config.json` file in your project root:
 
 ## Ops Viewer Setup
 
-The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the Agent Control Surface (ACS). It is designed as a strict viewer but can optionally trigger audit jobs if configured. This integration adheres to the established architectural roles: Leitstand visualizes, ACS orchestrates.
+The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the `agent-control-surface` (acs). It is designed as a strict viewer but can optionally trigger audit jobs if configured. This integration adheres to the established architectural roles: Leitstand visualizes, acs orchestrates.
 
 ### Environment Variables
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `LEITSTAND_ACS_URL` | `''` (disabled) | Base URL of the Agent Control Surface. Must be a valid HTTP/HTTPS URL. |
+| `LEITSTAND_ACS_URL` | `''` (disabled) | Base URL of the `agent-control-surface`. Must be a valid HTTP/HTTPS URL. |
 | `LEITSTAND_OPS_ALLOW_JOB_FALLBACK` | `false` | If `true`, the viewer falls back to triggering async jobs (`POST /api/audit/git`) if the sync endpoint is missing. |
 | `LEITSTAND_REPOS` | `metarepo,wgx,leitstand` | Comma-separated list of repositories to display in the selector. |
-| `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. **Note:** Enforcement depends on ACS configuration (e.g., via reverse proxy or middleware); Leitstand merely sends it. |
+| `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. **Note:** Enforcement depends on acs configuration (e.g., via reverse proxy or middleware); Leitstand merely sends it. |
 
-**Note:** If any environment variable validation fails (e.g., invalid ACS URL format), the system falls back to safe defaults (disabling ACS integration entirely).
+**Note:** If any environment variable validation fails (e.g., invalid `LEITSTAND_ACS_URL` format), the system falls back to safe defaults (disabling acs integration entirely).
 
 ### Deployment & Security Notes
 
 1.  **Mixed Content Warning**:
-    If Leitstand is served via **HTTPS**, the browser will block requests to an **HTTP** ACS URL.
-    - **Fix:** Deploy ACS behind an HTTPS reverse proxy (e.g., Caddy, Nginx) or configure `LEITSTAND_ACS_URL` to use HTTPS.
+    If Leitstand is served via **HTTPS**, the browser will block requests to an **HTTP** acs URL.
+    - **Fix:** Deploy `agent-control-surface` behind an HTTPS reverse proxy (e.g., Caddy, Nginx) or configure `LEITSTAND_ACS_URL` to use HTTPS.
 
-2.  **CORS Configuration (ACS Side)**:
-    The ACS must explicitly allow the Leitstand origin to make requests, especially if credentials or cookies are involved.
-    - **ACS Config:** Ensure `ACS_CORS_ALLOW_ORIGINS` includes your Leitstand URL (e.g., `https://leitstand.internal`).
+2.  **CORS Configuration (acs Side)**:
+    The `agent-control-surface` must explicitly allow the Leitstand origin to make requests, especially if credentials or cookies are involved.
+    - **acs Config:** Ensure `ACS_CORS_ALLOW_ORIGINS` includes your Leitstand URL (e.g., `https://leitstand.internal`).
     - *Avoid using `*` if possible.*
 
 3.  **Viewer vs. Actor**:
@@ -131,17 +131,17 @@ flowchart TD
     LEITSTAND --> HAUSKI[hausKI<br/>Decision Engine]
     HAUSKI --> CHRONIK
 
-    ACS[Agent Control Surface] -.-> LEITSTAND
+    ACS[agent-control-surface] -.-> LEITSTAND
 ```
 
 ### Roles in the flow
 
-- **leitstand**: Visualizes state by reading artifacts from `semantAH` and `chronik`. The Ops Viewer (`/ops`) may additionally fetch live operational data from `ACS` when configured.
+- **leitstand**: Visualizes state by reading artifacts from `semantAH` and `chronik`. The Ops Viewer (`/ops`) may additionally fetch live operational data from `agent-control-surface` (acs) when configured.
 - **chronik**: Event log and audit store.
 - **semantAH**: Builds the semantic index and writes daily insights.
 - **wgx**: Generates fleet metrics snapshots.
 - **hausKI**: Consumes digests/insights for decision-making.
-- **ACS**: Provides real-time operational state (e.g., Git health audits) consumed by Leitstand's Ops Viewer.
+- **agent-control-surface** (acs): Provides real-time operational state (e.g., Git health audits) consumed by Leitstand's Ops Viewer.
 
 ### Central Inputs
 
@@ -150,7 +150,7 @@ The authoritative view of the data streams is documented in `docs/data-flow.md`.
 - `fleet.health` – Fleet health (wgx / metarepo contracts)
 - `insights.daily` – Semantic daily insights from semantAH
 - `event.line` – Event backbone from chronik
-- `audit.git.v1` – Live ops data from ACS (Ops Viewer only; not part of chronik event backbone unless explicitly exported)
+- `audit.git.v1` – Live ops data from acs (Ops Viewer only; not part of chronik event backbone unless explicitly exported)
 
 ### JSON Schemas
 
