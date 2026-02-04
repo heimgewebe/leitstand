@@ -26,6 +26,7 @@ This repository is designed to be **public**.
 - Validation is performed against vendored contracts (SSOT)
 
 If you believe a secret has been committed accidentally, report it immediately.
+See `SECURITY.md` for reporting details.
 
 ## Features
 

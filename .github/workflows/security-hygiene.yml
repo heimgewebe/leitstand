@@ -1,0 +1,28 @@
+name: secret-hygiene
+on: [push, pull_request]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail on forbidden files (env, keys, secrets, config)
+        run: |
+          # Pattern breakdown:
+          # 1. .env files: (^|/)\.env(\..+)?$
+          # 2. Keys: \.(pem|key)$
+          # 3. Explicit secrets: secret (matches names with 'secret')
+          # 4. SSH keys: (^|/)id_(rsa|ed25519)$
+          # 5. Kubeconfig: (^|/)kubeconfig$
+          # 6. Terraform: (^|/)terraform\.tfstate$
+          # 7. Package configs: (^|/)\.(npmrc|pypirc)$
+
+          forbidden=$(git ls-files | grep -E '(^|/)\.env(\..+)?$|\.(pem|key)$|secret|(^|/)id_(rsa|ed25519)$|(^|/)kubeconfig$|(^|/)terraform\.tfstate$|(^|/)\.(npmrc|pypirc)$' || true)
+
+          if [ -n "$forbidden" ]; then
+            echo "❌ Forbidden files detected in repository:"
+            echo "$forbidden"
+            echo ""
+            echo "Please remove these files and add them to .gitignore."
+            exit 1
+          fi
