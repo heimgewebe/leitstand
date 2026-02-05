@@ -49,7 +49,6 @@ verification/*.png
 .env
 .env.*
 !.env.example
-!.env.template
 *.secret
 *.secrets.*
 *.key

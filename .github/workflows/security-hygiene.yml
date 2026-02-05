@@ -28,9 +28,9 @@ jobs:
           candidates=$(git ls-files | grep -E '(^|/)\.env(\..+)?$|\.(pem|key)$|(^|/)[^/]*\.secrets\.[^/]+$|(^|/)[^/]*\.secret$|(^|/)(id_rsa|id_ed25519|id_(rsa|ed25519))$|(^|/)kubeconfig$|(^|/)terraform\.tfstate$|(^|/)\.(npmrc|pypirc)$' || true)
 
           # Step 2: Filter out allowed exceptions (e.g., .env.example)
-          # We explicitly allow .env.example and .env.template
+          # We explicitly allow .env.example
           if [ -n "$candidates" ]; then
-            forbidden=$(echo "$candidates" | grep -vE '(^|/)\.env\.(example|template)$' || true)
+            forbidden=$(echo "$candidates" | grep -vE '(^|/)\.env\.example$' || true)
           else
             forbidden=""
           fi
