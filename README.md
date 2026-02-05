@@ -21,9 +21,10 @@ The heimgewebe organization consists of several interconnected repositories:
 This repository is designed to be **public**.
 
 - No secrets are stored in this repository
-- All sensitive configuration is provided via environment variables (use `.env.example` as a template)
+- All sensitive configuration is provided via environment variables (use `.env.example` or `.env.template` as a template)
 - External schema references are allowlisted by hostname
 - Validation is performed against vendored contracts (SSOT)
+- CI blocks forbidden file names, not secret content (see `SECURITY.md`)
 
 If you believe a secret has been committed accidentally, report it immediately.
 See `SECURITY.md` for reporting details.
