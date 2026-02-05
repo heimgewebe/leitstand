@@ -110,7 +110,7 @@ The service is officially named `agent-control-surface` (short: **acs**). Howeve
 - **Headers:** `X-ACS-Viewer-Token`
 - **CORS (acs-side):** `ACS_CORS_ALLOW_ORIGINS`
 
-Leitstand acts strictly as a viewer; authentication and authorization enforcement are responsibilities of the acs or its reverse proxy.
+Leitstand acts strictly as a viewer; authentication and authorization enforcement are responsibilities of the acs or its reverse proxy. Exact endpoint paths are defined by the acs API; Leitstand only consumes them.
 
 ### Environment Variables
 
@@ -135,7 +135,7 @@ Leitstand acts strictly as a viewer; authentication and authorization enforcemen
     - *Avoid using `*` if possible.*
 
 3.  **Viewer vs. Actor**:
-    By default (`LEITSTAND_OPS_ALLOW_JOB_FALLBACK=false`), Leitstand only attempts non-mutating fetches (`GET /api/audit/git/sync`). Enabling fallback allows it to trigger jobs (`POST /api/audit/git`), which is a state-changing action (even if just starting an audit). The UI will display a disclaimer reflecting the current mode. **Crucially, if enabled, Leitstand may *request* an audit job, but authorization and execution remain strictly on the acs side.**
+    By default (`LEITSTAND_OPS_ALLOW_JOB_FALLBACK=false`), Leitstand only attempts non-mutating fetches (the sync endpoint, if exposed by acs). Enabling fallback allows it to trigger jobs (the job-trigger endpoint, e.g. `POST /api/audit/git`), which is a state-changing action (even if just starting an audit). The UI will display a disclaimer reflecting the current mode. **Crucially, if enabled, Leitstand may *request* an audit job, but authorization and execution remain strictly on the acs side.**
 
 ## Data Flow & Contracts
 
