@@ -16,6 +16,19 @@ The heimgewebe organization consists of several interconnected repositories:
 - **hausKI**: AI orchestrator (writes events to chronik, consumes insights)
 - **leitstand**: This repository - dashboard and digest generator
 
+## Security & Public Usage
+
+This repository is designed to be **public**.
+
+- No secrets are stored in this repository
+- All sensitive configuration is provided via environment variables (use `.env.example` as a template)
+- External schema references are allowlisted by hostname
+- Validation is performed against vendored contracts (SSOT)
+- CI blocks forbidden file names, not secret content (see `SECURITY.md`)
+
+If you believe a secret has been committed accidentally, report it immediately.
+See `SECURITY.md` for reporting details.
+
 ## Features
 
 The daily digest generator combines:

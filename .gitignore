@@ -44,3 +44,18 @@ pnpm-debug.log*
 *.tmp
 tmp/
 verification/*.png
+
+# --- Security / Secrets (MUST NOT be committed) ---
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets.*
+*.key
+*.pem
+id_rsa
+id_ed25519
+kubeconfig
+terraform.tfstate
+.npmrc
+.pypirc

@@ -1,0 +1,44 @@
+name: security-hygiene
+on: [push, pull_request]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail on forbidden files (env, keys, secrets, config)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Pattern breakdown:
+          # 1. .env files: (^|/)\.env(\..+)?$
+          # 2. Keys: \.(pem|key)$
+          # 3. Explicit secrets (strict):
+          #    - *.secrets.* (e.g. config.secrets.json): (^|/)[^/]*\.secrets\.[^/]+$
+          #    - *.secret: (^|/)[^/]*\.secret$
+          # 4. SSH keys: (^|/)(id_rsa|id_ed25519|id_(rsa|ed25519))$
+          # 5. Kubeconfig: (^|/)kubeconfig$
+          # 6. Terraform: (^|/)terraform\.tfstate$
+          # 7. Package configs: (^|/)\.(npmrc|pypirc)$
+
+          # Step 1: Find potential forbidden files
+          candidates=$(git ls-files | grep -E '(^|/)\.env(\..+)?$|\.(pem|key)$|(^|/)[^/]*\.secrets\.[^/]+$|(^|/)[^/]*\.secret$|(^|/)(id_rsa|id_ed25519|id_(rsa|ed25519))$|(^|/)kubeconfig$|(^|/)terraform\.tfstate$|(^|/)\.(npmrc|pypirc)$' || true)
+
+          # Step 2: Filter out allowed exceptions (e.g., .env.example)
+          # We explicitly allow .env.example
+          if [ -n "$candidates" ]; then
+            forbidden=$(echo "$candidates" | grep -vE '(^|/)\.env\.example$' || true)
+          else
+            forbidden=""
+          fi
+
+          if [ -n "$forbidden" ]; then
+            echo "❌ Forbidden files detected in repository:"
+            echo "$forbidden"
+            echo ""
+            echo "Please remove these files and add them to .gitignore."
+            exit 1
+          fi
