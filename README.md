@@ -90,6 +90,15 @@ Create a `leitstand.config.json` file in your project root:
 
 The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the `agent-control-surface` (acs). It is designed as a strict viewer but can optionally trigger audit jobs if configured. This integration adheres to the established architectural roles: Leitstand visualizes, acs orchestrates.
 
+### Naming & Compatibility
+
+The service is officially named `agent-control-surface` (short: **acs**). However, stable interface identifiers retain the legacy `ACS` prefix for compatibility:
+- **Environment:** `LEITSTAND_ACS_URL`
+- **Headers:** `X-ACS-Viewer-Token`
+- **CORS (acs-side):** `ACS_CORS_ALLOW_ORIGINS`
+
+Leitstand acts strictly as a viewer; authentication and authorization enforcement are responsibilities of the acs or its reverse proxy.
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -160,7 +169,7 @@ The underlying JSON schemas are documented in the **metarepo**:
 - `contracts/insights.daily.schema.json`
 - `contracts/insights.schema.json`
 - `contracts/event.line.schema.json`
-- `audit.git.v1` – (Schema TBD; currently defined by acs output; should be formalized in metarepo contracts).
+- `audit.git.v1` – Currently implemented in acs and mirrored in leitstand types; a metarepo contract is planned.
 
 A curated index of all contracts can be found in `metarepo/docs/contracts-index.md`.
 
