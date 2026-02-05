@@ -101,47 +101,80 @@ Create a `leitstand.config.json` file in your project root:
 
 ## Ops Viewer Setup
 
-The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the Agent Control Surface (ACS). It is designed as a strict viewer but can optionally trigger audit jobs if configured. This integration adheres to the established architectural roles: Leitstand visualizes, ACS orchestrates (see "Data Flow & Contracts" below).
+The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the `agent-control-surface` (acs). It is designed as a strict viewer but can optionally trigger audit jobs if configured. This integration adheres to the established architectural roles: Leitstand visualizes, acs orchestrates.
+
+### Naming & Compatibility
+
+The service is officially named `agent-control-surface` (short: **acs**). However, stable interface identifiers retain the legacy `ACS` prefix for compatibility:
+- **Environment:** `LEITSTAND_ACS_URL`
+- **Headers:** `X-ACS-Viewer-Token`
+- **CORS (acs-side):** `ACS_CORS_ALLOW_ORIGINS`
+
+Leitstand acts strictly as a viewer; authentication and authorization enforcement are responsibilities of the acs or its reverse proxy.
 
 ### Environment Variables
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `LEITSTAND_ACS_URL` | `''` (disabled) | Base URL of the Agent Control Surface. Must be a valid HTTP/HTTPS URL. |
+| `LEITSTAND_ACS_URL` | `''` (disabled) | Base URL of the `agent-control-surface`. Must be a valid HTTP/HTTPS URL. |
 | `LEITSTAND_OPS_ALLOW_JOB_FALLBACK` | `false` | If `true`, the viewer falls back to triggering async jobs (`POST /api/audit/git`) if the sync endpoint is missing. |
 | `LEITSTAND_REPOS` | `metarepo,wgx,leitstand` | Comma-separated list of repositories to display in the selector. |
-| `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. **Note:** Enforcement depends on ACS configuration (e.g., via reverse proxy or middleware); Leitstand merely sends it. |
+| `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. **Note:** Enforcement depends on acs configuration (e.g., via reverse proxy or middleware); Leitstand merely sends it. |
 
-**Note:** If any environment variable validation fails (e.g., invalid ACS URL format), the system falls back to safe defaults (disabling ACS integration entirely).
+**Note:** If any environment variable validation fails (e.g., invalid `LEITSTAND_ACS_URL` format), the system falls back to safe defaults (disabling acs integration entirely).
 
 ### Deployment & Security Notes
 
 1.  **Mixed Content Warning**:
-    If Leitstand is served via **HTTPS**, the browser will block requests to an **HTTP** ACS URL.
-    - **Fix:** Deploy ACS behind an HTTPS reverse proxy (e.g., Caddy, Nginx) or configure `LEITSTAND_ACS_URL` to use HTTPS.
+    If Leitstand is served via **HTTPS**, the browser will block requests to an **HTTP** acs URL.
+    - **Fix:** Deploy `agent-control-surface` behind an HTTPS reverse proxy (e.g., Caddy, Nginx) or configure `LEITSTAND_ACS_URL` to use HTTPS.
 
-2.  **CORS Configuration (ACS Side)**:
-    The ACS must explicitly allow the Leitstand origin to make requests, especially if credentials or cookies are involved.
-    - **ACS Config:** Ensure `ACS_CORS_ALLOW_ORIGINS` includes your Leitstand URL (e.g., `https://leitstand.internal`).
+2.  **CORS Configuration (acs Side)**:
+    The `agent-control-surface` must explicitly allow the Leitstand origin to make requests, especially if credentials or cookies are involved.
+    - **acs Config:** Ensure `ACS_CORS_ALLOW_ORIGINS` includes your Leitstand URL (e.g., `https://leitstand.internal`).
     - *Avoid using `*` if possible.*
 
 3.  **Viewer vs. Actor**:
-    By default (`ALLOW_JOB_FALLBACK=false`), Leitstand only attempts non-mutating fetches (`GET /sync` or `GET /latest`). Enabling fallback allows it to trigger jobs, which is a state-changing action (even if just starting an audit). The UI will display a disclaimer reflecting the current mode.
+    By default (`LEITSTAND_OPS_ALLOW_JOB_FALLBACK=false`), Leitstand only attempts non-mutating fetches (`GET /api/audit/git/sync`). Enabling fallback allows it to trigger jobs (`POST /api/audit/git`), which is a state-changing action (even if just starting an audit). The UI will display a disclaimer reflecting the current mode. **Crucially, if enabled, Leitstand may *request* an audit job, but authorization and execution remain strictly on the acs side.**
 
 ## Data Flow & Contracts
 
-Leitstand is the **visual control center** of the Heimgewebe organism.
-To provide accurate and stable views, Leitstand relies on clearly defined data contracts.
+Leitstand is the **visual control center** of the Heimgewebe organism. To provide accurate and stable views, Leitstand relies on clearly defined data contracts and a strict separation of concerns.
 
-The authoritative view of the data streams consumed by Leitstand is documented in:
+```mermaid
+flowchart TD
+    FEEDS[aussensensor<br/>Feeds & News] --> CHRONIK[chronik<br/>Events (JSONL)]
+    CHRONIK --> SEMANTAH[semantAH<br/>Semantic Index]
+    CHRONIK --> LEITSTAND[leitstand<br/>Daily Digest & Ops Viewer]
 
-- `docs/data-flow.md`
+    SEMANTAH --> LEITSTAND
+    WGX[wgx<br/>Fleet Metrics] --> CHRONIK
 
-The central inputs described there are:
+    LEITSTAND --> HAUSKI[hausKI<br/>Decision Engine]
+    HAUSKI --> CHRONIK
+
+    ACS[agent-control-surface] -.-> LEITSTAND
+```
+
+### Roles in the flow
+
+- **leitstand**: Visualizes state by reading artifacts from `semantAH` and `chronik`. The Ops Viewer (`/ops`) may additionally fetch live operational data from `agent-control-surface` (acs) when configured.
+- **chronik**: Event log and audit store.
+- **semantAH**: Builds the semantic index and writes daily insights.
+- **wgx**: Generates fleet metrics snapshots.
+- **hausKI**: Consumes digests/insights for decision-making.
+- **agent-control-surface** (acs): Provides real-time operational state (e.g., Git health audits) consumed by Leitstand's Ops Viewer.
+
+### Central Inputs
+
+The authoritative view of the data streams is documented in `docs/data-flow.md`. The central inputs are:
 
 - `fleet.health` – Fleet health (wgx / metarepo contracts)
 - `insights.daily` – Semantic daily insights from semantAH
 - `event.line` – Event backbone from chronik
+- `audit.git.v1` – Live ops data from acs (Ops Viewer only; not part of chronik event backbone unless explicitly exported)
+
+### JSON Schemas
 
 The underlying JSON schemas are documented in the **metarepo**:
 
@@ -149,14 +182,11 @@ The underlying JSON schemas are documented in the **metarepo**:
 - `contracts/insights.daily.schema.json`
 - `contracts/insights.schema.json`
 - `contracts/event.line.schema.json`
+- `audit.git.v1` – Currently implemented in acs and mirrored in leitstand types; a metarepo contract is planned.
 
-Eine kuratierte Übersicht aller Contracts findet sich im metarepo unter:
+A curated index of all contracts can be found in `metarepo/docs/contracts-index.md`.
 
-- `docs/contracts-index.md`
-
-Hinweis:
-
-- Neue Leitstand-Features (wie der Ops Viewer) fügen sich in dieses Modell ein: Sie visualisieren Daten (Artefakte), ohne die Hoheit über die Erzeugung oder Mutation (WGX/ACS) zu verletzen.
+**Note:** New Leitstand features (like the Ops Viewer) fit into this model: they visualize data (artifacts) without violating the authority of generation or mutation (WGX/ACS).
 
 ## Usage
 
@@ -182,36 +212,6 @@ The command generates two files in the output directory:
 
 1. **Markdown file**: `digests/daily/YYYY-MM-DD.md` - Human-readable digest
 2. **JSON file**: `digests/daily/YYYY-MM-DD.json` - Structured data for programmatic access
-
-Example markdown output:
-
-```markdown
-# Heimgewebe Digest – 2025-12-05
-
-Generated: 2025-12-05T15:30:00Z
-
-## Top Topics
-
-- **TypeScript** (15)
-- **Testing** (10)
-- **CI/CD** (8)
-
-## Key Events (last 24h)
-
-- `10:30:00` ci.success heimgewebe/wgx test
-- `09:15:00` ci.failure heimgewebe/semantAH build [high]
-
-## Fleet Health
-
-**Total Repositories:** 5
-
-**Status Breakdown:**
-- ✅ OK: 3
-- ⚠️  Warning: 1
-- ❌ Failed: 1
-
-_Last updated: 2025-12-05 12:00:00_
-```
 
 ## Development
 
@@ -248,67 +248,17 @@ leitstand/
 │   ├── metrics.ts         # Load WGX metrics
 │   ├── digest.ts          # Combine data sources
 │   ├── renderMarkdown.ts  # Render digest to markdown
+│   ├── server.ts          # Express server & Ops Viewer
+│   ├── views/             # EJS templates (ops, observatory, etc.)
 │   └── cli.ts             # CLI entry point
 ├── tests/
 │   ├── config.test.ts
-│   ├── insights.test.ts
-│   ├── events.test.ts
-│   ├── metrics.test.ts
-│   ├── digest.test.ts
-│   ├── renderMarkdown.test.ts
-│   ├── integration.test.ts
-│   └── fixtures/          # Test data
+│   ├── ops_integration.test.ts
+│   └── ...
 ├── package.json
 ├── tsconfig.json
 ├── vitest.config.ts
 └── leitstand.config.json  # Example configuration
-```
-
-## Data Contracts (Legacy View)
-
-### Daily Insights (semantAH)
-
-Expected shape of `today.json`:
-
-```typescript
-{
-  ts: "YYYY-MM-DD",
-  topics: [["topic", count], ...],
-  questions: ["question 1", ...],
-  deltas: ["change 1", ...]
-}
-```
-
-### Events (chronik)
-
-JSONL files with one event per line:
-
-```typescript
-{
-  timestamp: "ISO-8601",
-  kind: "event.type",
-  repo?: "owner/repo",
-  job?: "job-name",
-  severity?: "low|medium|high",
-  payload?: { ... }
-}
-```
-
-### Metrics (WGX)
-
-JSON snapshot files:
-
-```typescript
-{
-  timestamp: "ISO-8601",
-  repoCount: number,
-  status: {
-    ok: number,
-    warn: number,
-    fail: number
-  },
-  metadata?: { ... }
-}
 ```
 
 ## Requirements
@@ -318,66 +268,15 @@ JSON snapshot files:
 
 ## Future Enhancements
 
-This is the initial iteration focused on generating daily digests. Future versions may include:
+This is the initial iteration focused on generating daily digests and operational views. Future versions may include:
 
-- Web UI for interactive dashboard
 - Real-time metrics streaming
 - Historical digest comparison
 - Custom alert rules
 - Multi-day trend analysis
-- Integration with hausKI for AI-powered insights
 
 ## License
 MIT
-
-## Heimgewebe Data Flow
-
-This section shows how `leitstand` fits into the wider Heimgewebe organism.
-
-```mermaid
-flowchart TD
-
-    FEEDS[aussensensor<br/>Feeds & News] --> CHRONIK[chronik<br/>Events (JSONL)]
-
-    CHRONIK --> SEMANTAH[semantAH<br/>Semantic Index<br/>Daily Insights]
-    CHRONIK --> LEITSTAND[leitstand<br/>Daily Digest Generator]
-
-    SEMANTAH --> LEITSTAND
-
-    LEITSTAND --> HAUSKI[hausKI<br/>Decision Engine]
-    HAUSKI --> CHRONIK
-```
-
-### Roles in the flow
-
-- **aussensensor**
-  Curated external feeds. Writes events into `chronik` as JSONL.
-
-- **chronik**
-  Event log and audit store. Each domain (for example `metrics.snapshot`) maps to one JSONL file in `CHRONIK_DATA_DIR`.
-
-- **semantAH**
-  Builds and updates the semantic index and writes **daily insights** to:
-  - `$VAULT_ROOT/.gewebe/insights/today.json`
-  - `$VAULT_ROOT/.gewebe/insights/daily/YYYY-MM-DD.json`
-
-- **wgx** (not drawn explicitly)
-  Generates fleet metrics snapshots which are stored in `chronik` as `metrics.snapshot` events and exported to:
-  - `$VAULT_ROOT/.gewebe/wgx/metrics/YYYY-MM-DD.json`
-  - `$VAULT_ROOT/.gewebe/wgx/metrics/latest.json`
-
-- **leitstand**
-  Reads three main inputs:
-  1. Daily insights from semantAH (`today.json`),
-  2. recent events from chronik (JSONL files),
-  3. fleet health metrics from WGX snapshots.
-
-  It combines them into a single daily digest (Markdown + JSON) that can be used as a dashboard, email, or further automation input.
-
-- **hausKI**
-  Consumes digests and insights as part of its decision-making, and writes decisions and outcomes back into `chronik`, closing the loop.
-
-In short: `leitstand` is the place where the organism looks at itself once per day and formulates a coherent story about its current state.
 
 ## Organism Context
 
