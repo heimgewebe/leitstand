@@ -160,6 +160,7 @@ The underlying JSON schemas are documented in the **metarepo**:
 - `contracts/insights.daily.schema.json`
 - `contracts/insights.schema.json`
 - `contracts/event.line.schema.json`
+- `audit.git.v1` – (Schema TBD; currently defined by acs output; should be formalized in metarepo contracts).
 
 A curated index of all contracts can be found in `metarepo/docs/contracts-index.md`.
 
