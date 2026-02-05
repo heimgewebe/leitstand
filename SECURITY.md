@@ -15,3 +15,7 @@ Please report privately via:
 - No authentication logic
 - No secret storage
 - No dynamic schema fetching beyond allowlisted references
+
+## CI Limitations
+- The security workflow blocks forbidden **file names**, not secret **content**.
+- If you accidentally commit a secret in any file, rotate it immediately; assume git history is compromised.
