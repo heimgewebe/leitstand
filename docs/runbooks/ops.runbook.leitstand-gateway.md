@@ -3,6 +3,7 @@
 Stand: 2026-02-03 (abgeleitet aus heimserver.context.md)
 Dokumentklasse: OPERATIV · KANONISCH
 Scope: Heimserver-only
+Owner: ops / Heimserver; Änderungen an Proxy/Firewall/DNS müssen dieses Runbook im selben PR updaten.
 
 ## 0) Zweck
 Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers:
@@ -122,9 +123,9 @@ DOCKER-USER wirkt nur, wenn Docker Traffic durch FORWARD/DOCKER-Ketten führt (S
 
 Artefakte liegen unter:
 - /opt/heimgewebe/gateway/
-- compose.gateway.yml
-- Caddyfile
-- leitstand.config.json (falls Leitstand Artefaktpfade liest)
+  - compose.gateway.yml
+  - Caddyfile
+  - leitstand.config.json (falls Leitstand Artefaktpfade liest)
 
 systemd wrapper:
 - /etc/systemd/system/heimgewebe-gateway.service
