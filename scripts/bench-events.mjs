@@ -20,9 +20,8 @@ const { loadRecentEvents } = await import(DIST_EVENTS_PATH);
 const TEMP_DIR = path.join(__dirname, '../temp_bench_data');
 const FILE_COUNT = 5;
 const EVENTS_PER_FILE = 20000;
-const BASE_NOW = Date.now(); // Fixed reference time
 
-async function generateData() {
+async function generateData(baseNow) {
   if (fs.existsSync(TEMP_DIR)) {
     fs.rmSync(TEMP_DIR, { recursive: true, force: true });
   }
@@ -38,7 +37,7 @@ async function generateData() {
       // Deterministic timestamp: spread events over time, 1 second apart
       const offsetMs = (i * EVENTS_PER_FILE + j) * 1000;
       const event = {
-        timestamp: new Date(BASE_NOW - offsetMs).toISOString(),
+        timestamp: new Date(baseNow - offsetMs).toISOString(),
         kind: 'bench.event',
         repo: 'bench/repo',
         payload: {
@@ -104,12 +103,13 @@ async function measure(name, fn) {
 }
 
 async function main() {
-  await generateData();
+  const baseNow = Date.now();
+  await generateData(baseNow);
 
   // Window covers all generated events (approx 28 hours history)
   // Max offset is roughly (5 * 20000) * 1000 ms = 100,000,000 ms = ~27.7 hours
-  const since = new Date(BASE_NOW - 200000000); // Plenty of buffer
-  const until = new Date(BASE_NOW + 10000);
+  const since = new Date(baseNow - 200000000); // Plenty of buffer
+  const until = new Date(baseNow + 10000);
 
   console.log('\n--- Benchmarking ---');
 
@@ -123,4 +123,7 @@ async function main() {
   fs.rmSync(TEMP_DIR, { recursive: true, force: true });
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
