@@ -88,6 +88,11 @@ curl -I https://leitstand.lan/health
 # curl -I https://leitstand.lan/api/ops/audit/git || echo "Ops API not available"
 # Debug:
 # curl -k -I https://leitstand.lan/api/ops/audit/git
+
+# 3. Container Status (keine Restarts)
+docker compose ps
+# Optional bei Problemen:
+# docker compose logs --tail=100 --no-color
 ```
 
 ### 4.4 Rollback (Emergency)
@@ -110,7 +115,8 @@ docker compose down
 - **DNS bricht:** `getent hosts` liefert nichts -> Prüfe `/etc/hosts` oder FritzBox.
 - **TLS Untrusted:** `curl` meckert über Zertifikat -> Caddy internal CA nicht im Trust Store oder `tls internal` fehlt.
 - **DOCKER-USER fehlt:** Zugriff aus LAN blockiert -> `sudo netfilter-persistent reload`.
-- **Health != 200:** Container läuft, aber App crash -> `docker logs <container-id>`.
+- **Health != 200:** Container läuft, aber App crash -> `docker compose logs --tail=200 <service>` (z. B. leitstand).
+  - Hinweis: Services via `docker compose ps` ermitteln.
 
 ## 6) Drift-Regel
 Jede Änderung an der Update-Mechanik (z. B. Umstellung auf Watchtower, neue Health-Checks) erfordert ein Update dieses Dokuments im selben PR.
