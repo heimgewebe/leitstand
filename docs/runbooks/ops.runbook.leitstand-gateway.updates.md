@@ -60,9 +60,16 @@ docker compose up -d
 ```bash
 cd /opt/heimgewebe/gateway/
 
-# TODO: Pfade zu den Repos anpassen (PLACEHOLDER)
-# git -C ../leitstand pull
-# git -C ../acs pull
+# Repo-Root setzen (Beispiel anpassen falls nötig)
+HG_REPO_ROOT="${HG_REPO_ROOT:-$HOME/repos/heimgewebe}"
+
+# Safety Checks
+[ -d "$HG_REPO_ROOT/leitstand" ] || { echo "Missing repo: leitstand"; exit 1; }
+[ -d "$HG_REPO_ROOT/agent-control-surface" ] || { echo "Missing repo: agent-control-surface"; exit 1; }
+
+# Pull Source
+git -C "$HG_REPO_ROOT/leitstand" pull
+git -C "$HG_REPO_ROOT/agent-control-surface" pull
 
 docker compose build --pull
 docker compose up -d
@@ -72,14 +79,15 @@ docker compose up -d
 Prüfe, ob das Update erfolgreich war.
 
 ```bash
-# 1. Health Check (muss 200 OK sein)
-curl -k -I https://leitstand.lan/health
+# 1. Health Check (Standard: striktes TLS)
+curl -I https://leitstand.lan/health
+# Debug bei CA/Trust-Problemen:
+# curl -k -I https://leitstand.lan/health
 
 # 2. Ops Endpoint (optional, falls vorhanden)
-# curl -k -I https://leitstand.lan/api/ops/audit/git || echo "Ops API not available"
-
-# 3. Container Status (keine Restarts)
-docker ps
+# curl -I https://leitstand.lan/api/ops/audit/git || echo "Ops API not available"
+# Debug:
+# curl -k -I https://leitstand.lan/api/ops/audit/git
 ```
 
 ### 4.4 Rollback (Emergency)
@@ -101,7 +109,7 @@ docker compose down
 ## 5) Fehlerbilder (Troubleshooting)
 - **DNS bricht:** `getent hosts` liefert nichts -> Prüfe `/etc/hosts` oder FritzBox.
 - **TLS Untrusted:** `curl` meckert über Zertifikat -> Caddy internal CA nicht im Trust Store oder `tls internal` fehlt.
-- **DOCKER-USER fehlt:** Zugriff aus LAN blockiert -> `netfilter-persistent reload`.
+- **DOCKER-USER fehlt:** Zugriff aus LAN blockiert -> `sudo netfilter-persistent reload`.
 - **Health != 200:** Container läuft, aber App crash -> `docker logs <container-id>`.
 
 ## 6) Drift-Regel
