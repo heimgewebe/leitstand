@@ -32,6 +32,7 @@ async function generateData(baseNow) {
   for (let i = 0; i < FILE_COUNT; i++) {
     const filePath = path.join(TEMP_DIR, `events_${i}.jsonl`);
     const stream = fs.createWriteStream(filePath);
+    const streamFinished = finished(stream); // Capture promise immediately to handle errors
 
     for (let j = 0; j < EVENTS_PER_FILE; j++) {
       // Deterministic timestamp: spread events over time, 1 second apart
@@ -53,7 +54,7 @@ async function generateData(baseNow) {
     }
     stream.end();
     // Wait for file to be fully written and closed
-    await finished(stream);
+    await streamFinished;
   }
 }
 
