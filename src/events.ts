@@ -85,7 +85,7 @@ export async function loadRecentEvents(
     // Process files in batches to limit concurrency
     // Max concurrently open streams; conservative to avoid FD exhaustion on typical systems.
     const BATCH_SIZE = 8;
-    const results: EventLine[][] = [];
+    const events: EventLine[] = [];
 
     for (let i = 0; i < jsonlFiles.length; i += BATCH_SIZE) {
       const batch = jsonlFiles.slice(i, i + BATCH_SIZE);
@@ -124,10 +124,14 @@ export async function loadRecentEvents(
       });
 
       const batchResults = await Promise.all(batchPromises);
-      results.push(...batchResults);
-    }
 
-    const events = results.flat();
+      // Accumulate events into flat array immediately to reduce memory pressure
+      for (const fileEvents of batchResults) {
+        for (const event of fileEvents) {
+          events.push(event);
+        }
+      }
+    }
 
     // Sort by timestamp, newest first
     // Optimization: ISO 8601 strings can be compared lexicographically
