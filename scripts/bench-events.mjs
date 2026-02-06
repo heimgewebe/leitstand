@@ -3,6 +3,8 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { performance } from 'perf_hooks';
+import { finished } from 'node:stream/promises';
+import { once } from 'node:events';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_EVENTS_PATH = path.join(__dirname, '../dist/events.js');
@@ -18,6 +20,7 @@ const { loadRecentEvents } = await import(DIST_EVENTS_PATH);
 const TEMP_DIR = path.join(__dirname, '../temp_bench_data');
 const FILE_COUNT = 5;
 const EVENTS_PER_FILE = 20000;
+const BASE_NOW = Date.now(); // Fixed reference time
 
 async function generateData() {
   if (fs.existsSync(TEMP_DIR)) {
@@ -32,8 +35,10 @@ async function generateData() {
     const stream = fs.createWriteStream(filePath);
 
     for (let j = 0; j < EVENTS_PER_FILE; j++) {
+      // Deterministic timestamp: spread events over time, 1 second apart
+      const offsetMs = (i * EVENTS_PER_FILE + j) * 1000;
       const event = {
-        timestamp: new Date(Date.now() - Math.floor(Math.random() * 10000000)).toISOString(),
+        timestamp: new Date(BASE_NOW - offsetMs).toISOString(),
         kind: 'bench.event',
         repo: 'bench/repo',
         payload: {
@@ -41,13 +46,16 @@ async function generateData() {
             data: 'x'.repeat(100) // Some payload
         }
       };
-      stream.write(JSON.stringify(event) + '\n');
+
+      const canWrite = stream.write(JSON.stringify(event) + '\n');
+      if (!canWrite) {
+        await once(stream, 'drain');
+      }
     }
     stream.end();
+    // Wait for file to be fully written and closed
+    await finished(stream);
   }
-
-  // Wait for files to be written
-  await new Promise(r => setTimeout(r, 1000));
 }
 
 // Naive implementation as described in the task
@@ -98,8 +106,10 @@ async function measure(name, fn) {
 async function main() {
   await generateData();
 
-  const since = new Date(Date.now() - 100000000);
-  const until = new Date();
+  // Window covers all generated events (approx 28 hours history)
+  // Max offset is roughly (5 * 20000) * 1000 ms = 100,000,000 ms = ~27.7 hours
+  const since = new Date(BASE_NOW - 200000000); // Plenty of buffer
+  const until = new Date(BASE_NOW + 10000);
 
   console.log('\n--- Benchmarking ---');
 
