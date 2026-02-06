@@ -143,6 +143,11 @@ systemd wrapper:
 - systemctl disable --now heimgewebe-gateway.service
 - (optional) netfilter-persistent restore
 
+### 9.5 Updates (Policy)
+- Updates sind bewusst und auditierbar; **keine Auto-Updates by default**.
+- Es gilt das Prinzip: Erst verstehen, dann pullen.
+- Prozedur: Siehe [ops.runbook.leitstand-gateway.updates.md](./ops.runbook.leitstand-gateway.updates.md).
+
 ## 10) Live-Policy (sachlich, nicht nervös)
 - Dashboard: kein Auto-Reload
 - Health-Panels: Polling nur wenn sichtbar (z. B. 60s)
