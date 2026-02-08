@@ -2,7 +2,13 @@
 set -euo pipefail
 
 # --- Configuration ---
-DEPLOY_DIR="deploy"
+# Resolve repo root robustly to handle calls from anywhere (e.g. cron/scripts)
+if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    echo "❌ Error: Not inside a git repository." >&2
+    exit 1
+fi
+
+DEPLOY_DIR="$REPO_ROOT/deploy"
 COMPOSE_FILE="docker-compose.yml"
 LAN_COMPOSE_FILE="docker-compose.lan.yml"
 PROXY_COMPOSE_FILE="docker-compose.proxy.yml"
@@ -34,12 +40,21 @@ check_dependencies() {
     if ! command -v git >/dev/null 2>&1; then
         fail "Git is not installed or not in PATH."
     fi
+
+    # Verify docker compose plugin is available
+    if ! docker compose version >/dev/null 2>&1; then
+        fail "Docker Compose plugin not available. Please install docker-compose-plugin."
+    fi
 }
 
 check_repo_clean() {
     log_info "Checking working tree..."
-    if ! git diff-index --quiet HEAD --; then
-        fail "Working tree is not clean. Please commit or stash changes before deploying."
+    # Check for both staged/unstaged changes AND untracked files
+    local status_output
+    status_output="$(git -C "$REPO_ROOT" status --porcelain --untracked-files=normal)"
+
+    if [[ -n "$status_output" ]]; then
+        fail "Working tree is not clean (uncommitted or untracked changes present). Please commit or stash."
     fi
 }
 
@@ -61,7 +76,7 @@ check_docker_running() {
 
 pull_changes() {
     log_info "Pulling latest changes..."
-    if ! git pull --ff-only; then
+    if ! git -C "$REPO_ROOT" pull --ff-only; then
         fail "git pull failed. Manual intervention required (e.g., merge conflict)."
     fi
 }
@@ -71,6 +86,7 @@ deploy() {
 
     log_info "Building and restarting Leitstand service..."
 
+    # Safe CD to absolute path
     cd "$DEPLOY_DIR"
 
     case "$mode" in
@@ -84,6 +100,12 @@ deploy() {
             if [[ ! -f "$PROXY_COMPOSE_FILE" ]]; then
                  fail "Proxy mode requested but '$PROXY_COMPOSE_FILE' is missing."
             fi
+
+            # Check for external network existence
+            if ! docker network inspect heimnet >/dev/null 2>&1; then
+                fail "External network 'heimnet' missing. Run: docker network create heimnet"
+            fi
+
             docker compose -f "$COMPOSE_FILE" -f "$PROXY_COMPOSE_FILE" up -d --build
             ;;
         *)
@@ -111,6 +133,8 @@ while [[ "$#" -gt 0 ]]; do
     esac
     shift
 done
+
+echo "Leitstand Deploy | Mode: $MODE | Root: $REPO_ROOT"
 
 check_dependencies
 check_repo_clean
