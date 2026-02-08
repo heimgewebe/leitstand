@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- Configuration ---
+DEPLOY_DIR="deploy"
+COMPOSE_FILE="docker-compose.yml"
+LAN_COMPOSE_FILE="docker-compose.lan.yml"
+
+# --- Functions ---
+
+log_info() {
+    echo "→ $1"
+}
+
+log_success() {
+    echo "✓ $1"
+}
+
+log_error() {
+    echo "❌ $1" >&2
+}
+
+fail() {
+    log_error "$1"
+    exit 1
+}
+
+check_dependencies() {
+    if ! command -v docker >/dev/null 2>&1; then
+        fail "Docker is not installed or not in PATH."
+    fi
+
+    if ! command -v git >/dev/null 2>&1; then
+        fail "Git is not installed or not in PATH."
+    fi
+}
+
+check_repo_clean() {
+    log_info "Checking working tree..."
+    if ! git diff-index --quiet HEAD --; then
+        fail "Working tree is not clean. Please commit or stash changes before deploying."
+    fi
+}
+
+check_deploy_dir() {
+    if [[ ! -d "$DEPLOY_DIR" ]]; then
+        fail "Deployment directory '$DEPLOY_DIR' not found."
+    fi
+
+    if [[ ! -f "$DEPLOY_DIR/$COMPOSE_FILE" ]]; then
+        fail "Docker Compose file '$DEPLOY_DIR/$COMPOSE_FILE' not found."
+    fi
+}
+
+check_docker_running() {
+    if ! docker info >/dev/null 2>&1; then
+        fail "Docker daemon is not running or current user lacks permission."
+    fi
+}
+
+pull_changes() {
+    log_info "Pulling latest changes..."
+    if ! git pull --ff-only; then
+        fail "git pull failed. Manual intervention required (e.g., merge conflict)."
+    fi
+}
+
+deploy() {
+    local lan_mode="${1:-false}"
+
+    log_info "Building and restarting Leitstand service..."
+
+    cd "$DEPLOY_DIR"
+
+    if [[ "$lan_mode" == "true" ]]; then
+        if [[ ! -f "$LAN_COMPOSE_FILE" ]]; then
+             fail "LAN mode requested but '$LAN_COMPOSE_FILE' is missing."
+        fi
+        docker compose -f "$COMPOSE_FILE" -f "$LAN_COMPOSE_FILE" up -d --build
+    else
+        docker compose up -d --build
+    fi
+}
+
+# --- Main ---
+
+MODE="default"
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --lan) MODE="lan" ;;
+        -h|--help)
+            echo "Usage: leitstand-deploy [--lan]"
+            echo "  --lan: Enable LAN access via docker-compose.lan.yml"
+            exit 0
+            ;;
+        *) fail "Unknown parameter passed: $1";;
+    esac
+    shift
+done
+
+check_dependencies
+check_repo_clean
+check_deploy_dir
+check_docker_running
+pull_changes
+
+if [[ "$MODE" == "lan" ]]; then
+    deploy "true"
+else
+    deploy "false"
+fi
+
+log_success "Leitstand deployed successfully"

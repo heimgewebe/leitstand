@@ -88,3 +88,22 @@ LEITSTAND_BIND_IP=192.168.178.10 docker compose -f docker-compose.yml -f docker-
 Diese Option bindet an `0.0.0.0` (alle Interfaces), sofern nicht anders angegeben. Nutze dies nur, wenn deine Firewall/NAT den Zugriff von außen blockiert.
 Falls Blink (iPad) keinen stabilen SSH-Tunnel unterstützt, ist dies die empfohlene Methode.
 Alternativ: Reverse Proxy (siehe `ops.runbook.leitstand-gateway.md`).
+
+## Update & Redeploy
+
+Für Routine-Updates und Neustarts wird **ausschließlich** das bereitgestellte Skript empfohlen. Es kapselt die notwendigen Schritte (Pull, Build, Restart) sicher und konsistent.
+
+❌ **docker compose ist intern:** Die manuelle Nutzung von `docker compose` ist möglich, aber fehleranfällig (vergessene Parameter, Dirty State).
+✅ **leitstand-deploy ist der Standard:**
+
+### Standard (Lokal)
+Aktualisiert den Code (`git pull`), baut neu und startet den Dienst (nur localhost).
+```bash
+./scripts/leitstand-deploy
+```
+
+### LAN-Modus
+Wenn der Leitstand im lokalen Netzwerk erreichbar sein soll (entspricht Start-Option B):
+```bash
+./scripts/leitstand-deploy --lan
+```
