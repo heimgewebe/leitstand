@@ -64,6 +64,7 @@ Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf Po
    ```bash
    docker compose up -d --build
    ```
+   **Wichtig:** `deploy/.env` wird absichtlich ignoriert und darf niemals committed werden.
 
 ### Zugriff im Heimnetz
 - `http://<heimserver>:3000/`

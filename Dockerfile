@@ -1,6 +1,6 @@
 FROM node:20-bookworm-slim
 
-# Use ARG for PNPM_VERSION for flexibility (default matches package.json)
+# Use ARG for PNPM_VERSION for reproducible builds; keep in sync with package.json packageManager if present.
 ARG PNPM_VERSION=9.1.0
 
 WORKDIR /app
