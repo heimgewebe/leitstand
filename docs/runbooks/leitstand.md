@@ -88,3 +88,8 @@ LEITSTAND_BIND_IP=192.168.178.10 docker compose -f docker-compose.yml -f docker-
 Diese Option bindet an `0.0.0.0` (alle Interfaces), sofern nicht anders angegeben. Nutze dies nur, wenn deine Firewall/NAT den Zugriff von außen blockiert.
 Falls Blink (iPad) keinen stabilen SSH-Tunnel unterstützt, ist dies die empfohlene Methode.
 Alternativ: Reverse Proxy (siehe `ops.runbook.leitstand-gateway.md`).
+
+### Nützliche Befehle (Shortcuts)
+- **Logs verfolgen:** `docker compose logs -f`
+- **Container stoppen:** `docker compose down`
+- **Status prüfen:** `docker compose ps`
