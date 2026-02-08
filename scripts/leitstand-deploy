@@ -84,6 +84,7 @@ pull_changes() {
 
 deploy() {
     local mode="$1"
+    local compose_args=()
 
     log_info "Building and restarting Leitstand service..."
 
@@ -95,7 +96,7 @@ deploy() {
             if [[ ! -f "$LAN_COMPOSE_FILE" ]]; then
                  fail "LAN mode requested but '$LAN_COMPOSE_FILE' is missing."
             fi
-            docker compose -f "$COMPOSE_FILE" -f "$LAN_COMPOSE_FILE" up -d --build
+            compose_args=(-f "$COMPOSE_FILE" -f "$LAN_COMPOSE_FILE")
             ;;
         "proxy")
             if [[ ! -f "$PROXY_COMPOSE_FILE" ]]; then
@@ -107,19 +108,22 @@ deploy() {
                 fail "External network 'heimnet' missing. Run: docker network create heimnet"
             fi
 
-            docker compose -f "$COMPOSE_FILE" -f "$PROXY_COMPOSE_FILE" up -d --build
+            compose_args=(-f "$COMPOSE_FILE" -f "$PROXY_COMPOSE_FILE")
             ;;
         *)
             # Default: Explicitly use docker-compose.override.yml
             if [[ ! -f "$OVERRIDE_COMPOSE_FILE" ]]; then
                  fail "Default mode requires '$OVERRIDE_COMPOSE_FILE' but it is missing."
             fi
-            docker compose -f "$COMPOSE_FILE" -f "$OVERRIDE_COMPOSE_FILE" up -d --build
+            compose_args=(-f "$COMPOSE_FILE" -f "$OVERRIDE_COMPOSE_FILE")
             ;;
     esac
 
+    # Execute docker compose with gathered arguments
+    docker compose "${compose_args[@]}" up -d --build
+
     echo ""
-    docker compose ps
+    docker compose "${compose_args[@]}" ps
 }
 
 # --- Main ---
