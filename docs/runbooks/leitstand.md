@@ -48,7 +48,7 @@ The vendored files must be committed to the repository. The build process (`buil
 
 ## Deployment & Zugriff
 
-Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf Port 3000 (LAN-weit).
+Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf **localhost:3000** (sicherer Default).
 
 ### Deployment
 1. Wechsle in das Deploy-Verzeichnis:
@@ -60,22 +60,25 @@ Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf Po
    cp .env.example .env
    # Editiere .env nach Bedarf (z.B. LEITSTAND_ACS_URL)
    ```
-3. Starte (mit Build):
-   ```bash
-   docker compose up -d --build
-   ```
    **Wichtig:** `deploy/.env` wird absichtlich ignoriert und darf niemals committed werden.
 
-### Zugriff im Heimnetz
-- `http://<heimserver>:3000/`
-- `http://<heimserver>:3000/ops`
+### Start-Optionen
 
-**Hinweis:**
-Der Service ist **nicht** für direkte Internet-Exposure gedacht. Falls externe Erreichbarkeit gewünscht ist, muss zwingend ein Reverse Proxy (z. B. Caddy/Gateway) mit TLS und Authentifizierung vorgeschaltet werden.
+#### A) Lokaler Start (Default)
+Nur auf dem Heimserver selbst (oder via SSH Portforwarding) erreichbar.
+```bash
+docker compose up -d --build
+```
+- **Zugriff:** `http://127.0.0.1:3000/`
 
-### Warum kein SSH-Tunnel?
+#### B) LAN-Start (Optional)
+Erlaubt den Zugriff aus dem Heimnetz (z.B. iPad/Blink).
+```bash
+docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d --build
+```
+- **Zugriff:** `http://<heimserver-lan-ip>:3000/`
 
-Wir verzichten bewusst auf den Zugriff via SSH-Tunnel für den regulären Betrieb:
-- **Mobile Clients:** Apps wie Blink (iPad) unterstützen kein `ssh -f` (Background Tunnels), was die Nutzung unnötig erschwert.
-- **Stabilität:** Hintergrund-Tunnels brechen oft ab und erfordern manuellen Reconnect.
-- **Robustheit:** Die direkte Exposition im LAN (Port 3000) ist die einfachste, robusteste Lösung für ein Ops-Dashboard im Heimnetz.
+**Warnung:**
+Diese Option bindet an `0.0.0.0` (alle Interfaces). Nutze dies nur, wenn deine Firewall/NAT den Zugriff von außen blockiert.
+Falls Blink (iPad) keinen stabilen SSH-Tunnel unterstützt, ist dies die empfohlene Methode.
+Alternativ: Reverse Proxy (siehe `ops.runbook.leitstand-gateway.md`).
