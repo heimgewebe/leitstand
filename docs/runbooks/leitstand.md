@@ -78,7 +78,13 @@ docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d --build
 ```
 - **Zugriff:** `http://<heimserver-lan-ip>:3000/`
 
+**Option: Binden an eine spezifische IP**
+Um nicht auf `0.0.0.0` (alle Interfaces) zu lauschen, setze `LEITSTAND_BIND_IP`:
+```bash
+LEITSTAND_BIND_IP=192.168.178.10 docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d --build
+```
+
 **Warnung:**
-Diese Option bindet an `0.0.0.0` (alle Interfaces). Nutze dies nur, wenn deine Firewall/NAT den Zugriff von außen blockiert.
+Diese Option bindet an `0.0.0.0` (alle Interfaces), sofern nicht anders angegeben. Nutze dies nur, wenn deine Firewall/NAT den Zugriff von außen blockiert.
 Falls Blink (iPad) keinen stabilen SSH-Tunnel unterstützt, ist dies die empfohlene Methode.
 Alternativ: Reverse Proxy (siehe `ops.runbook.leitstand-gateway.md`).
