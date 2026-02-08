@@ -59,3 +59,8 @@ kubeconfig
 terraform.tfstate
 .npmrc
 .pypirc
+
+# Deploy Environment
+deploy/.env
+deploy/.env.*
+!deploy/.env.example

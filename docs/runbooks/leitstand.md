@@ -51,16 +51,16 @@ The vendored files must be committed to the repository. The build process (`buil
 Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf Port 3000 (LAN-weit).
 
 ### Deployment
-1. Wechseln in das Deploy-Verzeichnis:
+1. Wechsle in das Deploy-Verzeichnis:
    ```bash
    cd deploy
    ```
-2. Umgebungskonfiguration erstellen (falls nicht vorhanden):
+2. Erstelle die Umgebungskonfiguration (falls nicht vorhanden):
    ```bash
    cp .env.example .env
-   # Editieren Sie .env nach Bedarf (z.B. LEITSTAND_ACS_URL)
+   # Editiere .env nach Bedarf (z.B. LEITSTAND_ACS_URL)
    ```
-3. Starten (mit Build):
+3. Starte (mit Build):
    ```bash
    docker compose up -d --build
    ```
