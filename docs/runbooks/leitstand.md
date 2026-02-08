@@ -45,3 +45,21 @@ The vendored files must be committed to the repository. The build process (`buil
 - **Red (FAIL/GAP):** Schema violations or timestamp gaps in repo feeds.
 - **Gray (MISSING):** Repository defined in Metrics but no Integrity artifact found.
   - Action: Check `fetch-integrity` logs.
+
+## Zugriff auf den Leitstand
+
+Der Leitstand läuft standardmäßig auf Port 3000 und lauscht auf allen Interfaces (0.0.0.0).
+
+**Zugriff im Heimnetz:**
+- `http://<heimserver>:3000/`
+- `http://<heimserver>:3000/ops`
+
+**Hinweis:**
+Der Service ist **nicht** für direkte Internet-Exposure gedacht. Falls externe Erreichbarkeit gewünscht ist, muss zwingend ein Reverse Proxy (z. B. Caddy/Gateway) mit TLS und Authentifizierung vorgeschaltet werden (siehe `ops.runbook.leitstand-gateway.md`).
+
+### Warum kein SSH-Tunnel?
+
+Wir verzichten bewusst auf den Zugriff via SSH-Tunnel für den regulären Betrieb:
+- **Mobile Clients:** Apps wie Blink (iPad) unterstützen kein `ssh -f` (Background Tunnels), was die Nutzung unnötig erschwert.
+- **Stabilität:** Hintergrund-Tunnels brechen oft ab und erfordern manuellen Reconnect.
+- **Robustheit:** Die direkte Exposition im LAN (Port 3000) ist die einfachste, robusteste Lösung für ein Ops-Dashboard im Heimnetz.
