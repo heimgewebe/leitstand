@@ -64,10 +64,12 @@ Der Leitstand wird isoliert im Docker-Netzwerk betrieben und ist nur über einen
 - Ein Reverse Proxy (z.B. Caddy) ist in diesem Netzwerk.
 
 **Start:**
-1. Netzwerk sicherstellen:
+1. Netzwerk sicherstellen (einmalig):
    ```bash
-   docker network create heimnet || true
+   docker network create heimnet
    ```
+   *Hinweis: Das Skript bricht ab, wenn das Netzwerk fehlt.*
+
 2. Starten (via Skript):
    ```bash
    ./scripts/leitstand-deploy --proxy

@@ -10,6 +10,7 @@ fi
 
 DEPLOY_DIR="$REPO_ROOT/deploy"
 COMPOSE_FILE="docker-compose.yml"
+OVERRIDE_COMPOSE_FILE="docker-compose.override.yml"
 LAN_COMPOSE_FILE="docker-compose.lan.yml"
 PROXY_COMPOSE_FILE="docker-compose.proxy.yml"
 
@@ -109,10 +110,16 @@ deploy() {
             docker compose -f "$COMPOSE_FILE" -f "$PROXY_COMPOSE_FILE" up -d --build
             ;;
         *)
-            # Default: Uses implicit docker-compose.override.yml
-            docker compose up -d --build
+            # Default: Explicitly use docker-compose.override.yml
+            if [[ ! -f "$OVERRIDE_COMPOSE_FILE" ]]; then
+                 fail "Default mode requires '$OVERRIDE_COMPOSE_FILE' but it is missing."
+            fi
+            docker compose -f "$COMPOSE_FILE" -f "$OVERRIDE_COMPOSE_FILE" up -d --build
             ;;
     esac
+
+    echo ""
+    docker compose ps
 }
 
 # --- Main ---
