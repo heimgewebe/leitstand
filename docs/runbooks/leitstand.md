@@ -45,3 +45,46 @@ The vendored files must be committed to the repository. The build process (`buil
 - **Red (FAIL/GAP):** Schema violations or timestamp gaps in repo feeds.
 - **Gray (MISSING):** Repository defined in Metrics but no Integrity artifact found.
   - Action: Check `fetch-integrity` logs.
+
+## Deployment & Zugriff
+
+Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf **localhost:3000** (sicherer Default).
+
+### Deployment
+1. Wechsle in das Deploy-Verzeichnis:
+   ```bash
+   cd deploy
+   ```
+2. Erstelle die Umgebungskonfiguration (falls nicht vorhanden):
+   ```bash
+   cp .env.example .env
+   # Editiere .env nach Bedarf (z.B. LEITSTAND_ACS_URL)
+   ```
+   **Wichtig:** `deploy/.env` wird absichtlich ignoriert und darf niemals committed werden.
+
+### Start-Optionen
+
+#### A) Lokaler Start (Default)
+Nur auf dem Heimserver selbst (oder via SSH Portforwarding) erreichbar.
+```bash
+docker compose up -d --build
+```
+- **Zugriff:** `http://127.0.0.1:3000/`
+
+#### B) LAN-Start (Optional)
+Erlaubt den Zugriff aus dem Heimnetz (z.B. iPad/Blink).
+```bash
+docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d --build
+```
+- **Zugriff:** `http://<heimserver-lan-ip>:3000/`
+
+**Option: Binden an eine spezifische IP**
+Um nicht auf `0.0.0.0` (alle Interfaces) zu lauschen, setze `LEITSTAND_BIND_IP`:
+```bash
+LEITSTAND_BIND_IP=192.168.178.10 docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d --build
+```
+
+**Warnung:**
+Diese Option bindet an `0.0.0.0` (alle Interfaces), sofern nicht anders angegeben. Nutze dies nur, wenn deine Firewall/NAT den Zugriff von außen blockiert.
+Falls Blink (iPad) keinen stabilen SSH-Tunnel unterstützt, ist dies die empfohlene Methode.
+Alternativ: Reverse Proxy (siehe `ops.runbook.leitstand-gateway.md`).

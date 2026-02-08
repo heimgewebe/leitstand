@@ -1,0 +1,6 @@
+services:
+  leitstand:
+    ports:
+      - "${LEITSTAND_BIND_IP:-0.0.0.0}:3000:3000"
+      # Optional: Example for explicit bind IP (uncomment and adjust if needed):
+      # - "192.168.178.10:3000:3000"
