@@ -48,43 +48,80 @@ The vendored files must be committed to the repository. The build process (`buil
 
 ## Deployment & Zugriff
 
-Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf **localhost:3000** (sicherer Default).
+Der Leitstand unterstützt verschiedene Deployment-Modi, je nach Sicherheitsanforderung und Netzwerktopologie.
 
-### Deployment
-1. Wechsle in das Deploy-Verzeichnis:
+> ⚠️ **Sicherheitswarnung: Port-Bindings**
+>
+> Der Leitstand bindet standardmäßig **niemals** auf `0.0.0.0` (alle Interfaces).
+> Das explizite Binden an `0.0.0.0` ist sicherheitstechnisch bedenklich und sollte vermieden werden.
+> Nutzen Sie stattdessen einen Reverse Proxy (Caddy) im Docker-Netzwerk oder binden Sie an eine spezifische LAN-IP.
+
+### 1. Proxy-first (Empfohlen)
+Der Leitstand wird isoliert im Docker-Netzwerk betrieben und ist nur über einen Reverse Proxy (Gateway) erreichbar. Es werden **keine Ports** auf dem Host veröffentlicht.
+
+**Voraussetzungen:**
+- Ein externes Docker-Netzwerk (z.B. `heimnet`) existiert.
+- Ein Reverse Proxy (z.B. Caddy) ist in diesem Netzwerk.
+
+**Start:**
+1. Netzwerk sicherstellen (einmalig):
    ```bash
-   cd deploy
+   docker network create heimnet
    ```
-2. Erstelle die Umgebungskonfiguration (falls nicht vorhanden):
+   *Hinweis: Das Skript bricht ab, wenn das Netzwerk fehlt.*
+
+2. Starten (via Skript):
    ```bash
-   cp .env.example .env
-   # Editiere .env nach Bedarf (z.B. LEITSTAND_ACS_URL)
+   ./scripts/leitstand-deploy --proxy
    ```
-   **Wichtig:** `deploy/.env` wird absichtlich ignoriert und darf niemals committed werden.
+3. Verifikation:
+   - Prüfen, dass kein Port 3000 auf dem Host lauscht: `ss -lntp | grep 3000` (sollte leer sein).
+   - Zugriff via Gateway testen (z.B. `curl https://leitstand.heimnetz`).
 
-### Start-Optionen
+### 2. Loopback-Publish (Fallback / Default)
+Für lokale Entwicklung oder Debugging direkt auf dem Host.
+Der Port `3000` wird **nur an 127.0.0.1** gebunden.
 
-#### A) Lokaler Start (Default)
-Nur auf dem Heimserver selbst (oder via SSH Portforwarding) erreichbar.
+**Start:**
 ```bash
-docker compose up -d --build
+./scripts/leitstand-deploy
 ```
-- **Zugriff:** `http://127.0.0.1:3000/`
+- Zugriff: `http://127.0.0.1:3000/`
 
-#### B) LAN-Start (Optional)
-Erlaubt den Zugriff aus dem Heimnetz (z.B. iPad/Blink).
+### 3. LAN-Publish (Optional)
+Erlaubt den Zugriff aus dem Heimnetz (z.B. iPad/Blink), ohne Reverse Proxy.
+Der Port `3000` wird standardmäßig an **127.0.0.1** gebunden, kann aber via Environment-Variable auf die LAN-IP erweitert werden.
+
+**Start:**
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d --build
-```
-- **Zugriff:** `http://<heimserver-lan-ip>:3000/`
+# Standard (bindet an 127.0.0.1)
+./scripts/leitstand-deploy --lan
 
-**Option: Binden an eine spezifische IP**
-Um nicht auf `0.0.0.0` (alle Interfaces) zu lauschen, setze `LEITSTAND_BIND_IP`:
+# Explizite LAN-IP (bindet an 192.168.x.x)
+LEITSTAND_BIND_IP=192.168.178.10 ./scripts/leitstand-deploy --lan
+```
+
+## Update & Redeploy
+
+Für Routine-Updates und Neustarts wird **ausschließlich** das bereitgestellte Skript empfohlen. Es kapselt die notwendigen Schritte (Pull, Build, Restart) sicher und konsistent.
+
+❌ **docker compose ist intern:** Die manuelle Nutzung von `docker compose` ist möglich, aber fehleranfällig (vergessene Parameter, Dirty State).
+✅ **leitstand-deploy ist der Standard:**
+
+### Proxy-Modus (Empfohlen)
+Wenn der Leitstand hinter einem Proxy (Option 1) läuft:
 ```bash
-LEITSTAND_BIND_IP=192.168.178.10 docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d --build
+./scripts/leitstand-deploy --proxy
 ```
 
-**Warnung:**
-Diese Option bindet an `0.0.0.0` (alle Interfaces), sofern nicht anders angegeben. Nutze dies nur, wenn deine Firewall/NAT den Zugriff von außen blockiert.
-Falls Blink (iPad) keinen stabilen SSH-Tunnel unterstützt, ist dies die empfohlene Methode.
-Alternativ: Reverse Proxy (siehe `ops.runbook.leitstand-gateway.md`).
+### Standard (Lokal)
+Aktualisiert den Code (`git pull`), baut neu und startet den Dienst (nur localhost).
+```bash
+./scripts/leitstand-deploy
+```
+
+### LAN-Modus
+Wenn der Leitstand im lokalen Netzwerk erreichbar sein soll (entspricht Start-Option 3):
+```bash
+./scripts/leitstand-deploy --lan
+```
