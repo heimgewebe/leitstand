@@ -5,6 +5,7 @@ set -euo pipefail
 DEPLOY_DIR="deploy"
 COMPOSE_FILE="docker-compose.yml"
 LAN_COMPOSE_FILE="docker-compose.lan.yml"
+PROXY_COMPOSE_FILE="docker-compose.proxy.yml"
 
 # --- Functions ---
 
@@ -66,20 +67,30 @@ pull_changes() {
 }
 
 deploy() {
-    local lan_mode="${1:-false}"
+    local mode="$1"
 
     log_info "Building and restarting Leitstand service..."
 
     cd "$DEPLOY_DIR"
 
-    if [[ "$lan_mode" == "true" ]]; then
-        if [[ ! -f "$LAN_COMPOSE_FILE" ]]; then
-             fail "LAN mode requested but '$LAN_COMPOSE_FILE' is missing."
-        fi
-        docker compose -f "$COMPOSE_FILE" -f "$LAN_COMPOSE_FILE" up -d --build
-    else
-        docker compose up -d --build
-    fi
+    case "$mode" in
+        "lan")
+            if [[ ! -f "$LAN_COMPOSE_FILE" ]]; then
+                 fail "LAN mode requested but '$LAN_COMPOSE_FILE' is missing."
+            fi
+            docker compose -f "$COMPOSE_FILE" -f "$LAN_COMPOSE_FILE" up -d --build
+            ;;
+        "proxy")
+            if [[ ! -f "$PROXY_COMPOSE_FILE" ]]; then
+                 fail "Proxy mode requested but '$PROXY_COMPOSE_FILE' is missing."
+            fi
+            docker compose -f "$COMPOSE_FILE" -f "$PROXY_COMPOSE_FILE" up -d --build
+            ;;
+        *)
+            # Default: Uses implicit docker-compose.override.yml
+            docker compose up -d --build
+            ;;
+    esac
 }
 
 # --- Main ---
@@ -89,9 +100,11 @@ MODE="default"
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --lan) MODE="lan" ;;
+        --proxy) MODE="proxy" ;;
         -h|--help)
-            echo "Usage: leitstand-deploy [--lan]"
+            echo "Usage: leitstand-deploy [--lan | --proxy]"
             echo "  --lan: Enable LAN access via docker-compose.lan.yml"
+            echo "  --proxy: Enable Proxy-first mode via docker-compose.proxy.yml"
             exit 0
             ;;
         *) fail "Unknown parameter passed: $1";;
@@ -105,10 +118,6 @@ check_deploy_dir
 check_docker_running
 pull_changes
 
-if [[ "$MODE" == "lan" ]]; then
-    deploy "true"
-else
-    deploy "false"
-fi
+deploy "$MODE"
 
 log_success "Leitstand deployed successfully"
