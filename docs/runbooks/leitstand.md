@@ -46,16 +46,31 @@ The vendored files must be committed to the repository. The build process (`buil
 - **Gray (MISSING):** Repository defined in Metrics but no Integrity artifact found.
   - Action: Check `fetch-integrity` logs.
 
-## Zugriff auf den Leitstand
+## Deployment & Zugriff
 
-Der Leitstand läuft standardmäßig auf Port 3000 und lauscht auf allen Interfaces (0.0.0.0).
+Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf Port 3000 (LAN-weit).
 
-**Zugriff im Heimnetz:**
+### Deployment
+1. Wechseln in das Deploy-Verzeichnis:
+   ```bash
+   cd deploy
+   ```
+2. Umgebungskonfiguration erstellen (falls nicht vorhanden):
+   ```bash
+   cp .env.example .env
+   # Editieren Sie .env nach Bedarf (z.B. LEITSTAND_ACS_URL)
+   ```
+3. Starten (mit Build):
+   ```bash
+   docker compose up -d --build
+   ```
+
+### Zugriff im Heimnetz
 - `http://<heimserver>:3000/`
 - `http://<heimserver>:3000/ops`
 
 **Hinweis:**
-Der Service ist **nicht** für direkte Internet-Exposure gedacht. Falls externe Erreichbarkeit gewünscht ist, muss zwingend ein Reverse Proxy (z. B. Caddy/Gateway) mit TLS und Authentifizierung vorgeschaltet werden (siehe `ops.runbook.leitstand-gateway.md`).
+Der Service ist **nicht** für direkte Internet-Exposure gedacht. Falls externe Erreichbarkeit gewünscht ist, muss zwingend ein Reverse Proxy (z. B. Caddy/Gateway) mit TLS und Authentifizierung vorgeschaltet werden.
 
 ### Warum kein SSH-Tunnel?
 

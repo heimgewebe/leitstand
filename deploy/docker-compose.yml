@@ -1,12 +1,11 @@
-version: '3.8'
 services:
   leitstand:
-    build: ..
+    build:
+      context: ..
     ports:
       - "3000:3000"
     env_file:
-      - ../.env
-    volumes:
-      - ../:/app
-      - /app/node_modules
-    command: pnpm start:server
+      - .env
+    # Volumes removed to ensure production-grade immutability from built image.
+    # Bind mounts are for development only.
+    restart: unless-stopped
