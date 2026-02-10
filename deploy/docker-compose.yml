@@ -2,8 +2,8 @@ services:
   leitstand:
     build:
       context: ..
-    ports:
-      - "127.0.0.1:3000:3000"
+    expose:
+      - "3000"
     env_file:
       - .env
     # Volumes removed to ensure production-grade immutability from built image.
