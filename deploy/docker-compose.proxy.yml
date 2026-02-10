@@ -1,8 +1,0 @@
-services:
-  leitstand:
-    networks:
-      - heimnet
-
-networks:
-  heimnet:
-    external: true

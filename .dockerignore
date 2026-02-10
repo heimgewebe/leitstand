@@ -24,6 +24,10 @@ deploy/.env.*
 *.secret
 *.secrets.*
 
+# Keep example env files for documentation / onboarding
+!.env.example
+!deploy/.env.example
+
 # Temporary files & Artifacts
 coverage
 temp_bench_data
@@ -31,3 +35,8 @@ server-facts
 **/tmp
 artifacts
 test-data
+
+# IDE / System
+.DS_Store
+.idea
+.vscode

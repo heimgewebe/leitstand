@@ -1,0 +1,90 @@
+#!/bin/bash
+set -euo pipefail
+
+# Leitstand Update Script
+# Usage: ./scripts/leitstand-up [OPTIONS]
+# Options:
+#   --no-pull   Skip git pull
+#   --lan       Bind to LAN IP (requires LEITSTAND_BIND_IP)
+#   --logs      Follow logs after start
+#   --status    Show status after start
+
+MODE="default"
+DO_PULL=true
+SHOW_LOGS=false
+SHOW_STATUS=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --no-pull)
+      DO_PULL=false
+      shift
+      ;;
+    --lan)
+      MODE="lan"
+      shift
+      ;;
+    --logs)
+      SHOW_LOGS=true
+      shift
+      ;;
+    --status)
+      SHOW_STATUS=true
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
+echo "Starting Leitstand update/deploy..."
+echo "Mode: $MODE"
+
+# 1. Update Code (optional)
+if [ "$DO_PULL" = true ]; then
+  echo "Pulling latest changes..."
+  git pull --ff-only || { echo "Git pull failed. Please resolve conflicts manually."; exit 1; }
+else
+  echo "Skipping git pull (--no-pull)."
+fi
+
+# 2. Prepare Deployment
+cd deploy
+
+COMPOSE_FILES="-f docker-compose.yml"
+
+if [ "$MODE" == "lan" ]; then
+  if [ -z "${LEITSTAND_BIND_IP:-}" ]; then
+    echo "Error: LEITSTAND_BIND_IP is not set. Required for --lan mode."
+    echo "Export it via: export LEITSTAND_BIND_IP=<your-ip>"
+    exit 1
+  fi
+  COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.lan.yml"
+fi
+
+# 3. Build & Up
+echo "Running docker compose up -d --build..."
+# shellcheck disable=SC2086
+docker compose $COMPOSE_FILES up -d --build --remove-orphans
+
+# 4. Post-Check & Status
+echo "Deployment successful."
+
+if [ "$MODE" == "default" ]; then
+  echo "Access via: http://127.0.0.1:3000"
+elif [ "$MODE" == "lan" ]; then
+  echo "Access via: http://${LEITSTAND_BIND_IP}:3000"
+fi
+
+if [ "$SHOW_STATUS" = true ]; then
+    echo "--- Status ---"
+    docker compose ps
+fi
+
+if [ "$SHOW_LOGS" = true ]; then
+    echo "--- Logs ---"
+    docker compose logs -f
+fi

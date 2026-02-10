@@ -1,204 +1,96 @@
-Alles klar — ich habe den Text vollständig konsolidiert, die Merge-Konflikte sauber aufgelöst, Redundanzen entfernt und ihn entlang klarer Betriebsnormen (secure by default, ein Einstiegspunkt, keine impliziten Docker-Kenntnisse nötig) neu strukturiert.
+# Leitstand Runbook
 
-Keine neuen Konzepte, keine Spielereien — nur kohärent, konfliktfrei, betreibbar.
+## Inputs and Data Flow
 
-⸻
+Leitstand aggregates data from multiple sources to provide a unified dashboard.
 
-Leitstand Runbook
+### 1. Knowledge Observatory
+- **Source:** SemantAH (`knowledge.observatory.json`)
+- **Ingest:** Via Plexer Event (`knowledge.observatory.published.v1`) -> `scripts/fetch-observatory.mjs`
+- **Validation:** Strict AJV against `vendor/contracts/knowledge/observatory.schema.json` (Vendored snapshot from metarepo SSOT)
+  - **Schema Ref Hardening:** `OBSERVATORY_SCHEMA_REF` is allowlisted by host. Configure via `OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS` (comma-separated). Default: `schemas.heimgewebe.org`.
 
-Inputs and Data Flow
+### 2. System Integrity
+- **Source:** Chronik/WGX (`artifacts/integrity/*.summary.json`)
+- **Ingest:** Per-repo artifacts fetched via `scripts/fetch-integrity.mjs`
 
-Der Leitstand aggregiert Daten aus mehreren Quellen zu einem einheitlichen Dashboard.
+### 3. Plexer Delivery Reports
+- **Source:** Plexer (`plexer.delivery.report.json`)
+- **Ingest:** Via Plexer Event (`plexer.delivery.report.v1`) -> `src/server.ts` direct save
+- **Validation:** Strict AJV against `vendor/contracts/plexer/delivery.report.v1.schema.json`
+- **Visualization:** "Plexer Delivery Status" panel in Observatory.
 
-1. Knowledge Observatory
-	•	Quelle: SemantAH (knowledge.observatory.json)
-	•	Ingest: Plexer Event (knowledge.observatory.published.v1) → scripts/fetch-observatory.mjs
-	•	Validierung: Striktes AJV gegen
-vendor/contracts/knowledge/observatory.schema.json
-(vendored Snapshot aus dem Metarepo – SSOT)
-	•	Schema-Ref-Härtung:
-Externe $ref sind host-allowlisted.
-Konfiguration über OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS
-(comma-separated, Default: schemas.heimgewebe.org)
+## Contract Vendoring (Maintenance)
 
-2. System Integrity
-	•	Quelle: Chronik / WGX
-(artifacts/integrity/*.summary.json)
-	•	Ingest: Pro-Repo-Fetch via scripts/fetch-integrity.mjs
+Contracts are synchronized from the `heimgewebe/metarepo` to ensure Single Source of Truth (SSOT).
+This process is **manual** and should be run whenever contracts are updated in the metarepo.
 
-3. Plexer Delivery Reports
-	•	Quelle: Plexer (plexer.delivery.report.json)
-	•	Ingest: Plexer Event (plexer.delivery.report.v1) → direkter Persist in src/server.ts
-	•	Validierung: Striktes AJV gegen
-vendor/contracts/plexer/delivery.report.v1.schema.json
-	•	Visualisierung: Plexer Delivery Status Panel im Leitstand
-
-⸻
-
-Contract Vendoring (Maintenance)
-
-Contracts werden manuell aus dem heimgewebe/metarepo synchronisiert, um die Single Source of Truth (SSOT) zu garantieren.
-
-Befehl:
-
+**Command:**
+```bash
 pnpm vendor:contracts
+```
+This script fetches canonical schemas and pins them in `vendor/contracts/_pin.json`.
+The vendored files must be committed to the repository. The build process (`build:cf`) relies on these local files and does **not** perform network requests to fetch contracts.
 
-	•	Aktualisiert und pinnt Schemas in vendor/contracts/
-	•	Versionierung in vendor/contracts/_pin.json
-	•	Alle vendored Dateien müssen committed werden
-	•	Der Build führt keine Netzwerkzugriffe für Contracts aus
+## Alerts and Monitoring
 
-⸻
+### Plexer Delivery Status
+- **Green (OK):** `failed == 0`
+- **Amber (BUSY):** `pending > 10`
+- **Red (FAIL):** `failed > 0`
+  - Action: Check Plexer logs (`docker compose logs plexer`) or `last_error` in Leitstand.
+  - Likely causes: Downstream service (Heimgeist/Chronik) unreachable or Auth failures.
 
-Alerts and Monitoring
+### System Integrity
+- **Red (FAIL/GAP):** Schema violations or timestamp gaps in repo feeds.
+- **Gray (MISSING):** Repository defined in Metrics but no Integrity artifact found.
+  - Action: Check `fetch-integrity` logs.
 
-Plexer Delivery Status
-	•	Green (OK): failed == 0
-	•	Amber (BUSY): pending > 10
-	•	Red (FAIL): failed > 0
-Aktion:
-	•	docker logs plexer
-	•	last_error im Leitstand prüfen
-Typische Ursachen:
-Downstream-Service nicht erreichbar, Auth-Fehler
+## Deployment & Zugriff
 
-System Integrity
-	•	Red (FAIL / GAP): Schemafehler oder Zeitlücken
-	•	Gray (MISSING): Repo definiert, aber kein Integrity-Artefakt
-Aktion: fetch-integrity Logs prüfen
+Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf **localhost:3000** (sicherer Default).
 
-⸻
+### Standard Update & Start
+Der einzige empfohlene Einstiegspunkt für Updates und Neustarts ist das `scripts/leitstand-up` Skript.
 
-Deployment & Zugriff
+**1. Update & Start (Default: Localhost)**
+```bash
+./scripts/leitstand-up
+```
+- **Verhalten:** `git pull` -> Rebuild -> Start auf `127.0.0.1:3000`.
+- **Zugriff:** `http://127.0.0.1:3000/` (oder via SSH Tunnel).
 
-Der Leitstand ist secure by default.
-Er bindet niemals implizit auf alle Interfaces.
+**2. LAN-Start (Optional)**
+Erlaubt den Zugriff aus dem Heimnetz (z.B. iPad/Blink).
+Erfordert explizites Setzen von `LEITSTAND_BIND_IP`.
 
-⚠️ Sicherheitsgrundsatz
+```bash
+export LEITSTAND_BIND_IP=192.168.178.10
+./scripts/leitstand-up --lan
+```
+- **Verhalten:** Bindet explizit an die angegebene IP.
+- **Sicherheit:** Verhindert versehentliches Binden an `0.0.0.0`.
 
-Das explizite Binden an 0.0.0.0 ist nicht empfohlen.
-Bevorzuge:
-	•	Reverse Proxy (Caddy) im Docker-Netzwerk oder
-	•	explizite Bindung an eine konkrete LAN-IP
+### Manuelle Diagnose & Logs
+Falls das Start-Skript nicht ausreicht oder zur Fehlersuche:
 
-⸻
+- **Logs verfolgen:** `docker compose logs -f`
+- **Container stoppen:** `docker compose down`
+- **Status prüfen:** `docker compose ps`
 
-Deployment-Modi
+## Troubleshooting
 
-1. Proxy-first (Empfohlen)
+### Deployment
+1. Wechsle in das Deploy-Verzeichnis:
+   ```bash
+   cd deploy
+   ```
+2. Überprüfe die Umgebungskonfiguration:
+   ```bash
+   # .env muss existieren (kopiere von .env.example)
+   ls -la .env
+   ```
+   **Wichtig:** `deploy/.env` wird absichtlich ignoriert und darf niemals committed werden.
 
-Der Leitstand läuft isoliert im Docker-Netzwerk und ist nur über einen Reverse Proxy erreichbar.
-Es werden keine Ports auf dem Host veröffentlicht.
-
-Voraussetzungen:
-	•	Externes Docker-Netzwerk existiert (z. B. heimnet)
-	•	Reverse Proxy (z. B. Caddy) ist im selben Netzwerk
-
-Setup (einmalig):
-
-docker network create heimnet
-
-Start / Update:
-
-./scripts/leitstand-deploy --proxy
-
-Verifikation:
-
-ss -lntp | grep 3000   # muss leer sein
-
-Zugriff erfolgt ausschließlich über den Proxy (z. B. https://leitstand.heimnetz).
-
-⸻
-
-2. Loopback-Publish (Default / Fallback)
-
-Für lokale Entwicklung oder Debugging direkt auf dem Server.
-	•	Bindung nur an 127.0.0.1
-	•	Kein LAN- oder WAN-Zugriff
-
-Start / Update:
-
-./scripts/leitstand-deploy
-
-Zugriff:
-
-http://127.0.0.1:3000/
-
-
-⸻
-
-3. LAN-Publish (Optional)
-
-Für Zugriff aus dem Heimnetz (z. B. iPad / Blink), ohne Reverse Proxy.
-
-Standard (sicher):
-
-./scripts/leitstand-deploy --lan
-
-→ bindet weiterhin nur an 127.0.0.1
-
-Explizite LAN-IP:
-
-LEITSTAND_BIND_IP=192.168.178.10 ./scripts/leitstand-deploy --lan
-
-⚠️ Warnung
-
-Nur verwenden, wenn Firewall / NAT den Zugriff von außen blockiert.
-Dies ist eine bewusste Abweichung vom Secure-by-Default-Modus.
-
-⸻
-
-Update & Redeploy (Standard-Workflow)
-
-Einziger empfohlener Einstiegspunkt
-
-❌ Nicht empfohlen:
-Manuelles docker compose up/down
-
-✅ Standard:
-
-./scripts/leitstand-deploy
-
-Das Skript kapselt konsistent:
-	•	git pull
-	•	Image-Build
-	•	Container-Restart
-	•	korrekte Compose-Kombination je nach Modus
-
-Zusammenfassung
-
-Zweck	Befehl
-Proxy-Betrieb	./scripts/leitstand-deploy --proxy
-Lokal (Loopback)	./scripts/leitstand-deploy
-LAN-Zugriff	./scripts/leitstand-deploy --lan
-
-
-⸻
-
-Nützliche Diagnose-Befehle
-
-docker compose ps
-docker compose logs -f
-docker compose down
-
-(Nur bei Bedarf — im Normalbetrieb nicht erforderlich.)
-
-⸻
-
-Verdichtete Essenz
-	•	Ein Einstiegspunkt: leitstand-deploy
-	•	Secure by default
-	•	Proxy-first Architektur
-	•	Kein implizites 0.0.0.0
-	•	Keine manuellen Docker-Rituale nötig
-
-Der Leitstand ist damit betriebsfähig, erklärbar und wartbar — auch in sechs Monaten.
-
-⸻
-
-Ungewissheitsanalyse
-	•	Unsicherheitsgrad: 0.12
-	•	Ursachen:
-	•	Annahme, dass leitstand-deploy existiert bzw. finalisiert wird
-	•	Reverse-Proxy-Details (Caddy-Config) bewusst ausgelassen
-	•	Bewertung: produktiv, akzeptabel, nicht blockierend
+### Reverse Proxy
+Falls ein Reverse Proxy verwendet wird (siehe `ops.runbook.leitstand-gateway.md`), stelle sicher, dass Leitstand **nicht** öffentlich (0.0.0.0) lauscht, sondern nur auf dem internen Interface, das der Proxy erreicht (z.B. localhost oder docker network).
