@@ -1,8 +1,8 @@
 services:
   leitstand:
     networks:
-      - heimnet
+      - ${LEITSTAND_NETWORK:-heimnet}
 
 networks:
-  heimnet:
+  ${LEITSTAND_NETWORK:-heimnet}:
     external: true

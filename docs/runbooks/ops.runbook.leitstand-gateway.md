@@ -113,40 +113,57 @@ DOCKER-USER wirkt nur, wenn Docker Traffic durch FORWARD/DOCKER-Ketten führt (S
 
 ## 9) Deploy-Runbook (Schritte)
 
-### 9.1 Preflight (read-only, muss klar sein)
-- getent hosts leitstand.lan
-- docker ps
-- ss -lntp | grep -E ':(80|443)\b' || true
-- sudo iptables -S DOCKER-USER
+### 9.1 Standardweg: leitstand-up
 
-### 9.2 Deploy (Compose-Stack + systemd Wrapper)
+Deployment und Updates erfolgen **ausschließlich** über das zentrale Skript. Es kapselt Orchestrierung (Compose), Build und Netzwerk-Konfiguration.
 
-Artefakte liegen unter:
-- /opt/heimgewebe/gateway/
-  - compose.gateway.yml
-  - Caddyfile
-  - leitstand.config.json (falls Leitstand Artefaktpfade liest)
+Pfad: `./scripts/leitstand-up`
 
-systemd wrapper:
-- /etc/systemd/system/heimgewebe-gateway.service
-(oneshot, RemainAfterExit, docker compose up -d)
+### 9.2 Modi
 
-### 9.3 Postflight (muss grün sein)
-- docker ps: gateway-caddy + leitstand + acs Up
-- ss -lntp: 80/443 lauschen wie geplant (loopback, wenn gekäftigt)
-- curl -k https://leitstand.lan/health (aus LAN/WG)
-- Browser: https://leitstand.lan/ops
-- ACS ist nur erreichbar via https://leitstand.lan/acs/ (kein Direktzugriff)
+1. **Proxy-First (Empfohlen)**
+   - Startet Container im externen Netzwerk (`heimnet`), keine Host-Ports.
+   - Ideal hinter Gateway/Caddy.
+   - Befehl: `./scripts/leitstand-up --proxy`
 
-### 9.4 Rollback
-- docker compose down
-- systemctl disable --now heimgewebe-gateway.service
-- (optional) netfilter-persistent restore
+2. **Loopback (Default)**
+   - Bindet `127.0.0.1:3000`.
+   - Sicher für lokale Entwicklung oder SSH-Tunnel.
+   - Befehl: `./scripts/leitstand-up`
 
-### 9.5 Updates (Policy)
-- Updates sind bewusst und auditierbar; **keine Auto-Updates by default**.
-- Es gilt das Prinzip: Erst verstehen, dann pullen.
-- Prozedur: Siehe [ops.runbook.leitstand-gateway.updates.md](./ops.runbook.leitstand-gateway.updates.md).
+3. **LAN (Explizit)**
+   - Bindet an spezifische LAN-IP.
+   - **Security Warnung:** Nur in vertrauenswürdigen Netzen nutzen!
+   - Befehl: `LEITSTAND_BIND_IP=192.168.178.46 ./scripts/leitstand-up --lan`
+
+### 9.3 Update & Redeploy
+
+Um den Dienst zu aktualisieren (Pull + Build + Restart):
+
+```bash
+# Proxy Mode (Gateway)
+./scripts/leitstand-up --proxy
+
+# Loopback (Local)
+./scripts/leitstand-up
+
+# LAN (Direct Access)
+LEITSTAND_BIND_IP=192.168.178.46 ./scripts/leitstand-up --lan
+```
+
+### 9.4 Nützliche Diagnose-Befehle
+
+```bash
+# Status & Ports prüfen
+./scripts/leitstand-up --status
+
+# Logs live verfolgen
+./scripts/leitstand-up --logs
+
+# Manuell (direkt via Docker)
+docker compose ps
+ss -lntp | grep :3000
+```
 
 ## 10) Live-Policy (sachlich, nicht nervös)
 - Dashboard: kein Auto-Reload

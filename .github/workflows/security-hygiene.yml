@@ -42,3 +42,8 @@ jobs:
             echo "Please remove these files and add them to .gitignore."
             exit 1
           fi
+
+      - name: Check Runbook Invariants
+        run: |
+          chmod +x scripts/ci/check-runbook-invariants.sh
+          ./scripts/ci/check-runbook-invariants.sh
