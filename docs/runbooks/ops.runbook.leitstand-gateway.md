@@ -162,7 +162,7 @@ LEITSTAND_BIND_IP=192.168.178.46 ./scripts/leitstand-up --lan
 
 # Manuell (direkt via Docker)
 docker compose ps
-ss -lntp | grep :3000
+ss -lntp | grep -E ':(3000)\b'
 ```
 
 ## 10) Live-Policy (sachlich, nicht nervös)

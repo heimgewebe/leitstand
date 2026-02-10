@@ -19,6 +19,7 @@ COMPOSE_FILE="docker-compose.yml"
 LOOPBACK_COMPOSE_FILE="docker-compose.loopback.yml"
 LAN_COMPOSE_FILE="docker-compose.lan.yml"
 PROXY_COMPOSE_FILE="docker-compose.proxy.yml"
+ARGS_FILE=".leitstand.args"
 
 # --- Functions ---
 
@@ -92,10 +93,14 @@ pull_changes() {
 show_status() {
     log_info "Service Status:"
     cd "$DEPLOY_DIR"
-    # We need to know which files were used to show correct status, but `docker compose ps` usually works if project name is same.
-    # However, to be precise, we might need the exact file args.
-    # For now, we'll try to detect running containers or just show all for the project.
-    docker compose ps
+
+    local ps_args=()
+    if [[ -f "$ARGS_FILE" ]]; then
+        mapfile -t loaded_args < "$ARGS_FILE"
+        ps_args=("${loaded_args[@]}")
+    fi
+
+    docker compose "${ps_args[@]}" ps
 
     log_info "Port Bindings (Leitstand :3000):"
     if command -v ss >/dev/null 2>&1; then
@@ -161,6 +166,9 @@ deploy() {
             compose_args=(-f "$COMPOSE_FILE" -f "$LOOPBACK_COMPOSE_FILE")
             ;;
     esac
+
+    # Persist args for status/logs
+    printf '%s\n' "${compose_args[@]}" > "$ARGS_FILE"
 
     log_info "Restarting services..."
 
@@ -269,5 +277,12 @@ deploy "$MODE" "$NETWORK_NAME" "$DO_BUILD" "$UNSAFE_LAN"
 
 if [[ "$SHOW_LOGS" == "true" ]]; then
     log_info "Tailing logs (Ctrl+C to stop)..."
-    docker compose logs -f
+
+    cd "$DEPLOY_DIR"
+    log_args=()
+    if [[ -f "$ARGS_FILE" ]]; then
+        mapfile -t loaded_args < "$ARGS_FILE"
+        log_args=("${loaded_args[@]}")
+    fi
+    docker compose "${log_args[@]}" logs -f
 fi

@@ -2,6 +2,12 @@
 set -euo pipefail
 
 # --- Configuration ---
+
+if ! command -v git >/dev/null 2>&1; then
+    echo "❌ Error: git is not installed or not in PATH." >&2
+    exit 1
+fi
+
 # Resolve repo root robustly to handle calls from anywhere
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
