@@ -19,7 +19,7 @@ COMPOSE_FILE="docker-compose.yml"
 LOOPBACK_COMPOSE_FILE="docker-compose.loopback.yml"
 LAN_COMPOSE_FILE="docker-compose.lan.yml"
 PROXY_COMPOSE_FILE="docker-compose.proxy.yml"
-ARGS_FILE=".leitstand.args"
+ARGS_FILE="$DEPLOY_DIR/.leitstand.args"
 
 # --- Functions ---
 
@@ -96,6 +96,7 @@ show_status() {
 
     local ps_args=()
     if [[ -f "$ARGS_FILE" ]]; then
+        local loaded_args
         mapfile -t loaded_args < "$ARGS_FILE"
         ps_args=("${loaded_args[@]}")
     fi
