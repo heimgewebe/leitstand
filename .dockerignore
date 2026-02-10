@@ -17,8 +17,10 @@ pnpm-debug.log*
 # Environment & Secrets
 .env
 .env.*
+!.env.example
 deploy/.env
 deploy/.env.*
+!deploy/.env.example
 *.pem
 *.key
 *.secret

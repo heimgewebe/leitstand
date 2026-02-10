@@ -1,12 +1,6 @@
-Alles klar — ich habe den Text vollständig konsolidiert, die Merge-Konflikte sauber aufgelöst, Redundanzen entfernt und ihn entlang klarer Betriebsnormen (secure by default, ein Einstiegspunkt, keine impliziten Docker-Kenntnisse nötig) neu strukturiert.
+# Leitstand Runbook
 
-Keine neuen Konzepte, keine Spielereien — nur kohärent, konfliktfrei, betreibbar.
-
-⸻
-
-Leitstand Runbook
-
-Inputs and Data Flow
+## Inputs and Data Flow
 
 Der Leitstand aggregiert Daten aus mehreren Quellen zu einem einheitlichen Dashboard.
 
@@ -35,13 +29,15 @@ vendor/contracts/plexer/delivery.report.v1.schema.json
 
 ⸻
 
-Contract Vendoring (Maintenance)
+## Contract Vendoring (Maintenance)
 
 Contracts werden manuell aus dem heimgewebe/metarepo synchronisiert, um die Single Source of Truth (SSOT) zu garantieren.
 
 Befehl:
 
+```bash
 pnpm vendor:contracts
+```
 
 	•	Aktualisiert und pinnt Schemas in vendor/contracts/
 	•	Versionierung in vendor/contracts/_pin.json
@@ -50,7 +46,7 @@ pnpm vendor:contracts
 
 ⸻
 
-Alerts and Monitoring
+## Alerts and Monitoring
 
 Plexer Delivery Status
 	•	Green (OK): failed == 0
@@ -69,7 +65,7 @@ Aktion: fetch-integrity Logs prüfen
 
 ⸻
 
-Deployment & Zugriff
+## Deployment & Zugriff
 
 Der Leitstand ist secure by default.
 Er bindet niemals implizit auf alle Interfaces.
@@ -83,9 +79,9 @@ Bevorzuge:
 
 ⸻
 
-Deployment-Modi
+### Deployment-Modi
 
-1. Proxy-first (Empfohlen)
+#### 1. Proxy-first (Empfohlen)
 
 Der Leitstand läuft isoliert im Docker-Netzwerk und ist nur über einen Reverse Proxy erreichbar.
 Es werden keine Ports auf dem Host veröffentlicht.
@@ -96,21 +92,27 @@ Voraussetzungen:
 
 Setup (einmalig):
 
+```bash
 docker network create heimnet
+```
 
 Start / Update:
 
-./scripts/leitstand-deploy --proxy
+```bash
+./scripts/leitstand-up --proxy
+```
 
 Verifikation:
 
+```bash
 ss -lntp | grep 3000   # muss leer sein
+```
 
-Zugriff erfolgt ausschließlich über den Proxy (z. B. https://leitstand.heimnetz).
+Zugriff erfolgt ausschließlich über den Proxy (z. B. `https://leitstand.heimnetz`).
 
 ⸻
 
-2. Loopback-Publish (Default / Fallback)
+#### 2. Loopback-Publish (Default / Fallback)
 
 Für lokale Entwicklung oder Debugging direkt auf dem Server.
 	•	Bindung nur an 127.0.0.1
@@ -118,28 +120,36 @@ Für lokale Entwicklung oder Debugging direkt auf dem Server.
 
 Start / Update:
 
-./scripts/leitstand-deploy
+```bash
+./scripts/leitstand-up
+```
 
 Zugriff:
 
+```bash
 http://127.0.0.1:3000/
+```
 
 
 ⸻
 
-3. LAN-Publish (Optional)
+#### 3. LAN-Publish (Optional)
 
 Für Zugriff aus dem Heimnetz (z. B. iPad / Blink), ohne Reverse Proxy.
 
 Standard (sicher):
 
-./scripts/leitstand-deploy --lan
+```bash
+./scripts/leitstand-up --lan
+```
 
 → bindet weiterhin nur an 127.0.0.1
 
 Explizite LAN-IP:
 
-LEITSTAND_BIND_IP=192.168.178.10 ./scripts/leitstand-deploy --lan
+```bash
+LEITSTAND_BIND_IP=192.168.178.10 ./scripts/leitstand-up --lan
+```
 
 ⚠️ Warnung
 
@@ -148,16 +158,17 @@ Dies ist eine bewusste Abweichung vom Secure-by-Default-Modus.
 
 ⸻
 
-Update & Redeploy (Standard-Workflow)
+## Update & Redeploy (Standard-Workflow)
 
-Einziger empfohlener Einstiegspunkt
+Einziger empfohlener Einstiegspunkt:
 
-❌ Nicht empfohlen:
-Manuelles docker compose up/down
+❌ Nicht empfohlen: Manuelles `docker compose up/down`
 
 ✅ Standard:
 
-./scripts/leitstand-deploy
+```bash
+./scripts/leitstand-up
+```
 
 Das Skript kapselt konsistent:
 	•	git pull
@@ -165,40 +176,35 @@ Das Skript kapselt konsistent:
 	•	Container-Restart
 	•	korrekte Compose-Kombination je nach Modus
 
-Zusammenfassung
+Zusammenfassung:
 
-Zweck	Befehl
-Proxy-Betrieb	./scripts/leitstand-deploy --proxy
-Lokal (Loopback)	./scripts/leitstand-deploy
-LAN-Zugriff	./scripts/leitstand-deploy --lan
+| Zweck | Befehl |
+|-------|--------|
+| Proxy-Betrieb | `./scripts/leitstand-up --proxy` |
+| Lokal (Loopback) | `./scripts/leitstand-up` |
+| LAN-Zugriff | `./scripts/leitstand-up --lan` |
 
 
 ⸻
 
-Nützliche Diagnose-Befehle
+## Nützliche Diagnose-Befehle
 
+```bash
 docker compose ps
 docker compose logs -f
 docker compose down
+```
 
 (Nur bei Bedarf — im Normalbetrieb nicht erforderlich.)
 
 ⸻
 
-Verdichtete Essenz
-	•	Ein Einstiegspunkt: leitstand-deploy
-	•	Secure by default
-	•	Proxy-first Architektur
-	•	Kein implizites 0.0.0.0
-	•	Keine manuellen Docker-Rituale nötig
+## Verdichtete Essenz
+
+- Ein Einstiegspunkt: `leitstand-up`
+- Secure by default
+- Proxy-first Architektur
+- Kein implizites `0.0.0.0`
+- Keine manuellen Docker-Rituale nötig
 
 Der Leitstand ist damit betriebsfähig, erklärbar und wartbar — auch in sechs Monaten.
-
-⸻
-
-Ungewissheitsanalyse
-	•	Unsicherheitsgrad: 0.12
-	•	Ursachen:
-	•	Annahme, dass leitstand-deploy existiert bzw. finalisiert wird
-	•	Reverse-Proxy-Details (Caddy-Config) bewusst ausgelassen
-	•	Bewertung: produktiv, akzeptabel, nicht blockierend

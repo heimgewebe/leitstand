@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- Configuration ---
+# Resolve repo root robustly to handle calls from anywhere (e.g. cron/scripts)
+if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    echo "❌ Error: Not inside a git repository." >&2
+    exit 1
+fi
+
+DEPLOY_DIR="$REPO_ROOT/deploy"
+COMPOSE_FILE="docker-compose.yml"
+OVERRIDE_COMPOSE_FILE="docker-compose.override.yml"
+LAN_COMPOSE_FILE="docker-compose.lan.yml"
+PROXY_COMPOSE_FILE="docker-compose.proxy.yml"
+
+# --- Functions ---
+
+log_info() {
+    echo "→ $1"
+}
+
+log_success() {
+    echo "✓ $1"
+}
+
+log_error() {
+    echo "❌ $1" >&2
+}
+
+fail() {
+    log_error "$1"
+    exit 1
+}
+
+check_dependencies() {
+    if ! command -v docker >/dev/null 2>&1; then
+        fail "Docker is not installed or not in PATH."
+    fi
+
+    if ! command -v git >/dev/null 2>&1; then
+        fail "Git is not installed or not in PATH."
+    fi
+
+    # Verify docker compose plugin is available
+    if ! docker compose version >/dev/null 2>&1; then
+        fail "Docker Compose plugin not available. Please install docker-compose-plugin."
+    fi
+}
+
+check_repo_clean() {
+    log_info "Checking working tree..."
+    # Check for both staged/unstaged changes AND untracked files
+    local status_output
+    status_output="$(git -C "$REPO_ROOT" status --porcelain --untracked-files=normal)"
+
+    if [[ -n "$status_output" ]]; then
+        fail "Working tree is not clean (uncommitted or untracked changes present). Please commit or stash."
+    fi
+}
+
+check_deploy_dir() {
+    if [[ ! -d "$DEPLOY_DIR" ]]; then
+        fail "Deployment directory '$DEPLOY_DIR' not found."
+    fi
+
+    if [[ ! -f "$DEPLOY_DIR/$COMPOSE_FILE" ]]; then
+        fail "Docker Compose file '$DEPLOY_DIR/$COMPOSE_FILE' not found."
+    fi
+}
+
+check_docker_running() {
+    if ! docker info >/dev/null 2>&1; then
+        fail "Docker daemon is not running or current user lacks permission."
+    fi
+}
+
+pull_changes() {
+    log_info "Pulling latest changes..."
+    if ! git -C "$REPO_ROOT" pull --ff-only; then
+        fail "git pull failed. Manual intervention required (e.g., merge conflict)."
+    fi
+}
+
+deploy() {
+    local mode="$1"
+    local compose_args=()
+
+    log_info "Building and restarting Leitstand service..."
+
+    # Safe CD to absolute path
+    cd "$DEPLOY_DIR"
+
+    case "$mode" in
+        "lan")
+            if [[ ! -f "$LAN_COMPOSE_FILE" ]]; then
+                 fail "LAN mode requested but '$LAN_COMPOSE_FILE' is missing."
+            fi
+            compose_args=(-f "$COMPOSE_FILE" -f "$LAN_COMPOSE_FILE")
+            ;;
+        "proxy")
+            if [[ ! -f "$PROXY_COMPOSE_FILE" ]]; then
+                 fail "Proxy mode requested but '$PROXY_COMPOSE_FILE' is missing."
+            fi
+
+            # Check for external network existence
+            if ! docker network inspect heimnet >/dev/null 2>&1; then
+                fail "External network 'heimnet' missing. Run: docker network create heimnet"
+            fi
+
+            compose_args=(-f "$COMPOSE_FILE" -f "$PROXY_COMPOSE_FILE")
+            ;;
+        *)
+            # Default: Explicitly use docker-compose.override.yml
+            if [[ ! -f "$OVERRIDE_COMPOSE_FILE" ]]; then
+                 fail "Default mode requires '$OVERRIDE_COMPOSE_FILE' but it is missing."
+            fi
+            compose_args=(-f "$COMPOSE_FILE" -f "$OVERRIDE_COMPOSE_FILE")
+            ;;
+    esac
+
+    # Execute docker compose with gathered arguments
+    docker compose "${compose_args[@]}" up -d --build
+
+    echo ""
+    docker compose "${compose_args[@]}" ps
+}
+
+# --- Main ---
+
+MODE="default"
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --lan) MODE="lan" ;;
+        --proxy) MODE="proxy" ;;
+        -h|--help)
+            echo "Usage: leitstand-up [--lan | --proxy]"
+            echo "  --lan: Enable LAN access via docker-compose.lan.yml"
+            echo "  --proxy: Enable Proxy-first mode via docker-compose.proxy.yml"
+            exit 0
+            ;;
+        *) fail "Unknown parameter passed: $1";;
+    esac
+    shift
+done
+
+echo "Leitstand Update & Deploy | Mode: $MODE | Root: $REPO_ROOT"
+
+check_dependencies
+check_repo_clean
+check_deploy_dir
+check_docker_running
+pull_changes
+
+deploy "$MODE"
+
+log_success "Leitstand deployed successfully"
