@@ -38,7 +38,7 @@ The vendored files must be committed to the repository. The build process (`buil
 - **Green (OK):** `failed == 0`
 - **Amber (BUSY):** `pending > 10`
 - **Red (FAIL):** `failed > 0`
-  - Action: Check Plexer logs (`docker logs plexer`) or `last_error` in Leitstand.
+  - Action: Check Plexer logs (`docker compose logs plexer`) or `last_error` in Leitstand.
   - Likely causes: Downstream service (Heimgeist/Chronik) unreachable or Auth failures.
 
 ### System Integrity
@@ -48,80 +48,49 @@ The vendored files must be committed to the repository. The build process (`buil
 
 ## Deployment & Zugriff
 
-Der Leitstand unterstützt verschiedene Deployment-Modi, je nach Sicherheitsanforderung und Netzwerktopologie.
+Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf **localhost:3000** (sicherer Default).
 
-> ⚠️ **Sicherheitswarnung: Port-Bindings**
->
-> Der Leitstand bindet standardmäßig **niemals** auf `0.0.0.0` (alle Interfaces).
-> Das explizite Binden an `0.0.0.0` ist sicherheitstechnisch bedenklich und sollte vermieden werden.
-> Nutzen Sie stattdessen einen Reverse Proxy (Caddy) im Docker-Netzwerk oder binden Sie an eine spezifische LAN-IP.
+### Standard Update & Start
+Der einzige empfohlene Einstiegspunkt für Updates und Neustarts ist das `scripts/leitstand-up` Skript.
 
-### 1. Proxy-first (Empfohlen)
-Der Leitstand wird isoliert im Docker-Netzwerk betrieben und ist nur über einen Reverse Proxy (Gateway) erreichbar. Es werden **keine Ports** auf dem Host veröffentlicht.
+**1. Update & Start (Default: Localhost)**
+```bash
+./scripts/leitstand-up
+```
+- **Verhalten:** `git pull` -> Rebuild -> Start auf `127.0.0.1:3000`.
+- **Zugriff:** `http://127.0.0.1:3000/` (oder via SSH Tunnel).
 
-**Voraussetzungen:**
-- Ein externes Docker-Netzwerk (z.B. `heimnet`) existiert.
-- Ein Reverse Proxy (z.B. Caddy) ist in diesem Netzwerk.
+**2. LAN-Start (Optional)**
+Erlaubt den Zugriff aus dem Heimnetz (z.B. iPad/Blink).
+Erfordert explizites Setzen von `LEITSTAND_BIND_IP`.
 
-**Start:**
-1. Netzwerk sicherstellen (einmalig):
+```bash
+export LEITSTAND_BIND_IP=192.168.178.10
+./scripts/leitstand-up --lan
+```
+- **Verhalten:** Bindet explizit an die angegebene IP.
+- **Sicherheit:** Verhindert versehentliches Binden an `0.0.0.0`.
+
+### Manuelle Diagnose & Logs
+Falls das Start-Skript nicht ausreicht oder zur Fehlersuche:
+
+- **Logs verfolgen:** `docker compose logs -f`
+- **Container stoppen:** `docker compose down`
+- **Status prüfen:** `docker compose ps`
+
+## Troubleshooting
+
+### Deployment
+1. Wechsle in das Deploy-Verzeichnis:
    ```bash
-   docker network create heimnet
+   cd deploy
    ```
-   *Hinweis: Das Skript bricht ab, wenn das Netzwerk fehlt.*
-
-2. Starten (via Skript):
+2. Überprüfe die Umgebungskonfiguration:
    ```bash
-   ./scripts/leitstand-deploy --proxy
+   # .env muss existieren (kopiere von .env.example)
+   ls -la .env
    ```
-3. Verifikation:
-   - Prüfen, dass kein Port 3000 auf dem Host lauscht: `ss -lntp | grep 3000` (sollte leer sein).
-   - Zugriff via Gateway testen (z.B. `curl https://leitstand.heimnetz`).
+   **Wichtig:** `deploy/.env` wird absichtlich ignoriert und darf niemals committed werden.
 
-### 2. Loopback-Publish (Fallback / Default)
-Für lokale Entwicklung oder Debugging direkt auf dem Host.
-Der Port `3000` wird **nur an 127.0.0.1** gebunden.
-
-**Start:**
-```bash
-./scripts/leitstand-deploy
-```
-- Zugriff: `http://127.0.0.1:3000/`
-
-### 3. LAN-Publish (Optional)
-Erlaubt den Zugriff aus dem Heimnetz (z.B. iPad/Blink), ohne Reverse Proxy.
-Der Port `3000` wird standardmäßig an **127.0.0.1** gebunden, kann aber via Environment-Variable auf die LAN-IP erweitert werden.
-
-**Start:**
-```bash
-# Standard (bindet an 127.0.0.1)
-./scripts/leitstand-deploy --lan
-
-# Explizite LAN-IP (bindet an 192.168.x.x)
-LEITSTAND_BIND_IP=192.168.178.10 ./scripts/leitstand-deploy --lan
-```
-
-## Update & Redeploy
-
-Für Routine-Updates und Neustarts wird **ausschließlich** das bereitgestellte Skript empfohlen. Es kapselt die notwendigen Schritte (Pull, Build, Restart) sicher und konsistent.
-
-❌ **docker compose ist intern:** Die manuelle Nutzung von `docker compose` ist möglich, aber fehleranfällig (vergessene Parameter, Dirty State).
-✅ **leitstand-deploy ist der Standard:**
-
-### Proxy-Modus (Empfohlen)
-Wenn der Leitstand hinter einem Proxy (Option 1) läuft:
-```bash
-./scripts/leitstand-deploy --proxy
-```
-
-### Standard (Lokal)
-Aktualisiert den Code (`git pull`), baut neu und startet den Dienst (nur localhost).
-```bash
-./scripts/leitstand-deploy
-```
-
-### LAN-Modus
-Wenn der Leitstand im lokalen Netzwerk erreichbar sein soll (entspricht Start-Option 3):
-```bash
-./scripts/leitstand-deploy --lan
-```
+### Reverse Proxy
+Falls ein Reverse Proxy verwendet wird (siehe `ops.runbook.leitstand-gateway.md`), stelle sicher, dass Leitstand **nicht** öffentlich (0.0.0.0) lauscht, sondern nur auf dem internen Interface, das der Proxy erreicht (z.B. localhost oder docker network).
