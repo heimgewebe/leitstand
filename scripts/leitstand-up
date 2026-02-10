@@ -2,6 +2,12 @@
 set -euo pipefail
 
 # --- Configuration ---
+
+if ! command -v git >/dev/null 2>&1; then
+    echo "❌ Error: git is not installed or not in PATH." >&2
+    exit 1
+fi
+
 # Resolve repo root robustly to handle calls from anywhere
 if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
     echo "❌ Error: Not inside a git repository." >&2
@@ -42,9 +48,7 @@ check_dependencies() {
         fail "Docker is not installed or not in PATH."
     fi
 
-    if ! command -v git >/dev/null 2>&1; then
-        fail "Git is not installed or not in PATH."
-    fi
+    # Git is already checked at top level
 
     # Verify docker compose plugin is available
     if ! docker compose version >/dev/null 2>&1; then
@@ -95,7 +99,7 @@ show_status() {
 
     log_info "Port Bindings (Leitstand :3000):"
     if command -v ss >/dev/null 2>&1; then
-        ss -lntp | grep :3000 || echo "  (No process bound to :3000 found)"
+        ss -lntp | grep -E ':(3000)\b' || echo "  (No process bound to :3000 found)"
     else
         echo "  (ss command not found, skipping port check)"
     fi
@@ -175,7 +179,7 @@ deploy() {
     if [[ "$mode" == "proxy" ]]; then
         # Check that NO host port 3000 is listening (proxy mode should not bind host ports)
         if command -v ss >/dev/null 2>&1; then
-            if ss -lntp | grep -q :3000; then
+            if ss -lntp | grep -qE ':(3000)\b'; then
                  log_warn "Port 3000 is listening! This might be unexpected in Proxy mode (unless another service uses it)."
             else
                  log_success "Verified: Port 3000 is NOT exposed on host."
@@ -185,7 +189,7 @@ deploy() {
     else
          # Loopback or LAN: Check if port 3000 IS listening
          if command -v ss >/dev/null 2>&1; then
-             if ss -lntp | grep -q :3000; then
+             if ss -lntp | grep -qE ':(3000)\b'; then
                  log_success "Verified: Port 3000 is bound."
              else
                  log_warn "Port 3000 is NOT listening. Startup might have failed or is slow."
@@ -215,7 +219,14 @@ while [[ "$#" -gt 0 ]]; do
         --lan) MODE="lan" ;;
         --lan-unsafe) MODE="lan"; UNSAFE_LAN="true" ;;
         --proxy) MODE="proxy" ;;
-        --network) NETWORK_NAME="$2"; shift ;;
+        --network)
+            if [[ "$#" -lt 2 ]] || [[ "$2" == -* ]]; then
+                echo "❌ Error: --network requires an argument."
+                exit 1
+            fi
+            NETWORK_NAME="$2";
+            shift
+            ;;
         --no-pull) DO_PULL="false" ;;
         --no-build) DO_BUILD="false" ;;
         --logs) SHOW_LOGS="true" ;;

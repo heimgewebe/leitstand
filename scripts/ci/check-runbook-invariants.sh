@@ -66,4 +66,25 @@ check_runbook() {
 check_runbook "$RUNBOOK_GATEWAY"
 check_runbook "$RUNBOOK_MAIN"
 
+# 4. Drift Prevention: Ensure deprecated script is NOT referenced
+# We search for "leitstand-deploy" but exclude this script itself from the check.
+# Since grep outputting the script name itself is tricky when excluding, we use a simpler approach:
+# grep -R but exclude the 'ci' directory entirely if needed, or better, exclude this specific filename.
+# The filename is 'scripts/ci/check-runbook-invariants.sh' relative to root.
+
+DEPRECATED_TERM="leitstand-deploy"
+THIS_SCRIPT_NAME="check-runbook-invariants.sh"
+
+# Note: grep --exclude works on the filename part only, not path.
+if grep -R "$DEPRECATED_TERM" "$REPO_ROOT" --exclude-dir=".git" --exclude="$THIS_SCRIPT_NAME" >/dev/null 2>&1; then
+    FOUND=$(grep -R "$DEPRECATED_TERM" "$REPO_ROOT" --exclude-dir=".git" --exclude="$THIS_SCRIPT_NAME" -l)
+
+    # Double check if FOUND is empty (might have only matched the excluded file if logic failed)
+    if [[ -n "$FOUND" ]]; then
+        echo -e "❌ Found references to deprecated '$DEPRECATED_TERM' in repository:\n$FOUND" >&2
+        fail "Please remove these references and use 'scripts/leitstand-up' instead."
+    fi
+fi
+log_success "No deprecated '$DEPRECATED_TERM' references found."
+
 log_info "All invariants passed."
