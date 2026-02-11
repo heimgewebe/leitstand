@@ -64,3 +64,4 @@ terraform.tfstate
 deploy/.env
 deploy/.env.*
 !deploy/.env.example
+deploy/.leitstand.args
