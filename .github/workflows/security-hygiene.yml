@@ -45,4 +45,4 @@ jobs:
 
       - name: Check Runbook Invariants
         run: |
-          ./scripts/ci/check-runbook-invariants.sh
+          bash ./scripts/ci/check-runbook-invariants.sh
