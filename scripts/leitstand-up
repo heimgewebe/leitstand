@@ -280,9 +280,9 @@ if [[ "$SHOW_LOGS" == "true" ]]; then
     log_info "Tailing logs (Ctrl+C to stop)..."
 
     cd "$DEPLOY_DIR"
-    local log_args=()
+    log_args=()
     if [[ -f "$ARGS_FILE" ]]; then
-        local loaded_args=()
+        loaded_args=()
         mapfile -t loaded_args < "$ARGS_FILE"
         log_args=("${loaded_args[@]}")
     fi
