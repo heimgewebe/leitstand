@@ -88,8 +88,8 @@ GREP_EXCLUDES=(
     "--exclude=$THIS_SCRIPT_NAME"
 )
 
-if grep -R "$DEPRECATED_TERM" "$REPO_ROOT" "${GREP_EXCLUDES[@]}" >/dev/null 2>&1; then
-    FOUND=$(grep -R "$DEPRECATED_TERM" "$REPO_ROOT" "${GREP_EXCLUDES[@]}" -l || true)
+if grep -R -F "$DEPRECATED_TERM" "$REPO_ROOT" "${GREP_EXCLUDES[@]}" >/dev/null 2>&1; then
+    FOUND=$(grep -R -F "$DEPRECATED_TERM" "$REPO_ROOT" "${GREP_EXCLUDES[@]}" -l || true)
 
     if [[ -n "$FOUND" ]]; then
         echo -e "❌ Found references to deprecated '$DEPRECATED_TERM' in repository:\n$FOUND" >&2
