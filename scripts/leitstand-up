@@ -1,0 +1,290 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- Configuration ---
+
+if ! command -v git >/dev/null 2>&1; then
+    echo "❌ Error: git is not installed or not in PATH." >&2
+    exit 1
+fi
+
+# Resolve repo root robustly to handle calls from anywhere
+if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    echo "❌ Error: Not inside a git repository." >&2
+    exit 1
+fi
+
+DEPLOY_DIR="$REPO_ROOT/deploy"
+COMPOSE_FILE="docker-compose.yml"
+LOOPBACK_COMPOSE_FILE="docker-compose.loopback.yml"
+LAN_COMPOSE_FILE="docker-compose.lan.yml"
+PROXY_COMPOSE_FILE="docker-compose.proxy.yml"
+ARGS_FILE="$DEPLOY_DIR/.leitstand.args"
+
+# --- Functions ---
+
+log_info() {
+    echo "→ $1"
+}
+
+log_success() {
+    echo "✓ $1"
+}
+
+log_warn() {
+    echo "⚠️ $1"
+}
+
+log_error() {
+    echo "❌ $1" >&2
+}
+
+fail() {
+    log_error "$1"
+    exit 1
+}
+
+check_dependencies() {
+    if ! command -v docker >/dev/null 2>&1; then
+        fail "Docker is not installed or not in PATH."
+    fi
+
+    # Git is already checked at top level
+
+    # Verify docker compose plugin is available
+    if ! docker compose version >/dev/null 2>&1; then
+        fail "Docker Compose plugin not available. Please install docker-compose-plugin."
+    fi
+}
+
+check_repo_clean() {
+    log_info "Checking working tree..."
+    local status_output
+    status_output="$(git -C "$REPO_ROOT" status --porcelain --untracked-files=normal)"
+
+    if [[ -n "$status_output" ]]; then
+        fail "Working tree is not clean (uncommitted or untracked changes present). Please commit or stash."
+    fi
+}
+
+check_deploy_dir() {
+    if [[ ! -d "$DEPLOY_DIR" ]]; then
+        fail "Deployment directory '$DEPLOY_DIR' not found."
+    fi
+
+    if [[ ! -f "$DEPLOY_DIR/$COMPOSE_FILE" ]]; then
+        fail "Docker Compose file '$DEPLOY_DIR/$COMPOSE_FILE' not found."
+    fi
+}
+
+check_docker_running() {
+    if ! docker info >/dev/null 2>&1; then
+        fail "Docker daemon is not running or current user lacks permission."
+    fi
+}
+
+pull_changes() {
+    log_info "Pulling latest changes..."
+    if ! git -C "$REPO_ROOT" pull --ff-only; then
+        fail "git pull failed. Manual intervention required (e.g., merge conflict)."
+    fi
+}
+
+show_status() {
+    log_info "Service Status:"
+    cd "$DEPLOY_DIR"
+
+    local ps_args=()
+    if [[ -f "$ARGS_FILE" ]]; then
+        local loaded_args=()
+        mapfile -t loaded_args < "$ARGS_FILE"
+        ps_args=("${loaded_args[@]}")
+    fi
+
+    docker compose "${ps_args[@]}" ps
+
+    log_info "Port Bindings (Leitstand :3000):"
+    if command -v ss >/dev/null 2>&1; then
+        ss -lntp | grep -E ':(3000)\b' || echo "  (No process bound to :3000 found)"
+    else
+        echo "  (ss command not found, skipping port check)"
+    fi
+}
+
+deploy() {
+    local mode="$1"
+    local network_name="$2"
+    local do_build="$3"
+    local unsafe_lan="$4"
+
+    local compose_args=()
+
+    log_info "Preparing deployment (Mode: $mode)..."
+
+    cd "$DEPLOY_DIR"
+
+    case "$mode" in
+        "lan")
+            if [[ ! -f "$LAN_COMPOSE_FILE" ]]; then
+                 fail "LAN mode requested but '$LAN_COMPOSE_FILE' is missing."
+            fi
+
+            # Security check for LAN mode
+            if [[ -z "${LEITSTAND_BIND_IP:-}" && "$unsafe_lan" != "true" ]]; then
+                fail "LAN mode requires LEITSTAND_BIND_IP to be set (e.g., LEITSTAND_BIND_IP=192.168.1.5) OR use --lan-unsafe to bind to 0.0.0.0."
+            fi
+
+            if [[ "$unsafe_lan" == "true" ]]; then
+                log_warn "Running in UNSAFE LAN mode (binding to 0.0.0.0 if not overridden)."
+                export LEITSTAND_BIND_IP="${LEITSTAND_BIND_IP:-0.0.0.0}"
+            fi
+
+            log_info "Binding to IP: $LEITSTAND_BIND_IP"
+            compose_args=(-f "$COMPOSE_FILE" -f "$LAN_COMPOSE_FILE")
+            ;;
+        "proxy")
+            if [[ ! -f "$PROXY_COMPOSE_FILE" ]]; then
+                 fail "Proxy mode requested but '$PROXY_COMPOSE_FILE' is missing."
+            fi
+
+            # Check for external network existence
+            if ! docker network inspect "$network_name" >/dev/null 2>&1; then
+                fail "External network '$network_name' missing. Run: docker network create $network_name"
+            fi
+
+            # We might need to pass the network name to compose if it's parameterized.
+            # Assuming standard setup where the network name in yaml matches or is fixed.
+            # If the yaml uses a variable for network, we need to export it.
+            export LEITSTAND_NETWORK="$network_name"
+
+            compose_args=(-f "$COMPOSE_FILE" -f "$PROXY_COMPOSE_FILE")
+            ;;
+        *)
+            # Default: Loopback
+            if [[ ! -f "$LOOPBACK_COMPOSE_FILE" ]]; then
+                 fail "Default mode requires '$LOOPBACK_COMPOSE_FILE' but it is missing."
+            fi
+            compose_args=(-f "$COMPOSE_FILE" -f "$LOOPBACK_COMPOSE_FILE")
+            ;;
+    esac
+
+    # Persist args for status/logs
+    printf '%s\n' "${compose_args[@]}" > "$ARGS_FILE"
+
+    log_info "Restarting services..."
+
+    local build_arg=""
+    if [[ "$do_build" == "true" ]]; then
+        build_arg="--build"
+    fi
+
+    # Execute docker compose
+    docker compose "${compose_args[@]}" up -d $build_arg --remove-orphans
+
+    echo ""
+    log_success "Deployment complete."
+
+    # Final Output
+    if [[ "$mode" == "proxy" ]]; then
+        # Check that NO host port 3000 is listening (proxy mode should not bind host ports)
+        if command -v ss >/dev/null 2>&1; then
+            if ss -lntp | grep -qE ':(3000)\b'; then
+                 log_warn "Port 3000 is listening! This might be unexpected in Proxy mode (unless another service uses it)."
+            else
+                 log_success "Verified: Port 3000 is NOT exposed on host."
+            fi
+        fi
+        echo "  -> Access via Proxy URL (e.g., https://leitstand.lan)"
+    else
+         # Loopback or LAN: Check if port 3000 IS listening
+         if command -v ss >/dev/null 2>&1; then
+             if ss -lntp | grep -qE ':(3000)\b'; then
+                 log_success "Verified: Port 3000 is bound."
+             else
+                 log_warn "Port 3000 is NOT listening. Startup might have failed or is slow."
+             fi
+         fi
+
+         if [[ "$mode" == "lan" ]]; then
+             echo "  -> Access via http://${LEITSTAND_BIND_IP}:3000"
+         else
+             echo "  -> Access via http://127.0.0.1:3000"
+         fi
+    fi
+}
+
+# --- Main ---
+
+MODE="default"
+DO_PULL="true"
+DO_BUILD="true"
+SHOW_LOGS="false"
+SHOW_STATUS="false"
+NETWORK_NAME="heimnet"
+UNSAFE_LAN="false"
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --lan) MODE="lan" ;;
+        --lan-unsafe) MODE="lan"; UNSAFE_LAN="true" ;;
+        --proxy) MODE="proxy" ;;
+        --network)
+            if [[ "$#" -lt 2 ]] || [[ "$2" == -* ]]; then
+                echo "❌ Error: --network requires an argument."
+                exit 1
+            fi
+            NETWORK_NAME="$2";
+            shift
+            ;;
+        --no-pull) DO_PULL="false" ;;
+        --no-build) DO_BUILD="false" ;;
+        --logs) SHOW_LOGS="true" ;;
+        --status) SHOW_STATUS="true" ;;
+        -h|--help)
+            echo "Usage: leitstand-up [options]"
+            echo "Options:"
+            echo "  --lan              Enable LAN access (requires LEITSTAND_BIND_IP)"
+            echo "  --lan-unsafe       Enable LAN access binding to 0.0.0.0 (use with caution)"
+            echo "  --proxy            Enable Proxy-first mode (no host ports)"
+            echo "  --network <name>   Docker network for proxy mode (default: heimnet)"
+            echo "  --no-pull          Skip git pull"
+            echo "  --no-build         Skip docker build"
+            echo "  --logs             Tail logs after start"
+            echo "  --status           Show status and exit"
+            exit 0
+            ;;
+        *) fail "Unknown parameter passed: $1";;
+    esac
+    shift
+done
+
+echo "Leitstand Up | Mode: $MODE | Root: $REPO_ROOT"
+
+check_dependencies
+check_deploy_dir
+check_docker_running
+
+if [[ "$SHOW_STATUS" == "true" ]]; then
+    show_status
+    exit 0
+fi
+
+if [[ "$DO_PULL" == "true" ]]; then
+    check_repo_clean
+    pull_changes
+fi
+
+deploy "$MODE" "$NETWORK_NAME" "$DO_BUILD" "$UNSAFE_LAN"
+
+if [[ "$SHOW_LOGS" == "true" ]]; then
+    log_info "Tailing logs (Ctrl+C to stop)..."
+
+    cd "$DEPLOY_DIR"
+    log_args=()
+    if [[ -f "$ARGS_FILE" ]]; then
+        loaded_args=()
+        mapfile -t loaded_args < "$ARGS_FILE"
+        log_args=("${loaded_args[@]}")
+    fi
+    docker compose "${log_args[@]}" logs -f
+fi
