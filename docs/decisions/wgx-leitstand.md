@@ -5,7 +5,7 @@
 
 Historically, it carried a "NO_PROFILE" marker to express "observer by design".
 In practice, missing `.wgx/profile.yml` is a recurring source of noise:
-tools (repo health checks, repolens/rLens) surface it as drift and CI tooling
+lenskit (repo health checks, repolens/rLens) surface it as drift and CI tooling
 expects a tracked profile for standardized motorik.
 
 ## Decision
