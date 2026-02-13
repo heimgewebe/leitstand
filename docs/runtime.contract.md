@@ -13,7 +13,7 @@ Der Leitstand ist ausschließlich unter folgendem FQDN erreichbar:
 - **Protokoll:** HTTPS only (kein HTTP, außer Redirect)
 - **TLS:** Internal CA (Caddy)
 - **Proxy:** Reverse Proxy via Caddy (kein direkter Container-Zugriff)
-- **Upstream:** `deploy-leitstand-1:3000` (Docker DNS)
+- **Upstream:** `leitstand:3000` (Docker DNS)
 
 ## 3. Health-Kriterien
 
@@ -21,7 +21,7 @@ Der Dienst gilt als gesund ("grün"), wenn:
 
 - **HTTP Status:** 200 OK auf `/` und `/health`
 - **Host:** Kein Mixed Content (HTTPS-Only Policy)
-- **Zugriff:** Kein direkter IP-Zugriff möglich (Blockiert durch Ingress/Firewall-Policy)
+- **Zugriff:** Direkter IP-Zugriff ist nicht unterstützt und sollte durch Ingress/Firewall-Policy verhindert werden.
 
 ## 4. Deployment-Status
 
