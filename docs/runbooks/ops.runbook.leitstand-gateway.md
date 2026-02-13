@@ -16,6 +16,8 @@ Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren H
 - Artefakte = Primärwahrheit
 - Live = sanft, erklärbar (kein globales Dauerpolling)
 
+> **Hinweis:** Dies ist ein öffentliches Repository. Interne IPs, Subnetze und Domains erscheinen als Platzhalter (`<LAN_SUBNET>`, `<WG_SUBNET>`, `<GATEWAY_IP>`). Die realen Werte und Konfigurationen sind im privaten Heimserver-Runbook hinterlegt.
+
 ## 1) Unveränderliche Invarianten (nicht verhandelbar)
 - Zugriff ausschließlich aus LAN (<LAN_SUBNET>) und WireGuard (<WG_SUBNET>)
 - Reverse Proxy ist die einzige Eintrittsstelle
@@ -63,7 +65,7 @@ VALIDIERUNG:
 
 ## 6) Caddy Site (KANONISCH)
 Caddy läuft in Docker und ist die einzige Eintrittsstelle.
-Publish ist loopback-gekäftigt (127.0.0.1:80/443); Exposition erfolgt nur über erlaubte Trust-Zones.
+Ingress ist ausschließlich für LAN/WireGuard erlaubt (Firewall/DOCKER-USER). Ob 80/443 an 127.0.0.1 oder 0.0.0.0 gebunden sind, ist deployment-spezifisch und wird im Heimserver-Runbook durchgesetzt.
 
 ```caddy
 leitstand.heimgewebe.home.arpa {
