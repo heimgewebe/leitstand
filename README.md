@@ -31,13 +31,13 @@ See `SECURITY.md` for reporting details.
 
 ## Canonical Deployment
 
-Leitstand wird ausschließlich unter folgendem Host betrieben:
+Leitstand wird ausschließlich **intern** unter folgendem Host betrieben:
 
 **`https://leitstand.heimgewebe.home.arpa`**
 
-- Kein IP-Zugriff.
-- Keine alternativen Domains.
-- Keine Port-Zugriffe.
+- Nur via LAN/WireGuard erreichbar.
+- Extern nicht verfügbar (durch Ingress/Firewall-Policy außerhalb dieses Repos).
+- Kein direkter IP-Zugriff unterstützt.
 
 Refer to [`docs/runtime.contract.md`](docs/runtime.contract.md) for the full contract.
 

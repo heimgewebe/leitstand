@@ -48,8 +48,8 @@ Not trusted:
 
 ## 4) DNS (Komfort ist Funktion)
 SOLL:
-- leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (FritzBox DNS/DHCP oder lokaler DNS)
-- WireGuard-Clients verwenden DNS = <DNS_SERVER_IP> (FritzBox)
+- leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (Gateway DNS)
+- WireGuard-Clients verwenden DNS = <DNS_SERVER_IP> (Local Resolver / Pi-hole)
 
 VALIDIERUNG:
 - getent hosts leitstand.heimgewebe.home.arpa
