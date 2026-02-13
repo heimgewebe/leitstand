@@ -194,7 +194,7 @@ deploy() {
                  log_success "Verified: Port 3000 is NOT exposed on host."
             fi
         fi
-        echo "  -> Access via Proxy URL (e.g., https://leitstand.lan)"
+        echo "  -> Access via Proxy URL (e.g., https://leitstand.heimgewebe.home.arpa)"
     else
          # Loopback or LAN: Check if port 3000 IS listening
          if command -v ss >/dev/null 2>&1; then

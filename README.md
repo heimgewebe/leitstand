@@ -29,6 +29,18 @@ This repository is designed to be **public**.
 If you believe a secret has been committed accidentally, report it immediately.
 See `SECURITY.md` for reporting details.
 
+## Canonical Deployment
+
+Leitstand wird ausschließlich unter folgendem Host betrieben:
+
+**`https://leitstand.heimgewebe.home.arpa`**
+
+- Kein IP-Zugriff.
+- Keine alternativen Domains.
+- Keine Port-Zugriffe.
+
+Refer to [`docs/runtime.contract.md`](docs/runtime.contract.md) for the full contract.
+
 ## Features
 
 The daily digest generator combines:

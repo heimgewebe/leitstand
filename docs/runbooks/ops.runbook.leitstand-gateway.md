@@ -17,7 +17,7 @@ Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren H
 - Live = sanft, erklärbar (kein globales Dauerpolling)
 
 ## 1) Unveränderliche Invarianten (nicht verhandelbar)
-- Zugriff ausschließlich aus LAN (192.168.178.0/24) und WireGuard (10.7.0.0/24)
+- Zugriff ausschließlich aus LAN (<LAN_SUBNET>) und WireGuard (<WG_SUBNET>)
 - Reverse Proxy ist die einzige Eintrittsstelle
 - Docker-Netze sind keine Vertrauenszone
 - Docker-Caddy ist kanonisch; Host-Caddy (systemd) ist verboten
@@ -34,13 +34,13 @@ Client (iPad/Laptop)
         -> ACS (intern, nur via /acs)
 
 Ziel-URL:
-- https://leitstand.lan
+- https://leitstand.heimgewebe.home.arpa
 
 ## 3) Trust-Zones (explizit)
 Trusted:
 - 127.0.0.1/8
-- 192.168.178.0/24
-- 10.7.0.0/24
+- <LAN_SUBNET>
+- <WG_SUBNET>
 
 Not trusted:
 - Docker 172.16.0.0/12 (bridge/networks)
@@ -48,13 +48,13 @@ Not trusted:
 
 ## 4) DNS (Komfort ist Funktion)
 SOLL:
-- leitstand.lan -> 192.168.178.46 (FritzBox DNS/DHCP oder lokaler DNS)
-- WireGuard-Clients verwenden DNS = 192.168.178.1 (FritzBox)
+- leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (FritzBox DNS/DHCP oder lokaler DNS)
+- WireGuard-Clients verwenden DNS = <DNS_SERVER_IP> (FritzBox)
 
 VALIDIERUNG:
-- getent hosts leitstand.lan
-- ping leitstand.lan
-- (optional) dig leitstand.lan @192.168.178.1
+- getent hosts leitstand.heimgewebe.home.arpa
+- ping leitstand.heimgewebe.home.arpa
+- (optional) dig leitstand.heimgewebe.home.arpa @<DNS_SERVER_IP>
 
 ## 5) Orchestrierungsregel (KANON)
 - systemd: Host-nahe Dienste (z. B. docker.service, netfilter-persistent)
@@ -66,7 +66,7 @@ Caddy läuft in Docker und ist die einzige Eintrittsstelle.
 Publish ist loopback-gekäftigt (127.0.0.1:80/443); Exposition erfolgt nur über erlaubte Trust-Zones.
 
 ```caddy
-leitstand.lan {
+leitstand.heimgewebe.home.arpa {
   encode zstd gzip
 
   reverse_proxy leitstand:3000
@@ -100,8 +100,8 @@ Inbound-Policy (minimales Set):
 Ziel: 80/443 nur für LAN+WG zulassen; alles andere drop.
 
 Regeln:
-- ACCEPT TCP 80/443 aus 192.168.178.0/24
-- ACCEPT TCP 80/443 aus 10.7.0.0/24
+- ACCEPT TCP 80/443 aus <LAN_SUBNET>
+- ACCEPT TCP 80/443 aus <WG_SUBNET>
 - DROP sonst für 80/443
 - RETURN für nicht relevante Pakete
 
@@ -134,7 +134,7 @@ Pfad: `./scripts/leitstand-up`
 3. **LAN (Explizit)**
    - Bindet an spezifische LAN-IP.
    - **Security Warnung:** Nur in vertrauenswürdigen Netzen nutzen!
-   - Befehl: `LEITSTAND_BIND_IP=192.168.178.46 ./scripts/leitstand-up --lan`
+   - Befehl: `LEITSTAND_BIND_IP=<GATEWAY_IP> ./scripts/leitstand-up --lan`
 
 ### 9.3 Update & Redeploy
 
@@ -148,7 +148,7 @@ Um den Dienst zu aktualisieren (Pull + Build + Restart):
 ./scripts/leitstand-up
 
 # LAN (Direct Access)
-LEITSTAND_BIND_IP=192.168.178.46 ./scripts/leitstand-up --lan
+LEITSTAND_BIND_IP=<GATEWAY_IP> ./scripts/leitstand-up --lan
 ```
 
 ### 9.4 Nützliche Diagnose-Befehle
