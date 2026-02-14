@@ -35,9 +35,11 @@ Leitstand wird ausschließlich **intern** unter folgendem Host betrieben:
 
 **`https://leitstand.heimgewebe.home.arpa`**
 
+This repository is public, but the deployment targets a private network. All security enforcement (firewall, ingress policy) happens outside this repository.
+
 - Nur via LAN/WireGuard erreichbar.
 - Extern nicht verfügbar (durch Ingress/Firewall-Policy außerhalb dieses Repos).
-- Kein direkter IP-Zugriff unterstützt.
+- Direkter IP-Zugriff ist nicht Teil des Contracts.
 
 Refer to [`docs/runtime.contract.md`](docs/runtime.contract.md) for the full contract.
 

@@ -21,7 +21,7 @@ Der Dienst gilt als gesund ("grün"), wenn:
 
 - **HTTP Status:** 200 OK auf `/` und `/health`
 - **Host:** Kein Mixed Content (HTTPS-Only Policy)
-- **Zugriff:** Direkter IP-Zugriff ist nicht unterstützt und sollte durch Ingress/Firewall-Policy verhindert werden.
+- **Zugriff:** Direkter IP-Zugriff ist nicht Teil des Contracts; Zugriff erfolgt per FQDN Host-Match via Reverse Proxy.
 
 ## 4. Deployment-Status
 
@@ -29,3 +29,18 @@ Leitstand ist korrekt deployed, wenn:
 - DNS A-Record auf den Entry-Proxy zeigt.
 - TLS CN exakt dem FQDN entspricht.
 - Reverse Proxy Host-Match korrekt ist.
+
+## 5. Platzhalter
+
+Da dieses Repository öffentlich ist, werden für interne Infrastruktur-Details generische Platzhalter verwendet.
+
+| Platzhalter | Bedeutung | Beispielwert (Generisch) |
+| :--- | :--- | :--- |
+| `<IP>` | Eine konkrete IPv4 Adresse im LAN | `192.168.0.10` |
+| `<GATEWAY_IP>` | Die IP des Entry-Gateways / Reverse Proxy | `192.168.0.5` |
+| `<DNS_SERVER_IP>` | Der lokale DNS-Resolver (z.B. Pi-hole) | `192.168.0.2` |
+| `<LAN_SUBNET>` | Das vertrauenswürdige Heimnetz-Segment | `192.168.0.0/24` |
+| `<WG_SUBNET>` | Das WireGuard VPN-Segment | `10.8.0.0/24` |
+| `<UPSTREAM>` | Der Upstream-Service (Container) | `leitstand` |
+
+**Hinweis:** Die realen Werte sind im privaten Heimserver-Runbook hinterlegt.
