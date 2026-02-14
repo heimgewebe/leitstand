@@ -7,12 +7,11 @@ Owner: ops / Heimserver; Änderungen an Proxy/Firewall/DNS müssen dieses Runboo
 
 ## 0) Zweck
 Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers:
-- eine URL
-- ein Origin
+- ein Gateway, zwei FQDNs (UI/API)
 - kein Public
 - WireGuard = Transport
 - Leitstand = einziges UI
-- ACS = kontrollierter Actor hinter /acs (kein Direktzugriff)
+- ACS = kontrollierter Actor (kein Direktzugriff)
 - Artefakte = Primärwahrheit
 - Live = sanft, erklärbar (kein globales Dauerpolling)
 
