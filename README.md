@@ -29,6 +29,23 @@ This repository is designed to be **public**.
 If you believe a secret has been committed accidentally, report it immediately.
 See `SECURITY.md` for reporting details.
 
+## Canonical Deployment
+
+The Leitstand is operated exclusively **internally** under the following host:
+
+**`https://leitstand.heimgewebe.home.arpa`**
+
+This repository is public, but the deployment targets a private network. All security enforcement (firewall, ingress policy) happens outside this repository.
+
+- **Scope:** Deployment on the Heimserver is currently in the development/integration phase; however, the contract (FQDN, internal-only, Proxy/Host-Match) remains normative.
+- **Access:** Reachable only via LAN/WireGuard. Externally unavailable (blocked by ingress/firewall policy outside this repo).
+- **Contract:** Direct IP access is not part of the contract.
+
+For details, refer to:
+- [Runtime Contract](docs/runtime.contract.md) (Normative)
+- [Access Matrix](docs/access.matrix.md)
+- [Drift Signals](docs/drift.signals.md)
+
 ## Features
 
 The daily digest generator combines:

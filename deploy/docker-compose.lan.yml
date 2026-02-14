@@ -3,4 +3,5 @@ services:
     ports:
       - "${LEITSTAND_BIND_IP:?set LEITSTAND_BIND_IP}:3000:3000"
       # Optional: Example for explicit bind IP (uncomment and adjust if needed):
-      # - "192.168.178.10:3000:3000"
+      # - "<IP>:3000:3000"
+      # Note: We do not include real LAN IPs in this public repository for privacy.

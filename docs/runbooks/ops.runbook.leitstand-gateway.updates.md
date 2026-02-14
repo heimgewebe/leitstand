@@ -35,7 +35,7 @@ Stelle sicher, dass das System gesund ist, bevor du etwas änderst.
 
 ```bash
 # 1. DNS Check
-getent hosts leitstand.lan
+getent hosts leitstand.heimgewebe.home.arpa
 
 # 2. Container Status (muss running sein)
 docker ps
@@ -80,14 +80,14 @@ Prüfe, ob das Update erfolgreich war.
 
 ```bash
 # 1. Health Check (Standard: striktes TLS)
-curl -I https://leitstand.lan/health
+curl -I https://leitstand.heimgewebe.home.arpa/health
 # Debug bei CA/Trust-Problemen:
-# curl -k -I https://leitstand.lan/health
+# curl -k -I https://leitstand.heimgewebe.home.arpa/health
 
 # 2. Ops Endpoint (optional, falls vorhanden)
-# curl -I https://leitstand.lan/api/ops/audit/git || echo "Ops API not available"
+# curl -I https://leitstand.heimgewebe.home.arpa/api/ops/audit/git || echo "Ops API not available"
 # Debug:
-# curl -k -I https://leitstand.lan/api/ops/audit/git
+# curl -k -I https://leitstand.heimgewebe.home.arpa/api/ops/audit/git
 
 # 3. Container Status (keine Restarts)
 docker compose ps

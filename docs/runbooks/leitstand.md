@@ -65,7 +65,7 @@ Erlaubt den Zugriff aus dem Heimnetz (z.B. iPad/Blink).
 Erfordert explizites Setzen von `LEITSTAND_BIND_IP`.
 
 ```bash
-export LEITSTAND_BIND_IP=192.168.178.10
+export LEITSTAND_BIND_IP=<IP>
 ./scripts/leitstand-up --lan
 ```
 - **Verhalten:** Bindet explizit an die angegebene IP.
