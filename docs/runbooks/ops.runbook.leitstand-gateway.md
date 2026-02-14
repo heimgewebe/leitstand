@@ -33,10 +33,11 @@ Client (iPad/Laptop)
   -> Heimserver (Entry-Gateway)
       Caddy (Docker, einzige URL, ein Origin)
         -> Leitstand (intern)
-        -> ACS (intern, nur via /acs)
+        -> ACS (intern, via api.heimgewebe...)
 
-Ziel-URL:
-- https://leitstand.heimgewebe.home.arpa
+Ziel-URLs:
+- https://leitstand.heimgewebe.home.arpa (UI)
+- https://api.heimgewebe.home.arpa (API)
 
 ## 3) Trust-Zones (explizit)
 Trusted:
@@ -51,10 +52,12 @@ Not trusted:
 ## 4) DNS (Komfort ist Funktion)
 SOLL:
 - leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (Gateway DNS)
+- api.heimgewebe.home.arpa -> <GATEWAY_IP>
 - WireGuard-Clients verwenden DNS = <DNS_SERVER_IP> (Local Resolver / Pi-hole)
 
 VALIDIERUNG:
 - getent hosts leitstand.heimgewebe.home.arpa
+- getent hosts api.heimgewebe.home.arpa
 - ping leitstand.heimgewebe.home.arpa
 - (optional) dig leitstand.heimgewebe.home.arpa @<DNS_SERVER_IP>
 
@@ -68,20 +71,25 @@ Caddy läuft in Docker und ist die einzige Eintrittsstelle.
 Ingress ist ausschließlich für LAN/WireGuard erlaubt (Firewall/DOCKER-USER). Ob 80/443 an 127.0.0.1 oder 0.0.0.0 gebunden sind, ist deployment-spezifisch und wird im Heimserver-Runbook durchgesetzt.
 
 ```caddy
+# Siehe auch infra/caddy/Caddyfile.prod
+
+http://leitstand.heimgewebe.home.arpa {
+  redir https://leitstand.heimgewebe.home.arpa{uri} 308
+}
+
 leitstand.heimgewebe.home.arpa {
   encode zstd gzip
-
   reverse_proxy leitstand:3000
-
-  handle_path /acs/* {
-    reverse_proxy acs:8099
-  }
-
-  handle /health {
-    respond 200
-  }
-
   tls internal
+}
+
+http://api.heimgewebe.home.arpa {
+  redir https://api.heimgewebe.home.arpa{uri} 308
+}
+
+api.heimgewebe.home.arpa {
+  tls internal
+  reverse_proxy acs:8099
 }
 ```
 
@@ -178,6 +186,8 @@ Ziel: nachvollziehbar, stabil, Safari-freundlich.
 
 Jede Änderung an DNS, Ports, Proxy, Firewall, Routen, Services
 -> erfordert Update dieses Runbooks im selben Commit/PR.
+
+Beachte zudem die Naming Policy in `docs/deploy/heimserver.naming.md`.
 
 ---
 

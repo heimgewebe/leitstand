@@ -1,0 +1,23 @@
+{
+  servers {
+    protocols h1 h2
+  }
+}
+
+http://leitstand.heimgewebe.home.arpa {
+  redir https://leitstand.heimgewebe.home.arpa{uri} 308
+}
+
+http://api.heimgewebe.home.arpa {
+  redir https://api.heimgewebe.home.arpa{uri} 308
+}
+
+leitstand.heimgewebe.home.arpa {
+  reverse_proxy deploy-leitstand-1:3000
+  tls internal
+}
+
+api.heimgewebe.home.arpa {
+  tls internal
+  reverse_proxy acs:8099
+}
