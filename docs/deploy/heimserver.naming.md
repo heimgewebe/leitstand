@@ -1,34 +1,19 @@
-# Heimserver Naming Policy
+# Heimserver Naming Policy (Referenzkopie)
 
 Stand: 2026-02-03
-Dokumentklasse: ARCHITEKTUR · VERTRAG
-Status: Referenz (Abgeleitet aus Ops/Heimserver-Repo). Diese Kopie darf nicht divergieren.
+Dokumentklasse: REFERENZ · ABGELEITET
+Status: Lesekopie (Kanonisch im Ops/Heimserver-Repo)
 Scope: Heimserver & Heimgewebe & Weltgewebe
+Upstream-Commit: UNKNOWN
 
-## 1. Grundsatz: Getrennte Namensräume
-Wir unterscheiden strikt zwischen zwei getrennten Namensräumen, um DNS/TLS Split-Brain zu verhindern.
+## 1. Provenienz & Status
+Diese Datei ist eine Referenzkopie der kanonischen Naming-Policy aus dem `ops/heimserver` Repository (`docs/deploy/heimserver.naming.md`).
+Ohne verifizierten Upstream-Commit ist die Identität nicht prüfbar; bei Abweichungen gilt immer die Quelle im Ops-Repo.
 
-- **Heimgewebe**: Organismus aus mehreren Repositories.
-- **Weltgewebe**: Kartenbasiertes Common-Interface.
+## 2. Kern-Invariante (Auszug)
+Der vollständige Contract definiert die strikte Trennung von **Heimgewebe** (interner Organismus) und **Weltgewebe** (externes Interface) sowie die zulässigen FQDNs.
 
-## 2. Namensraum-Vertrag
-1. **Heimgewebe-Domains** (*.heimgewebe.home.arpa) zeigen **ausschließlich** auf Heimgewebe-Services.
-2. **Weltgewebe-Domains** (*.weltgewebe.home.arpa) zeigen **ausschließlich** auf Weltgewebe-Services.
-3. **Caddy** bindet strikt pro FQDN (keine Wildcard-Mischung).
-4. **DNS** hat genau eine Quelle (keine Split-Horizon-Magie, die Domains vermischt).
-5. **Übergangsphasen** sind nur als explizite Redirects/Aliases erlaubt — nie "still" oder implizit.
-6. Naming beschreibt Identität, nicht Netzwerk, Ordnernamen oder Deployment.
-7. Weltgewebe-FQDNs werden nur provisioniert, wenn DNS + Caddy + Upstream im selben PR vorhanden sind. Optionale Artefakte liegen unter `infra/*/optional/` und werden nicht automatisch ausgerollt.
-
-## 3. Kanonische Domains (Heimgewebe)
-- `leitstand.heimgewebe.home.arpa` (UI)
-- `api.heimgewebe.home.arpa` (API, z.B. ACS)
-- `heimgewebe.home.arpa` (Optional Root)
-
-## 4. Kanonische Domains (Weltgewebe)
-- `weltgewebe.home.arpa` (optional; sofern existent)
-- `api.weltgewebe.home.arpa` (optional; sofern existent)
-
-## 5. Drift-Warnung
-Alles, was `leitstand.heimgewebe...` in einem "Weltgewebe"-Stack auftauchen lässt, ist Drift.
-Semantik bestimmt das Routing, nicht der Ordnername (z.B. `/opt/weltgewebe` darf keine Heimgewebe-Dienste hosten, die unter Heimgewebe-Domains erreichbar sind).
+Kanonische Quelle konsultieren für:
+- Exakte Domain-Listen
+- Provisionierungs-Regeln
+- Caddy/DNS Bindungsvorgaben
