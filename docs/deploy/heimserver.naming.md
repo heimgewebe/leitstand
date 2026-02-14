@@ -17,7 +17,7 @@ Wir unterscheiden strikt zwischen zwei getrennten Namensräumen, um DNS/TLS Spli
 4. **DNS** hat genau eine Quelle (keine Split-Horizon-Magie, die Domains vermischt).
 5. **Übergangsphasen** sind nur als explizite Redirects/Aliases erlaubt — nie "still" oder implizit.
 6. Naming beschreibt Identität, nicht Netzwerk, Ordnernamen oder Deployment.
-7. Weltgewebe-FQDNs werden nur provisioniert, wenn DNS + Caddy + Upstream im selben PR vorhanden sind.
+7. Weltgewebe-FQDNs werden nur provisioniert, wenn DNS + Caddy + Upstream im selben PR vorhanden sind. Optionale Artefakte liegen unter `infra/*/optional/` und werden nicht automatisch ausgerollt.
 
 ## 3. Kanonische Domains (Heimgewebe)
 - `leitstand.heimgewebe.home.arpa` (UI)
