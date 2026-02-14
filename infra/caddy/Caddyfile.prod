@@ -13,11 +13,13 @@ http://api.heimgewebe.home.arpa {
 }
 
 leitstand.heimgewebe.home.arpa {
+  # upstream must match docker-compose service name (deployment-specific)
   reverse_proxy deploy-leitstand-1:3000
   tls internal
 }
 
 api.heimgewebe.home.arpa {
   tls internal
+  # upstream must match docker-compose service name (deployment-specific)
   reverse_proxy acs:8099
 }
