@@ -39,6 +39,8 @@ Ziel-URLs:
 - https://leitstand.heimgewebe.home.arpa (UI)
 - https://api.heimgewebe.home.arpa (API)
 
+Weltgewebe-FQDNs sind nicht Teil dieses Gateways, sofern nicht explizit aktiviert.
+
 ## 3) Trust-Zones (explizit)
 Trusted:
 - 127.0.0.1/8
