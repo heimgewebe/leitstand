@@ -30,7 +30,7 @@ Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren H
 Client (iPad/Laptop)
   -> WireGuard
   -> Heimserver (Entry-Gateway)
-      Caddy (Docker, einzige URL, ein Origin)
+      Caddy (Docker, Gateway; FQDNs UI/API)
         -> Leitstand (intern)
         -> ACS (intern, via api.heimgewebe...)
 
