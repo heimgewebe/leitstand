@@ -12,7 +12,7 @@ Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren H
 - kein Public
 - WireGuard = Transport
 - Leitstand = einziges UI
-- ACS = kontrollierter Actor hinter /acs (kein Direktzugriff)
+- ACS = kontrollierter Actor hinter dedizierter API-Domain (kein Direktzugriff aus UI ohne Proxy/CORS)
 - Artefakte = Primärwahrheit
 - Live = sanft, erklärbar (kein globales Dauerpolling)
 
@@ -26,17 +26,19 @@ Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren H
 - TLS via Caddy internal CA
 - Leitstand: Viewer-first, READ-ONLY default
 - Aktionen ausschließlich über ACS; keine Leitstand-Fallback-Writes
+- **Namensraum-Trennung:** Heimgewebe (*.heimgewebe.home.arpa) und Weltgewebe (*.weltgewebe.home.arpa) sind strikt getrennt.
 
 ## 2) Architektur (Zielbild)
 Client (iPad/Laptop)
   -> WireGuard
   -> Heimserver (Entry-Gateway)
-      Caddy (Docker, einzige URL, ein Origin)
+      Caddy (Docker, einzige URL, ein Origin pro Dienst)
         -> Leitstand (intern)
-        -> ACS (intern, nur via /acs)
+        -> ACS (intern, via api.heimgewebe...)
 
-Ziel-URL:
-- https://leitstand.heimgewebe.home.arpa
+Ziel-URLs:
+- https://leitstand.heimgewebe.home.arpa (UI)
+- https://api.heimgewebe.home.arpa (ACS/API)
 
 ## 3) Trust-Zones (explizit)
 Trusted:
@@ -51,6 +53,7 @@ Not trusted:
 ## 4) DNS (Komfort ist Funktion)
 SOLL:
 - leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (Gateway DNS)
+- api.heimgewebe.home.arpa -> <GATEWAY_IP> (Gateway DNS)
 - WireGuard-Clients verwenden DNS = <DNS_SERVER_IP> (Local Resolver / Pi-hole)
 
 VALIDIERUNG:
@@ -67,19 +70,37 @@ VALIDIERUNG:
 Caddy läuft in Docker und ist die einzige Eintrittsstelle.
 Ingress ist ausschließlich für LAN/WireGuard erlaubt (Firewall/DOCKER-USER). Ob 80/443 an 127.0.0.1 oder 0.0.0.0 gebunden sind, ist deployment-spezifisch und wird im Heimserver-Runbook durchgesetzt.
 
+**Policy:** Strikte Host-Bindung, HTTP-Redirects, keine Wildcards.
+
 ```caddy
+# HTTP -> HTTPS Redirects
+http://leitstand.heimgewebe.home.arpa {
+  redir https://leitstand.heimgewebe.home.arpa{uri} 308
+}
+
+http://api.heimgewebe.home.arpa {
+  redir https://api.heimgewebe.home.arpa{uri} 308
+}
+
+# Leitstand UI
 leitstand.heimgewebe.home.arpa {
   encode zstd gzip
 
   reverse_proxy leitstand:3000
 
-  handle_path /acs/* {
-    reverse_proxy acs:8099
-  }
-
   handle /health {
     respond 200
   }
+
+  tls internal
+}
+
+# ACS / API
+api.heimgewebe.home.arpa {
+  encode zstd gzip
+
+  # <HEIMGEBEWE_API_UPSTREAM> ist typischerweise acs:8099 im internen Netz
+  reverse_proxy acs:8099
 
   tls internal
 }
@@ -120,6 +141,9 @@ DOCKER-USER wirkt nur, wenn Docker Traffic durch FORWARD/DOCKER-Ketten führt (S
 Deployment und Updates erfolgen **ausschließlich** über das zentrale Skript. Es kapselt Orchestrierung (Compose), Build und Netzwerk-Konfiguration.
 
 Pfad: `./scripts/leitstand-up`
+
+**Wichtig:** Damit der Leitstand die ACS-API unter der neuen Domain findet, muss im Deployment (via `.env`) gesetzt sein:
+`LEITSTAND_ACS_URL=https://api.heimgewebe.home.arpa`
 
 ### 9.2 Modi
 
@@ -182,7 +206,7 @@ Jede Änderung an DNS, Ports, Proxy, Firewall, Routen, Services
 ---
 
 ## Verdichtete Essenz
-**Ein Runbook, ein Name, ein Gesetz:** `ops.runbook.leitstand-gateway.md` beschreibt den kanonischen, nicht-öffentlichen Leitstand-Zugang über WireGuard + Docker-Caddy, mit ACS als kontrolliertem Actor unter `/acs/` und DOCKER-USER-Cage für LAN/WG-only.
+**Ein Runbook, ein Name, ein Gesetz:** `ops.runbook.leitstand-gateway.md` beschreibt den kanonischen, nicht-öffentlichen Leitstand-Zugang über WireGuard + Docker-Caddy, mit ACS als kontrolliertem Actor unter `api.heimgewebe.home.arpa` und DOCKER-USER-Cage für LAN/WG-only.
 
 ---
 
