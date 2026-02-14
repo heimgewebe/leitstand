@@ -2,6 +2,7 @@
 
 Stand: 2026-02-03
 Dokumentklasse: ARCHITEKTUR · VERTRAG
+Status: Referenz (Abgeleitet aus Ops/Heimserver-Repo). Diese Kopie darf nicht divergieren.
 Scope: Heimserver & Heimgewebe & Weltgewebe
 
 ## 1. Grundsatz: Getrennte Namensräume

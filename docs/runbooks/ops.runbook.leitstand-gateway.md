@@ -72,7 +72,7 @@ Caddy läuft in Docker und ist die einzige Eintrittsstelle.
 Ingress ist ausschließlich für LAN/WireGuard erlaubt (Firewall/DOCKER-USER). Ob 80/443 an 127.0.0.1 oder 0.0.0.0 gebunden sind, ist deployment-spezifisch und wird im Heimserver-Runbook durchgesetzt.
 
 ```caddy
-# Siehe auch infra/caddy/Caddyfile.prod
+# Kanonische Caddy-Konfiguration liegt im Ops/Heimserver-Repo; dieses Snippet dient als Referenz und muss damit übereinstimmen.
 
 http://leitstand.heimgewebe.home.arpa {
   redir https://leitstand.heimgewebe.home.arpa{uri} 308
