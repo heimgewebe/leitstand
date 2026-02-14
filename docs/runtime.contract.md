@@ -2,20 +2,24 @@
 
 Dieses Dokument beschreibt die unveränderlichen Bedingungen für den Betrieb des Leitstands.
 
-## 1. Kanonischer Host
+## 1. Scope / Phase
+
+Aktuell läuft das Deployment auf dem Heimserver nur während der Entwicklungs-/Integrationsphase. Der hier definierte Contract (FQDN, intern-only, Proxy/Host-Match) bleibt davon unberührt und gilt normativ.
+
+## 2. Kanonischer Host
 
 Der Leitstand ist ausschließlich unter folgendem FQDN erreichbar:
 
 **`leitstand.heimgewebe.home.arpa`**
 
-## 2. Erwartete Erreichbarkeit
+## 3. Erwartete Erreichbarkeit
 
 - **Protokoll:** HTTPS only (kein HTTP, außer Redirect)
 - **TLS:** Internal CA (Caddy)
 - **Proxy:** Reverse Proxy via Caddy (kein direkter Container-Zugriff)
 - **Upstream:** `leitstand:3000` (Docker DNS)
 
-## 3. Health-Kriterien
+## 4. Health-Kriterien
 
 Der Dienst gilt als gesund ("grün"), wenn:
 
@@ -23,16 +27,16 @@ Der Dienst gilt als gesund ("grün"), wenn:
 - **Host:** Kein Mixed Content (HTTPS-Only Policy)
 - **Zugriff:** Direkter IP-Zugriff ist nicht Teil des Contracts; Zugriff erfolgt per FQDN Host-Match via Reverse Proxy.
 
-## 4. Deployment-Status
+## 5. Deployment-Status
 
 Leitstand ist korrekt deployed, wenn:
 - DNS A-Record auf den Entry-Proxy zeigt.
 - TLS CN exakt dem FQDN entspricht.
 - Reverse Proxy Host-Match korrekt ist.
 
-## 5. Platzhalter
+## 6. Dokumentationskonvention (non-normative)
 
-Da dieses Repository öffentlich ist, werden für interne Infrastruktur-Details generische Platzhalter verwendet.
+Da dieses Repository öffentlich ist, werden für interne Infrastruktur-Details generische Platzhalter verwendet. Dieser Abschnitt ist nicht Teil des Runtime Contracts.
 
 | Platzhalter | Bedeutung | Beispielwert (Generisch) |
 | :--- | :--- | :--- |
