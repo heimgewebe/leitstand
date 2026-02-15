@@ -107,14 +107,21 @@ if [[ -f "$REPO_ROOT/$NAMING_REF" ]]; then
         fail "Reference copy '$NAMING_REF' must contain 'Upstream-Commit:' field to ensure traceability."
     fi
 
-    # Check for UNKNOWN value (strict mode)
-    if grep -q "Upstream-Commit: UNKNOWN" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy '$NAMING_REF' has 'Upstream-Commit: UNKNOWN'. Please provide a valid commit hash."
+    # A) Strict Format Check
+    # Must be exactly 40 hex chars, anchored, no trailing/leading garbage
+    if ! grep -Eq "^[[:space:]]*Upstream-Commit:[[:space:]]*[0-9a-f]{40}[[:space:]]*$" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy '$NAMING_REF' must contain a valid 40-hex 'Upstream-Commit:' field."
     fi
 
-    # Check for ZERO HASH (strict mode)
+    # Check for ZERO HASH (strict mode) - technically matches hex regex, so we keep explicit ban
     if grep -q "Upstream-Commit: 0000000000000000000000000000000000000000" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy '$NAMING_REF' has placeholder zero hash. Please provide a real upstream commit hash."
+        fail "Reference copy '$NAMING_REF' uses a zero-hash placeholder. Please provide a real upstream commit hash."
+    fi
+
+    # B) Strict Verified-Flag Check
+    # Must be exactly 'true', anchored
+    if ! grep -Eq "^[[:space:]]*Upstream-Verified:[[:space:]]*true[[:space:]]*$" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy '$NAMING_REF' must declare 'Upstream-Verified: true'."
     fi
 
     log_success "Reference copy '$NAMING_REF' contains valid provenance marker."
