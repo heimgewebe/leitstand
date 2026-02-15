@@ -109,7 +109,12 @@ if [[ -f "$REPO_ROOT/$NAMING_REF" ]]; then
 
     # Check for UNKNOWN value (strict mode)
     if grep -q "Upstream-Commit: UNKNOWN" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy '$NAMING_REF' has 'Upstream-Commit: UNKNOWN'. Please provide a valid commit hash or placeholder."
+        fail "Reference copy '$NAMING_REF' has 'Upstream-Commit: UNKNOWN'. Please provide a valid commit hash."
+    fi
+
+    # Check for ZERO HASH (strict mode)
+    if grep -q "Upstream-Commit: 0000000000000000000000000000000000000000" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy '$NAMING_REF' has placeholder zero hash. Please provide a real upstream commit hash."
     fi
 
     log_success "Reference copy '$NAMING_REF' contains valid provenance marker."

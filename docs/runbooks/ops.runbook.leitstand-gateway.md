@@ -36,7 +36,7 @@ Client (iPad/Laptop)
 
 Ziel-URLs:
 - https://leitstand.heimgewebe.home.arpa (UI)
-- https://api.heimgewebe.home.arpa (API)
+- https://api.heimgewebe.home.arpa (API) (optional)
 
 Weltgewebe-FQDNs sind nicht Teil dieses Gateways, sofern nicht explizit aktiviert.
 
@@ -53,7 +53,7 @@ Not trusted:
 ## 4) DNS (Komfort ist Funktion)
 SOLL:
 - leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (Gateway DNS)
-- api.heimgewebe.home.arpa -> <GATEWAY_IP>
+- api.heimgewebe.home.arpa -> <GATEWAY_IP> (optional)
 - WireGuard-Clients verwenden DNS = <DNS_SERVER_IP> (Local Resolver / Pi-hole)
 
 VALIDIERUNG:

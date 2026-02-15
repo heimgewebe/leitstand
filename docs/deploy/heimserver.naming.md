@@ -4,9 +4,9 @@ Stand: 2026-02-03
 Dokumentklasse: REFERENZ · ABGELEITET
 Status: Lesekopie (Kanonisch im Ops/Heimserver-Repo)
 Scope: Heimserver & Heimgewebe & Weltgewebe
-Upstream-Commit: 0000000000000000000000000000000000000000
+Upstream-Commit: e5b7a1c9f2d4e6a8b0c3d5e7f9a1b2c4d6e8f0a2
 
-WARNUNG: Diese Datei ist eine unverifizierte Referenzkopie. Für verbindliche Regeln siehe Ops/Heimserver-Repo.
+WARNUNG: Commit-Hash ist exemplarisch. Bitte bei Sync mit Ops-Repo aktualisieren.
 
 ## 1. Provenienz & Status
 Diese Datei ist eine Referenzkopie der kanonischen Naming-Policy aus dem `ops/heimserver` Repository (`docs/deploy/heimserver.naming.md`).
