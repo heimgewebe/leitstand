@@ -7,12 +7,11 @@ Owner: ops / Heimserver; Änderungen an Proxy/Firewall/DNS müssen dieses Runboo
 
 ## 0) Zweck
 Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers:
-- eine URL
-- ein Origin
+- Gateway handles UI (canonical) and API (optional/external config)
 - kein Public
 - WireGuard = Transport
 - Leitstand = einziges UI
-- ACS = kontrollierter Actor hinter /acs (kein Direktzugriff)
+- ACS = kontrollierter Actor (kein Direktzugriff)
 - Artefakte = Primärwahrheit
 - Live = sanft, erklärbar (kein globales Dauerpolling)
 
@@ -31,12 +30,15 @@ Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren H
 Client (iPad/Laptop)
   -> WireGuard
   -> Heimserver (Entry-Gateway)
-      Caddy (Docker, einzige URL, ein Origin)
+      Caddy (Docker, Gateway; FQDNs UI/API)
         -> Leitstand (intern)
-        -> ACS (intern, nur via /acs)
+        -> ACS (intern, via api.heimgewebe...)
 
-Ziel-URL:
-- https://leitstand.heimgewebe.home.arpa
+Ziel-URLs:
+- https://leitstand.heimgewebe.home.arpa (UI)
+- https://api.heimgewebe.home.arpa (API) (optional)
+
+Weltgewebe-FQDNs sind nicht Teil dieses Gateways, sofern nicht explizit aktiviert.
 
 ## 3) Trust-Zones (explizit)
 Trusted:
@@ -51,10 +53,12 @@ Not trusted:
 ## 4) DNS (Komfort ist Funktion)
 SOLL:
 - leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (Gateway DNS)
+- api.heimgewebe.home.arpa -> <GATEWAY_IP> (optional)
 - WireGuard-Clients verwenden DNS = <DNS_SERVER_IP> (Local Resolver / Pi-hole)
 
 VALIDIERUNG:
 - getent hosts leitstand.heimgewebe.home.arpa
+- getent hosts api.heimgewebe.home.arpa
 - ping leitstand.heimgewebe.home.arpa
 - (optional) dig leitstand.heimgewebe.home.arpa @<DNS_SERVER_IP>
 
@@ -68,21 +72,26 @@ Caddy läuft in Docker und ist die einzige Eintrittsstelle.
 Ingress ist ausschließlich für LAN/WireGuard erlaubt (Firewall/DOCKER-USER). Ob 80/443 an 127.0.0.1 oder 0.0.0.0 gebunden sind, ist deployment-spezifisch und wird im Heimserver-Runbook durchgesetzt.
 
 ```caddy
+# Kanonische Caddy-Konfiguration liegt im Ops/Heimserver-Repo; dieses Snippet dient als Referenz und muss damit übereinstimmen.
+
+http://leitstand.heimgewebe.home.arpa {
+  redir https://leitstand.heimgewebe.home.arpa{uri} 308
+}
+
 leitstand.heimgewebe.home.arpa {
   encode zstd gzip
-
   reverse_proxy leitstand:3000
-
-  handle_path /acs/* {
-    reverse_proxy acs:8099
-  }
-
-  handle /health {
-    respond 200
-  }
-
   tls internal
 }
+
+# API/ACS configuration is managed in Ops/Heimserver-Repo (optional)
+# http://api.heimgewebe.home.arpa {
+#   redir https://api.heimgewebe.home.arpa{uri} 308
+# }
+# api.heimgewebe.home.arpa {
+#   tls internal
+#   reverse_proxy acs:8099
+# }
 ```
 
 ## 7) Firewall (KANON)
@@ -178,6 +187,8 @@ Ziel: nachvollziehbar, stabil, Safari-freundlich.
 
 Jede Änderung an DNS, Ports, Proxy, Firewall, Routen, Services
 -> erfordert Update dieses Runbooks im selben Commit/PR.
+
+Beachte zudem die Naming Policy in `docs/deploy/heimserver.naming.md`.
 
 ---
 

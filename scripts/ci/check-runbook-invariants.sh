@@ -98,4 +98,26 @@ if grep -R -F "$DEPRECATED_TERM" "$REPO_ROOT" "${GREP_EXCLUDES[@]}" >/dev/null 2
 fi
 log_success "No deprecated '$DEPRECATED_TERM' references found."
 
+# 5. Reference Copy Integrity
+# If docs/deploy/heimserver.naming.md exists, it must contain a valid provenance marker.
+NAMING_REF="docs/deploy/heimserver.naming.md"
+if [[ -f "$REPO_ROOT/$NAMING_REF" ]]; then
+    # Check for existence of the field
+    if ! grep -q "Upstream-Commit:" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy '$NAMING_REF' must contain 'Upstream-Commit:' field to ensure traceability."
+    fi
+
+    # Check for UNKNOWN value (strict mode)
+    if grep -q "Upstream-Commit: UNKNOWN" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy '$NAMING_REF' has 'Upstream-Commit: UNKNOWN'. Please provide a valid commit hash."
+    fi
+
+    # Check for ZERO HASH (strict mode)
+    if grep -q "Upstream-Commit: 0000000000000000000000000000000000000000" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy '$NAMING_REF' has placeholder zero hash. Please provide a real upstream commit hash."
+    fi
+
+    log_success "Reference copy '$NAMING_REF' contains valid provenance marker."
+fi
+
 log_info "All invariants passed."
