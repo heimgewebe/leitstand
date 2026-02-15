@@ -7,7 +7,7 @@ Owner: ops / Heimserver; Änderungen an Proxy/Firewall/DNS müssen dieses Runboo
 
 ## 0) Zweck
 Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers:
-- ein Gateway, zwei FQDNs (UI/API)
+- Gateway handles UI (canonical) and API (optional/external config)
 - kein Public
 - WireGuard = Transport
 - Leitstand = einziges UI
@@ -84,14 +84,14 @@ leitstand.heimgewebe.home.arpa {
   tls internal
 }
 
-http://api.heimgewebe.home.arpa {
-  redir https://api.heimgewebe.home.arpa{uri} 308
-}
-
-api.heimgewebe.home.arpa {
-  tls internal
-  reverse_proxy acs:8099
-}
+# API/ACS configuration is managed in Ops/Heimserver-Repo (optional)
+# http://api.heimgewebe.home.arpa {
+#   redir https://api.heimgewebe.home.arpa{uri} 308
+# }
+# api.heimgewebe.home.arpa {
+#   tls internal
+#   reverse_proxy acs:8099
+# }
 ```
 
 ## 7) Firewall (KANON)
