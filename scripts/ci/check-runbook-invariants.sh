@@ -109,7 +109,7 @@ if [[ -f "$REPO_ROOT/$NAMING_REF" ]]; then
 
     # A) Strict Format Check
     # Must be exactly 40 hex chars, anchored, no trailing/leading garbage
-    if ! grep -Eq "^Upstream-Commit: [0-9a-f]{40}\s*$" "$REPO_ROOT/$NAMING_REF"; then
+    if ! grep -Eq "^[[:space:]]*Upstream-Commit:[[:space:]]*[0-9a-f]{40}[[:space:]]*$" "$REPO_ROOT/$NAMING_REF"; then
         fail "Reference copy '$NAMING_REF' must contain a valid 40-hex 'Upstream-Commit:' field."
     fi
 
@@ -120,7 +120,7 @@ if [[ -f "$REPO_ROOT/$NAMING_REF" ]]; then
 
     # B) Strict Verified-Flag Check
     # Must be exactly 'true', anchored
-    if ! grep -Eq "^Upstream-Verified: true\s*$" "$REPO_ROOT/$NAMING_REF"; then
+    if ! grep -Eq "^[[:space:]]*Upstream-Verified:[[:space:]]*true[[:space:]]*$" "$REPO_ROOT/$NAMING_REF"; then
         fail "Reference copy '$NAMING_REF' must declare 'Upstream-Verified: true'."
     fi
 
