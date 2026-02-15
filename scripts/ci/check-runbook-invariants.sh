@@ -107,14 +107,29 @@ if [[ -f "$REPO_ROOT/$NAMING_REF" ]]; then
         fail "Reference copy '$NAMING_REF' must contain 'Upstream-Commit:' field to ensure traceability."
     fi
 
-    # Check for UNKNOWN value (strict mode)
-    if grep -q "Upstream-Commit: UNKNOWN" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy '$NAMING_REF' has 'Upstream-Commit: UNKNOWN'. Please provide a valid commit hash."
+    # A) Format check
+    if ! grep -Eq "Upstream-Commit: [0-9a-f]{40}" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Upstream-Commit must be a valid 40-character hex SHA."
     fi
 
-    # Check for ZERO HASH (strict mode)
+    # Check for ZERO HASH (strict mode) - technically matches hex regex, so we keep explicit ban
     if grep -q "Upstream-Commit: 0000000000000000000000000000000000000000" "$REPO_ROOT/$NAMING_REF"; then
         fail "Reference copy '$NAMING_REF' has placeholder zero hash. Please provide a real upstream commit hash."
+    fi
+
+    # B) Verified-Flag required
+    if ! grep -q "Upstream-Verified:" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy must declare Upstream-Verified: true|false."
+    fi
+
+    # C) False blockieren
+    if grep -q "Upstream-Verified: false" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy is marked as unverified. Provide a real upstream commit and set Upstream-Verified: true."
+    fi
+
+    # D) Platzhaltertexte blockieren
+    if grep -Eqi "exemplarisch|platzhalter|nicht verifiziert" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy contains placeholder language. Remove non-verifiable markers."
     fi
 
     log_success "Reference copy '$NAMING_REF' contains valid provenance marker."
