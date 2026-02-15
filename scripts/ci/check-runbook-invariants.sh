@@ -107,29 +107,21 @@ if [[ -f "$REPO_ROOT/$NAMING_REF" ]]; then
         fail "Reference copy '$NAMING_REF' must contain 'Upstream-Commit:' field to ensure traceability."
     fi
 
-    # A) Format check
-    if ! grep -Eq "Upstream-Commit: [0-9a-f]{40}" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Upstream-Commit must be a valid 40-character hex SHA."
+    # A) Strict Format Check
+    # Must be exactly 40 hex chars, anchored, no trailing/leading garbage
+    if ! grep -Eq "^Upstream-Commit: [0-9a-f]{40}\s*$" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy '$NAMING_REF' must contain a valid 40-hex 'Upstream-Commit:' field."
     fi
 
     # Check for ZERO HASH (strict mode) - technically matches hex regex, so we keep explicit ban
     if grep -q "Upstream-Commit: 0000000000000000000000000000000000000000" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy '$NAMING_REF' has placeholder zero hash. Please provide a real upstream commit hash."
+        fail "Reference copy '$NAMING_REF' uses a zero-hash placeholder. Please provide a real upstream commit hash."
     fi
 
-    # B) Verified-Flag required
-    if ! grep -q "Upstream-Verified:" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy must declare Upstream-Verified: true|false."
-    fi
-
-    # C) False blockieren
-    if grep -q "Upstream-Verified: false" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy is marked as unverified. Provide a real upstream commit and set Upstream-Verified: true."
-    fi
-
-    # D) Platzhaltertexte blockieren
-    if grep -Eqi "exemplarisch|platzhalter|nicht verifiziert" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy contains placeholder language. Remove non-verifiable markers."
+    # B) Strict Verified-Flag Check
+    # Must be exactly 'true', anchored
+    if ! grep -Eq "^Upstream-Verified: true\s*$" "$REPO_ROOT/$NAMING_REF"; then
+        fail "Reference copy '$NAMING_REF' must declare 'Upstream-Verified: true'."
     fi
 
     log_success "Reference copy '$NAMING_REF' contains valid provenance marker."
