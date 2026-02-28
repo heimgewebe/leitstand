@@ -12,5 +12,5 @@ Typische Indikatoren für Fehler in der Betriebskonfiguration (Drift).
 
 ## Handlungsempfehlung
 
-1. **Contract prüfen:** Prüfe zuerst die Konfiguration anhand von `docs/runtime.contract.md`.
+1. **Contract prüfen:** Prüfe zuerst die Konfiguration anhand von [`docs/runtime.contract.md`](runtime.contract.md).
 2. **Ingress prüfen:** Wenn der Contract erfüllt ist, prüfe das Heimserver-Runbook / Ingress-Konfiguration außerhalb dieses Repos (Firewall, DNS, Proxy).
