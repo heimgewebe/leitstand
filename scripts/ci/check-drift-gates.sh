@@ -23,11 +23,13 @@ fi
 awk '
   {
     while(match($0, /\[[^]]+\]\([^)]+\)/)) {
-      link_full = substr($0, RSTART, RLENGTH)
+      outer_start = RSTART
+      outer_length = RLENGTH
+      link_full = substr($0, outer_start, outer_length)
       match(link_full, /\([^)]+\)/)
       link = substr(link_full, RSTART+1, RLENGTH-2)
       print link
-      $0 = substr($0, RSTART + RLENGTH)
+      $0 = substr($0, outer_start + outer_length)
     }
   }
 ' docs/index.md | while read -r link; do
@@ -53,12 +55,23 @@ if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
     MODIFIED_FILES=$(git diff --name-only "origin/$GITHUB_BASE_REF" HEAD || true)
 # 3. GH Actions: push
 elif [[ -n "${GITHUB_SHA:-}" && "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
-    # We diff against the previous commit. GITHUB_SHA is the current commit.
-    MODIFIED_FILES=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" || true)
+    # Parse before SHA without jq, using grep/awk
+    BEFORE_SHA=$(grep -o '"before": *"[^"]*"' "$GITHUB_EVENT_PATH" 2>/dev/null | awk -F'"' '{print $4}' || echo "0000000000000000000000000000000000000000")
+    if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" == "0000000000000000000000000000000000000000" || "$BEFORE_SHA" == "null" ]]; then
+        log_info "New branch or missing before SHA. Diffing latest commit only."
+        MODIFIED_FILES=$(git show --name-only --pretty='' "$GITHUB_SHA" || true)
+    else
+        log_info "Diffing range: $BEFORE_SHA..$GITHUB_SHA"
+        MODIFIED_FILES=$(git diff --name-only "$BEFORE_SHA..$GITHUB_SHA" || true)
+    fi
 fi
 
-log_info "Modified files to check against gates:"
-echo "$MODIFIED_FILES"
+if [[ -z "$MODIFIED_FILES" ]]; then
+    echo "⚠️ Warning: MODIFIED_FILES is empty. Drift Gates change-coupling checks might be skipped." >&2
+else
+    log_info "Modified files to check against gates:"
+    echo "$MODIFIED_FILES"
+fi
 
 # 2. Vendored Contracts Consistency
 log_info "2. Checking Vendored Contracts Consistency..."
