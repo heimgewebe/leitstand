@@ -1,4 +1,4 @@
-import Ajv from 'ajv/dist/2020.js';
+import Ajv, { ErrorObject } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
@@ -9,8 +9,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTRACTS_DIR = path.resolve(__dirname, '..', '..', 'vendor', 'contracts');
 
 const PLEXER_REPORT_SCHEMA_PATH = path.join(CONTRACTS_DIR, 'plexer', 'delivery.report.v1.schema.json');
-
-import { ErrorObject } from 'ajv';
 
 type AjvValidateFn = ((data: unknown) => boolean) & { errors?: ErrorObject[] | null };
 
@@ -68,7 +66,7 @@ export const validatePlexerReport = (data: unknown) => {
 
   const valid = compiled.validate(data);
   if (!valid) {
-    const errorMsg = compiled.validate.errors?.map((e: ErrorObject) => `${e.instancePath} ${e.message}`).join(', ') || 'Unknown validation error';
+    const errorMsg = compiled.validate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ') || 'Unknown validation error';
     return { valid: false, error: errorMsg, status: 400 };
   }
 
