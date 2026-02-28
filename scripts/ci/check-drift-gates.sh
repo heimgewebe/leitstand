@@ -20,6 +20,8 @@ fi
 # Extract links from docs/index.md (rudimentary regex for markdown links)
 # Format: [Text](Path)
 # Note: uses awk to parse the link robustly across grep implementations (avoiding -P)
+
+log_info "Skipping non-doc links (../, http(s), absolute) by design"
 awk '
   {
     while(match($0, /\[[^]]+\]\([^)]+\)/)) {
@@ -85,7 +87,11 @@ elif [[ -n "${GITHUB_SHA:-}" && "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
 fi
 
 if [[ -z "$MODIFIED_FILES" ]]; then
-    echo "⚠️ Warning: MODIFIED_FILES is empty. Drift Gates change-coupling checks might be skipped." >&2
+    if [[ "${GITHUB_ACTIONS:-}" == "true" || "${CI:-}" == "true" ]]; then
+        fail "MODIFIED_FILES is empty in CI; refusing to skip drift change-coupling gates. This indicates an invalid diff range or missing history."
+    else
+        echo "⚠️ Warning: MODIFIED_FILES is empty locally. Drift Gates change-coupling checks might be skipped." >&2
+    fi
 else
     log_info "Modified files to check against gates:"
     echo "$MODIFIED_FILES"
