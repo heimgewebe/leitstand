@@ -55,8 +55,8 @@ export async function loadIntegritySummaries(options: IntegrityLoadOptions): Pro
   try {
     const files = await readdir(artifactDir);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
-    for (const file of jsonFiles) {
-      const summary = await loadIntegrityFile(join(artifactDir, file), 'artifact');
+    const results = await Promise.all(jsonFiles.map(file => loadIntegrityFile(join(artifactDir, file), 'artifact')));
+    for (const summary of results) {
       if (summary) integritySummaries.push(summary);
     }
   } catch (e) {
@@ -82,8 +82,8 @@ export async function loadIntegritySummaries(options: IntegrityLoadOptions): Pro
     try {
       const files = await readdir(fixtureDir);
       const jsonFiles = files.filter(f => f.endsWith('.json'));
-      for (const file of jsonFiles) {
-        const summary = await loadIntegrityFile(join(fixtureDir, file), 'fixture');
+      const results = await Promise.all(jsonFiles.map(file => loadIntegrityFile(join(fixtureDir, file), 'fixture')));
+      for (const summary of results) {
         if (summary) integritySummaries.push(summary);
       }
     } catch (e) { /* ignore */ }
