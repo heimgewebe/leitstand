@@ -1,4 +1,5 @@
-import Ajv, { ErrorObject } from 'ajv/dist/2020.js';
+import Ajv from 'ajv/dist/2020.js';
+import type { ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
