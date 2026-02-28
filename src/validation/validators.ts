@@ -10,7 +10,9 @@ const CONTRACTS_DIR = path.resolve(__dirname, '..', '..', 'vendor', 'contracts')
 
 const PLEXER_REPORT_SCHEMA_PATH = path.join(CONTRACTS_DIR, 'plexer', 'delivery.report.v1.schema.json');
 
-type AjvValidateFn = ((data: unknown) => boolean) & { errors?: unknown[] };
+import { ErrorObject } from 'ajv';
+
+type AjvValidateFn = ((data: unknown) => boolean) & { errors?: ErrorObject[] | null };
 
 let plexerReportValidate: AjvValidateFn | null = null;
 let compiledStrict: boolean | null = null;
@@ -66,7 +68,7 @@ export const validatePlexerReport = (data: unknown) => {
 
   const valid = compiled.validate(data);
   if (!valid) {
-    const errorMsg = compiled.validate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ');
+    const errorMsg = compiled.validate.errors?.map((e: ErrorObject) => `${e.instancePath} ${e.message}`).join(', ') || 'Unknown validation error';
     return { valid: false, error: errorMsg, status: 400 };
   }
 
