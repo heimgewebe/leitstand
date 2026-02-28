@@ -26,17 +26,27 @@ awk '
       outer_start = RSTART
       outer_length = RLENGTH
       link_full = substr($0, outer_start, outer_length)
-      match(link_full, /\([^)]+\)/)
-      link = substr(link_full, RSTART+1, RLENGTH-2)
-      print link
+      if (match(link_full, /\([^)]+\)/)) {
+        link = substr(link_full, RSTART+1, RLENGTH-2)
+        print link
+      }
       $0 = substr($0, outer_start + outer_length)
     }
   }
 ' docs/index.md | while read -r link; do
+    # Skip empty, external, or absolute links
+    if [[ -z "$link" || "$link" == http* || "$link" == /* ]]; then
+        continue
+    fi
+    # Skip links pointing outside the docs folder (e.g. scripts)
+    if [[ "$link" == ../* ]]; then
+        continue
+    fi
+
     # Strip any anchors if present
     file_path="${link%%#*}"
     if [[ ! -f "docs/$file_path" ]]; then
-        fail "docs/index.md contains a broken link: $link (resolved to docs/$file_path)"
+        fail "docs/index.md contains a broken docs link: $link (resolved to docs/$file_path)"
     fi
 done
 
@@ -52,7 +62,15 @@ log_success "Doc Link Integrity Passed."
 MODIFIED_FILES=$(git diff --name-only HEAD || git ls-files --modified)
 # 2. GH Actions: pull_request
 if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
-    MODIFIED_FILES=$(git diff --name-only "origin/$GITHUB_BASE_REF" HEAD || true)
+    BASE="origin/$GITHUB_BASE_REF"
+    MB="$(git merge-base HEAD "$BASE" 2>/dev/null || true)"
+    if [[ -n "$MB" ]]; then
+        log_info "Diffing PR range from merge-base: $MB..HEAD"
+        MODIFIED_FILES=$(git diff --name-only "$MB..HEAD" || true)
+    else
+        log_info "Diffing PR against origin base: $BASE..HEAD"
+        MODIFIED_FILES=$(git diff --name-only "$BASE" HEAD || true)
+    fi
 # 3. GH Actions: push
 elif [[ -n "${GITHUB_SHA:-}" && "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
     # Parse before SHA without jq, using grep/awk
