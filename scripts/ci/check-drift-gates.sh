@@ -60,39 +60,66 @@ fi
 log_success "Doc Link Integrity Passed."
 
 # Identify modified files depending on context
-# 1. Local dirty tree (developer running script before commit)
-MODIFIED_FILES=$(git diff --name-only HEAD || git ls-files --modified)
-# 2. GH Actions: pull_request
-if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
-    BASE="origin/$GITHUB_BASE_REF"
-    MB="$(git merge-base HEAD "$BASE" 2>/dev/null || true)"
-    if [[ -n "$MB" ]]; then
-        log_info "Diffing PR range from merge-base: $MB..HEAD"
-        MODIFIED_FILES=$(git diff --name-only "$MB..HEAD" || true)
-    else
-        log_info "Diffing PR against origin base: $BASE..HEAD"
-        MODIFIED_FILES=$(git diff --name-only "$BASE" HEAD || true)
+# Default to empty, populated conditionally
+MODIFIED_FILES=""
+
+if [[ "${GITHUB_ACTIONS:-}" == "true" || "${CI:-}" == "true" ]]; then
+    # 1. GH Actions: pull_request
+    if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
+        # GitHub Actions checkouts for PRs are merge commits (refs/pull/X/merge)
+        # diffing against HEAD^1 compares against the base branch commit
+        log_info "Diffing PR merge commit against base (HEAD^1)"
+        MODIFIED_FILES=$(git diff --name-only HEAD^1 HEAD 2>/dev/null || true)
+
+        # Fallback to merge-base if HEAD^1 fails
+        if [[ -z "$MODIFIED_FILES" && -n "${GITHUB_BASE_REF:-}" ]]; then
+            BASE="origin/$GITHUB_BASE_REF"
+            MB="$(git merge-base HEAD "$BASE" 2>/dev/null || true)"
+            if [[ -n "$MB" ]]; then
+                log_info "Fallback: Diffing PR range from merge-base: $MB..HEAD"
+                MODIFIED_FILES=$(git diff --name-only "$MB..HEAD" || true)
+            else
+                log_info "Fallback: Diffing PR against origin base: $BASE..HEAD"
+                MODIFIED_FILES=$(git diff --name-only "$BASE" HEAD || true)
+            fi
+        fi
+    # 2. GH Actions: push
+    elif [[ "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
+        # Parse before SHA without jq, using grep/awk
+        BEFORE_SHA=$(grep -o '"before": *"[^"]*"' "$GITHUB_EVENT_PATH" 2>/dev/null | awk -F'"' '{print $4}' || echo "0000000000000000000000000000000000000000")
+        if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" == "0000000000000000000000000000000000000000" || "$BEFORE_SHA" == "null" ]]; then
+            log_info "New branch or missing before SHA. Diffing latest commit only."
+            MODIFIED_FILES=$(git show --name-only --pretty='' "${GITHUB_SHA:-HEAD}" || true)
+        else
+            log_info "Diffing range: $BEFORE_SHA..${GITHUB_SHA:-HEAD}"
+            MODIFIED_FILES=$(git diff --name-only "$BEFORE_SHA..${GITHUB_SHA:-HEAD}" || true)
+        fi
     fi
-# 3. GH Actions: push
-elif [[ -n "${GITHUB_SHA:-}" && "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
-    # Parse before SHA without jq, using grep/awk
-    BEFORE_SHA=$(grep -o '"before": *"[^"]*"' "$GITHUB_EVENT_PATH" 2>/dev/null | awk -F'"' '{print $4}' || echo "0000000000000000000000000000000000000000")
-    if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" == "0000000000000000000000000000000000000000" || "$BEFORE_SHA" == "null" ]]; then
-        log_info "New branch or missing before SHA. Diffing latest commit only."
-        MODIFIED_FILES=$(git show --name-only --pretty='' "$GITHUB_SHA" || true)
-    else
-        log_info "Diffing range: $BEFORE_SHA..$GITHUB_SHA"
-        MODIFIED_FILES=$(git diff --name-only "$BEFORE_SHA..$GITHUB_SHA" || true)
+
+    # Global Fallback in CI if still empty
+    if [[ -z "$MODIFIED_FILES" ]]; then
+        log_info "Fallback: using git show --name-only against HEAD"
+        MODIFIED_FILES=$(git show --name-only --pretty='' HEAD || true)
+    fi
+
+    if [[ -z "$MODIFIED_FILES" ]]; then
+        fail "MODIFIED_FILES is empty in CI; refusing to skip drift change-coupling gates. This indicates an invalid diff range or missing history."
+    fi
+else
+    # 3. Local developer environment
+    # Use uncommitted dirty files, or fallback to the latest commit if clean
+    MODIFIED_FILES=$(git diff --name-only HEAD || git ls-files --modified)
+    if [[ -z "$MODIFIED_FILES" ]]; then
+        log_info "Clean working tree. Diffing against latest commit..."
+        MODIFIED_FILES=$(git show --name-only --pretty='' HEAD || true)
+    fi
+
+    if [[ -z "$MODIFIED_FILES" ]]; then
+        echo "⚠️ Warning: MODIFIED_FILES is empty locally. Drift Gates change-coupling checks might be skipped." >&2
     fi
 fi
 
-if [[ -z "$MODIFIED_FILES" ]]; then
-    if [[ "${GITHUB_ACTIONS:-}" == "true" || "${CI:-}" == "true" ]]; then
-        fail "MODIFIED_FILES is empty in CI; refusing to skip drift change-coupling gates. This indicates an invalid diff range or missing history."
-    else
-        echo "⚠️ Warning: MODIFIED_FILES is empty locally. Drift Gates change-coupling checks might be skipped." >&2
-    fi
-else
+if [[ -n "$MODIFIED_FILES" ]]; then
     log_info "Modified files to check against gates:"
     echo "$MODIFIED_FILES"
 fi
