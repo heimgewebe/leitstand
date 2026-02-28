@@ -12,6 +12,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Enable Corepack
       run: |
@@ -42,3 +44,7 @@ jobs:
     - name: Build
       if: success()
       run: pnpm run build
+
+    - name: Drift Gates
+      if: success()
+      run: bash scripts/ci/check-drift-gates.sh
