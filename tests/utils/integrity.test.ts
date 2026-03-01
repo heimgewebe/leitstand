@@ -48,7 +48,7 @@ describe('loadIntegritySummaries', () => {
 
       const r1Entries = result.summaries.filter(s => s.repo === 'repo1');
       expect(r1Entries.length).toBe(1);
-      // Because we sorted the readdir alphabetically ('1.json', '2.json'), artifactDir is processed first.
+      // artifactDir summaries are loaded before legacyArtifactPath; within artifactDir, files are processed deterministically via sort().
       expect(r1Entries[0].status).toBe('ok');
     });
 
