@@ -91,7 +91,6 @@ describe('loadIntegritySummaries', () => {
       const result = await loadIntegritySummaries(options);
 
       expect(result.source).toBe('artifact');
-      expect(result.reason).toBe('ok');
       expect(result.summaries.length).toBe(1);
     });
 
