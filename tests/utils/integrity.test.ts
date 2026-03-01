@@ -46,9 +46,26 @@ describe('loadIntegritySummaries', () => {
       const repoNames = result.summaries.map(s => s.repo).sort();
       expect(repoNames).toEqual(['repo1', 'repo2']);
 
-      // Since repo1 is processed first in artifactDir, the legacy summary with repo1 is deduplicated and not added
-      const r1 = result.summaries.find(s => s.repo === 'repo1');
-      expect(r1?.status).toBe('ok');
+      const r1Entries = result.summaries.filter(s => s.repo === 'repo1');
+      expect(r1Entries.length).toBe(1);
+      // Because we sorted the readdir alphabetically ('1.json', '2.json'), artifactDir is processed first.
+      expect(r1Entries[0].status).toBe('ok');
+    });
+
+    it('should gracefully ignore invalid JSON in strict mode without hard failing', async () => {
+      await mkdir(options.artifactDir, { recursive: true });
+
+      await writeFile(join(options.artifactDir, '1.json'), JSON.stringify({ repo: 'repo1', status: 'ok', generated_at: '2023-01-01' }));
+      await writeFile(join(options.artifactDir, '2.json'), '{ invalid JSON');
+      await writeFile(join(options.artifactDir, '3.json'), '   '); // empty
+
+      options.strict = true;
+      const result = await loadIntegritySummaries(options);
+
+      expect(result.source).toBe('artifact');
+      expect(result.reason).toBe('ok');
+      expect(result.summaries.length).toBe(1);
+      expect(result.summaries[0].repo).toBe('repo1');
     });
 
     it('should return missing enoent when artifactDir and legacyArtifactPath are missing', async () => {

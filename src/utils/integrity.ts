@@ -54,7 +54,7 @@ export async function loadIntegritySummaries(options: IntegrityLoadOptions): Pro
   // 1. Try loading from artifacts/integrity/*.json
   try {
     const files = await readdir(artifactDir);
-    const jsonFiles = files.filter(f => f.endsWith('.json'));
+    const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
     for (const file of jsonFiles) {
       const summary = await loadIntegrityFile(join(artifactDir, file), 'artifact');
       if (summary) integritySummaries.push(summary);
@@ -81,7 +81,7 @@ export async function loadIntegritySummaries(options: IntegrityLoadOptions): Pro
     // Try directory fixtures
     try {
       const files = await readdir(fixtureDir);
-      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
       for (const file of jsonFiles) {
         const summary = await loadIntegrityFile(join(fixtureDir, file), 'fixture');
         if (summary) integritySummaries.push(summary);
