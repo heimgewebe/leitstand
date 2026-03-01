@@ -107,9 +107,10 @@ describe('scripts/fetch-observatory.mjs', () => {
         try {
             await execPromise(cmd, { env, cwd: process.cwd() });
             throw new Error("Script should have failed due to SHA mismatch");
-        } catch (error: any) {
-            expect(error.code).not.toBe(0);
-            expect(error.stderr).toContain('SHA mismatch');
+        } catch (error: unknown) {
+            const err = error as { code?: number, stderr?: string, stdout?: string };
+            expect(err.code).not.toBe(0);
+            expect(err.stderr).toContain('SHA mismatch');
         }
     }, 10000);
 
@@ -129,9 +130,10 @@ describe('scripts/fetch-observatory.mjs', () => {
         try {
             await execPromise(cmd, { env, cwd: process.cwd() });
             throw new Error("Script should have failed due to SCHEMA_REF allowlist violation");
-        } catch (error: any) {
-            expect(error.code).not.toBe(0);
-            const output = (error.stderr || '') + (error.stdout || '');
+        } catch (error: unknown) {
+            const err = error as { code?: number, stderr?: string, stdout?: string };
+            expect(err.code).not.toBe(0);
+            const output = (err.stderr || '') + (err.stdout || '');
             // Specifically match the allowlist error message (checking key semantic parts)
             expect(output).toMatch(/SCHEMA_REF not allowed/i);
             expect(output).toMatch(/not in allowlist/i);
@@ -175,9 +177,10 @@ describe('scripts/fetch-observatory.mjs', () => {
         try {
             await execPromise(cmd, { env, cwd: process.cwd() });
             throw new Error("Script should have failed due to empty allowlist");
-        } catch (error: any) {
-            expect(error.code).not.toBe(0);
-            const output = (error.stderr || '') + (error.stdout || '');
+        } catch (error: unknown) {
+            const err = error as { code?: number, stderr?: string, stdout?: string };
+            expect(err.code).not.toBe(0);
+            const output = (err.stderr || '') + (err.stdout || '');
             expect(output).toContain('set but empty');
         }
     }, 10000);
@@ -208,10 +211,11 @@ describe('scripts/fetch-observatory.mjs', () => {
         try {
             await execPromise(cmd, { env, cwd: process.cwd() });
             throw new Error("Script should have failed");
-        } catch (error: any) {
-            expect(error.code).not.toBe(0);
+        } catch (error: unknown) {
+            const err = error as { code?: number, stderr?: string, stdout?: string };
+            expect(err.code).not.toBe(0);
             // exec error might put output in stdout or stderr depending on how it failed
-            const output = (error.stderr || '') + (error.stdout || '');
+            const output = (err.stderr || '') + (err.stdout || '');
             expect(output).toContain('Schema violation');
             // Check specific errors
             expect(output).toContain('source');

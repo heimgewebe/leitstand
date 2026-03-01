@@ -1,4 +1,5 @@
 import Ajv from 'ajv/dist/2020.js';
+import type { ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
@@ -10,7 +11,7 @@ const CONTRACTS_DIR = path.resolve(__dirname, '..', '..', 'vendor', 'contracts')
 
 const PLEXER_REPORT_SCHEMA_PATH = path.join(CONTRACTS_DIR, 'plexer', 'delivery.report.v1.schema.json');
 
-type AjvValidateFn = ((data: unknown) => boolean) & { errors?: any[] };
+type AjvValidateFn = ((data: unknown) => boolean) & { errors?: ErrorObject[] | null };
 
 let plexerReportValidate: AjvValidateFn | null = null;
 let compiledStrict: boolean | null = null;
@@ -43,10 +44,11 @@ function compilePlexerReportValidator(): { ok: true; validate: AjvValidateFn } |
     compiledStrict = wantStrict;
     console.log(`[Validation] Compiled plexer report validator (strict=${wantStrict})`);
     return { ok: true, validate };
-  } catch (e: any) {
+  } catch (e: unknown) {
     plexerReportValidate = null;
     compiledStrict = null;
-    return { ok: false, error: `Failed to compile validator: ${e?.message ?? String(e)}`, status: 500 };
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `Failed to compile validator: ${msg}`, status: 500 };
   }
 }
 
@@ -65,7 +67,7 @@ export const validatePlexerReport = (data: unknown) => {
 
   const valid = compiled.validate(data);
   if (!valid) {
-    const errorMsg = compiled.validate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ');
+    const errorMsg = compiled.validate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ') || 'Unknown validation error';
     return { valid: false, error: errorMsg, status: 400 };
   }
 
