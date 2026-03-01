@@ -29,10 +29,23 @@ describe('getObservatoryData controller', () => {
     resetEnvConfig();
 
     // Setup default mock returns
-    vi.mocked(loadWithFallback).mockResolvedValue({
-      data: { test: 'data' },
-      source: 'artifact',
-      reason: 'ok'
+    vi.mocked(loadWithFallback).mockImplementation(async (_artifactPath, _fixturePath, options) => {
+      if (options?.name === 'Self-State') {
+        return {
+          data: {
+            schema: 'heimgeist.self_state.bundle.v1',
+            current: { confidence: 0.9 },
+            history: []
+          },
+          source: 'artifact',
+          reason: 'ok'
+        };
+      }
+      return {
+        data: { test: 'data' },
+        source: 'artifact',
+        reason: 'ok'
+      };
     });
 
     vi.mocked(loadIntegritySummaries).mockResolvedValue({
@@ -76,6 +89,7 @@ describe('getObservatoryData controller', () => {
     expect(data.view_meta.source_kind).toBe('artifact');
     expect(data.view_meta.is_strict).toBe(false);
     expect(data.view_meta.forensics).toEqual({ generated: 'now' });
+    expect(data.view_meta.self_state_schema_valid).toBe(true);
 
     // Check call counts
     expect(loadWithFallback).toHaveBeenCalledTimes(3); // Observatory, Insights, SelfState
@@ -85,7 +99,7 @@ describe('getObservatoryData controller', () => {
   });
 
   it('should sort self-state history descending by date', async () => {
-    vi.mocked(loadWithFallback).mockImplementation(async (artifactPath, fixturePath, options) => {
+    vi.mocked(loadWithFallback).mockImplementation(async (_artifactPath, _fixturePath, options) => {
       if (options?.name === 'Self-State') {
         return {
           data: {
@@ -113,7 +127,7 @@ describe('getObservatoryData controller', () => {
   });
 
   it('should warn and mark schema invalid if self-state schema mismatches', async () => {
-    vi.mocked(loadWithFallback).mockImplementation(async (artifactPath, fixturePath, options) => {
+    vi.mocked(loadWithFallback).mockImplementation(async (_artifactPath, _fixturePath, options) => {
       if (options?.name === 'Self-State') {
         return {
           data: {
