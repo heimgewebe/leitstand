@@ -107,9 +107,7 @@ describe('validatePlexerReport', () => {
   it('should return 500 if schema compilation fails (e.g., malformed schema)', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     // Returning invalid JSON to cause JSON.parse to throw
-    vi.mocked(fs.readFileSync).mockImplementation(() => {
-      throw new Error('Failed to read file');
-    });
+    vi.mocked(fs.readFileSync).mockReturnValue('invalid json');
 
     const data = { counts: { pending: 0, failed: 0 } };
     const result = validatePlexerReport(data);
