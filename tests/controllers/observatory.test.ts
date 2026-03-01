@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getObservatoryData } from '../../src/controllers/observatory.js';
-import { envConfig, resetEnvConfig } from '../../src/config.js';
+import { resetEnvConfig } from '../../src/config.js';
 import { loadWithFallback } from '../../src/utils/loader.js';
 import { loadLatestMetrics } from '../../src/metrics.js';
 import { loadIntegritySummaries } from '../../src/utils/integrity.js';
