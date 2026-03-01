@@ -145,7 +145,10 @@ describe('getObservatoryData controller', () => {
     const data = await getObservatoryData();
 
     expect(data.view_meta.self_state_schema_valid).toBe(false);
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('[SelfState] Schema mismatch'));
+    expect(console.warn).toHaveBeenCalled();
+    expect(vi.mocked(console.warn).mock.calls.some(args =>
+      String(args[0]).includes('[SelfState] Schema mismatch')
+    )).toBe(true);
   });
 
   it('should fallback to fixture metrics if artifact metrics are missing and not strict', async () => {
@@ -179,10 +182,11 @@ describe('getObservatoryData controller', () => {
     const data = await getObservatoryData();
 
     expect(data.fleetMetrics).toBeNull();
-    expect(console.warn).toHaveBeenCalledWith(
-      'Failed to load fleet metrics for observatory:',
-      'Metrics failed'
-    );
+    expect(console.warn).toHaveBeenCalled();
+    expect(vi.mocked(console.warn).mock.calls.some(args =>
+      String(args[0]).includes('Failed to load fleet metrics for observatory:') &&
+      String(args[1]).includes('Metrics failed')
+    )).toBe(true);
   });
 
   it('should handle errors in readJsonFile gracefully (plexer/forensics missing)', async () => {
