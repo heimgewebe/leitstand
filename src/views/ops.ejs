@@ -75,6 +75,13 @@
     </div>
   <% } else { %>
     <div class="panel" data-testid="ops-panel">
+      <!-- Server-injected configuration data -->
+      <div id="ops-config-data" style="display: none;"
+           data-acs-url="<%= locals.acsUrl %>"
+           data-allow-job-fallback="<%= locals.allowJobFallback || false %>"
+           data-acs-viewer-token="<%= locals.acsViewerToken || '' %>">
+      </div>
+
       <!-- Error container for inline diagnostics -->
       <div id="errorContainer"></div>
 
@@ -145,9 +152,11 @@
       const errorContainer = document.getElementById('errorContainer');
 
       // Injected by server
-      const ACS_URL = <%- JSON.stringify(locals.acsUrl) %>;
-      const ALLOW_JOB_FALLBACK = <%- JSON.stringify(locals.allowJobFallback || false) %>;
-      const ACS_VIEWER_TOKEN = <%- JSON.stringify(locals.acsViewerToken || null) %>;
+      const opsConfigData = document.getElementById('ops-config-data').dataset;
+      const ACS_URL = opsConfigData.acsUrl;
+      const ALLOW_JOB_FALLBACK = opsConfigData.allowJobFallback === 'true';
+      const ACS_VIEWER_TOKEN = opsConfigData.acsViewerToken || null;
+
       const POLL_INTERVAL = 1000;
       const MAX_POLLS = 30; // 30 seconds timeout
 
