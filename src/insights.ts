@@ -36,15 +36,21 @@ export interface DailyInsights {
  */
 export async function loadDailyInsights(path: string): Promise<DailyInsights> {
   interface RawInsights {
-      ts?: string;
-      topics?: unknown[];
-      questions?: unknown[];
-      deltas?: unknown[];
-      source?: string;
-      metadata?: Record<string, unknown>;
-      [key: string]: unknown;
+    ts?: string;
+    topics?: unknown[];
+    questions?: unknown[];
+    deltas?: unknown[];
+    source?: string;
+    metadata?: Record<string, unknown>;
+    [key: string]: unknown;
   }
-  const data = await readJsonFile<RawInsights>(path);
+  const rawData = await readJsonFile<unknown>(path);
+
+  if (typeof rawData !== 'object' || rawData === null || Array.isArray(rawData)) {
+    throw new Error('Invalid insights payload: expected a JSON object');
+  }
+
+  const data = rawData as RawInsights;
 
   // Basic validation
   if (!data.ts || typeof data.ts !== 'string') {
