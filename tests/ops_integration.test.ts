@@ -42,7 +42,7 @@ describe('GET /ops (Ops Viewer Integration)', () => {
     // Check main panel presence via data-testid
     expect(res.text).toContain('data-testid="ops-panel"');
 
-    // Check injection using regex
+    // Check escaped config injection via data-* attributes
     expect(res.text).toContain('data-acs-url="http://localhost:8000"');
     expect(res.text).toContain(`Data source: <strong>agent-control-surface (${customUrl})</strong>`);
 
@@ -116,6 +116,27 @@ describe('GET /ops (Ops Viewer Integration)', () => {
     expect(res.text).toContain('data-acs-viewer-token="secret-viewer-token"');
     // Check if the lock icon/indicator is rendered
     expect(res.text).toContain('title="Optional token configured (sent, not strictly enforced by default)"');
+  });
+
+  it('should safely HTML-escape malicious payloads in config variables', async () => {
+    vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
+    const maliciousPayload = 'evil"><script>alert(1)</script>';
+    vi.stubEnv('LEITSTAND_ACS_VIEWER_TOKEN', maliciousPayload);
+    resetEnvConfig();
+
+    const res = await request(app).get('/ops');
+    expect(res.status).toBe(200);
+
+    // The raw payload should not be present (which would indicate XSS)
+    expect(res.text).not.toContain(maliciousPayload);
+
+    // Specifically, no unescaped script tags from the payload
+    expect(res.text).not.toContain('<script>alert(1)</script>');
+    expect(res.text).not.toContain('data-acs-viewer-token="evil"><script>alert(1)</script>');
+
+    // The payload should be rendered but with HTML entities escaped
+    // Note: ejs escapes `"` as `&#34;`, not `&quot;`
+    expect(res.text).toContain('data-acs-viewer-token="evil&#34;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"');
   });
 
   it('should respect LEITSTAND_REPOS overrides', async () => {
