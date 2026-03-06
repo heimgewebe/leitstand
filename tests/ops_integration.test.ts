@@ -42,8 +42,8 @@ describe('GET /ops (Ops Viewer Integration)', () => {
     // Check main panel presence via data-testid
     expect(res.text).toContain('data-testid="ops-panel"');
 
-    // Check injection using regex
-    expect(res.text).toMatch(/const ACS_URL = "http:\/\/localhost:8000"/);
+    // Check escaped config injection via data-* attributes
+    expect(res.text).toContain('data-acs-url="http://localhost:8000"');
     expect(res.text).toContain(`Data source: <strong>agent-control-surface (${customUrl})</strong>`);
 
     // Check default hardcoded repo list rendering
@@ -60,8 +60,8 @@ describe('GET /ops (Ops Viewer Integration)', () => {
 
     expect(res.status).toBe(200);
     // Should NOT have trailing slash in the injected string
-    expect(res.text).toMatch(/const ACS_URL = "http:\/\/localhost:8000"/);
-    expect(res.text).not.toMatch(/const ACS_URL = "http:\/\/localhost:8000\/"/);
+    expect(res.text).toContain('data-acs-url="http://localhost:8000"');
+    expect(res.text).not.toContain('data-acs-url="http://localhost:8000/"');
   });
 
   it('should inject ALLOW_JOB_FALLBACK flag correctly', async () => {
@@ -70,7 +70,7 @@ describe('GET /ops (Ops Viewer Integration)', () => {
     resetEnvConfig();
 
     const res = await request(app).get('/ops');
-    expect(res.text).toMatch(/const ALLOW_JOB_FALLBACK = true/);
+    expect(res.text).toContain('data-allow-job-fallback="true"');
     expect(res.text).toContain('Sync fetch preferred; Job triggers enabled as fallback (may POST /api/audit/git).');
 
     // Verify dynamic title for fallback mode
@@ -84,13 +84,13 @@ describe('GET /ops (Ops Viewer Integration)', () => {
     vi.stubEnv('LEITSTAND_OPS_ALLOW_JOB_FALLBACK', '1');
     resetEnvConfig();
     let res = await request(app).get('/ops');
-    expect(res.text).toMatch(/const ALLOW_JOB_FALLBACK = true/);
+    expect(res.text).toContain('data-allow-job-fallback="true"');
 
     // Test 'on'
     vi.stubEnv('LEITSTAND_OPS_ALLOW_JOB_FALLBACK', 'on');
     resetEnvConfig();
     res = await request(app).get('/ops');
-    expect(res.text).toMatch(/const ALLOW_JOB_FALLBACK = true/);
+    expect(res.text).toContain('data-allow-job-fallback="true"');
   });
 
   it('should default ALLOW_JOB_FALLBACK to false', async () => {
@@ -100,7 +100,7 @@ describe('GET /ops (Ops Viewer Integration)', () => {
     resetEnvConfig();
 
     const res = await request(app).get('/ops');
-    expect(res.text).toMatch(/const ALLOW_JOB_FALLBACK = false/);
+    expect(res.text).toContain('data-allow-job-fallback="false"');
     expect(res.text).toContain('Viewer-only mode. No job triggers.');
 
     // Verify dynamic title for read-only mode
@@ -113,9 +113,32 @@ describe('GET /ops (Ops Viewer Integration)', () => {
     resetEnvConfig();
 
     const res = await request(app).get('/ops');
-    expect(res.text).toMatch(/const ACS_VIEWER_TOKEN = "secret-viewer-token"/);
+    expect(res.text).toContain('data-acs-viewer-token="secret-viewer-token"');
     // Check if the lock icon/indicator is rendered
     expect(res.text).toContain('title="Optional token configured (sent, not strictly enforced by default)"');
+  });
+
+  it('should safely HTML-escape malicious payloads in config variables', async () => {
+    vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
+    const maliciousPayload = 'evil"><script>alert(1)</script>';
+    vi.stubEnv('LEITSTAND_ACS_VIEWER_TOKEN', maliciousPayload);
+    resetEnvConfig();
+
+    const res = await request(app).get('/ops');
+    expect(res.status).toBe(200);
+
+    // The raw payload should not be present (which would indicate XSS)
+    expect(res.text).not.toContain(maliciousPayload);
+
+    // Specifically, no unescaped script tags from the payload
+    expect(res.text).not.toContain('<script>alert(1)</script>');
+    expect(res.text).not.toContain('data-acs-viewer-token="evil"><script>alert(1)</script>');
+
+    // The payload should be rendered but with HTML entities escaped
+    // We check for the escaped angle brackets to ensure XSS mitigation
+    // without being brittle on exact quote entity serialization (&#34; vs &quot;)
+    expect(res.text).toContain('data-acs-viewer-token="');
+    expect(res.text).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
   });
 
   it('should respect LEITSTAND_REPOS overrides', async () => {
