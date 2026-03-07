@@ -231,4 +231,67 @@ describe('POST /events', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Schema violation');
   });
+
+  it('should return 500 without details on observatory refresh failure', async () => {
+    const { exec } = await import('child_process');
+    vi.mocked(exec).mockImplementationOnce((cmd, opts, callback) => {
+      const cb = typeof opts === 'function' ? opts : callback;
+      if (cb) cb(new Error('SENSITIVE_INFO_DO_NOT_LEAK'), '', 'Internal Error');
+      return { stdout: { on: () => {} }, stderr: { on: () => {} } } as any;
+    });
+
+    const res = await request(app)
+      .post('/events')
+      .send({
+        type: 'knowledge.observatory.published.v1',
+        payload: {
+            url: 'https://github.com/heimgewebe/semantAH/releases/download/v1/observatory.json'
+        }
+      });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Refresh failed');
+    expect(res.body.details).toBeUndefined();
+    expect(JSON.stringify(res.body)).not.toContain('SENSITIVE_INFO');
+  });
+
+  it('should return 500 without details on integrity refresh failure', async () => {
+    const { exec } = await import('child_process');
+    vi.mocked(exec).mockImplementationOnce((cmd, opts, callback) => {
+      const cb = typeof opts === 'function' ? opts : callback;
+      if (cb) cb(new Error('SENSITIVE_INFO_DO_NOT_LEAK'), '', 'Internal Error');
+      return { stdout: { on: () => {} }, stderr: { on: () => {} } } as any;
+    });
+
+    const res = await request(app)
+      .post('/events')
+      .send({
+        type: 'integrity.summary.published.v1',
+        payload: { summary_url: 'https://example.com/summary.json' }
+      });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Refresh failed');
+    expect(res.body.details).toBeUndefined();
+    expect(JSON.stringify(res.body)).not.toContain('SENSITIVE_INFO');
+  });
+});
+
+describe('GET /observatory', () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    resetEnvConfig();
+  });
+
+  it('should return generic 503 Service Unavailable on strict mode failure', async () => {
+    // Force a strict failure by stubbing getObservatoryData to throw a strict message
+    const observatoryController = await import('../src/controllers/observatory.js');
+    vi.spyOn(observatoryController, 'getObservatoryData').mockRejectedValueOnce(new Error('Strict Fail: SENSITIVE_PATH_LEAK'));
+
+    const res = await request(app).get('/observatory');
+
+    expect(res.status).toBe(503);
+    expect(res.text).toBe('Service Unavailable');
+    expect(res.text).not.toContain('SENSITIVE_PATH');
+  });
 });
