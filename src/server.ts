@@ -168,7 +168,11 @@ app.post('/events', async (req, res) => {
            } else {
                console.warn(`[Event] Invalid Plexer Report: ${validation.error}`);
                res.status(validation.status).send({
-                   error: validation.status === 503 ? 'Service Unavailable' : 'Schema violation',
+                   error: validation.status === 400
+                       ? 'Schema violation'
+                       : validation.status === 503
+                           ? 'Service Unavailable'
+                           : 'Validation unavailable',
                    ...(validation.status === 400 && { details: validation.error })
                });
                return;
