@@ -118,8 +118,7 @@ app.post('/events', async (req, res) => {
     } catch (error) {
       console.error('[Event] Failed to refresh observatory:', error);
       res.status(500).send({
-        error: 'Refresh failed',
-        details: error instanceof Error ? error.message : String(error)
+        error: 'Refresh failed'
       });
     }
   } else if (eventType === 'integrity.summary.published.v1') {
@@ -153,8 +152,7 @@ app.post('/events', async (req, res) => {
       // Integrity failure is diagnostic only, so we log but maybe don't want to alert purely as error?
       // But standard protocol for POST is 500 if failed.
       res.status(500).send({
-        error: 'Refresh failed',
-        details: error instanceof Error ? error.message : String(error)
+        error: 'Refresh failed'
       });
     }
   } else if (eventType === 'plexer.delivery.report.v1') {
@@ -169,7 +167,10 @@ app.post('/events', async (req, res) => {
                console.warn(`[Event] WARN: Validator missing in non-strict mode. Proceeding with save.`);
            } else {
                console.warn(`[Event] Invalid Plexer Report: ${validation.error}`);
-               res.status(validation.status).send({ error: validation.status === 503 ? 'Service Unavailable' : 'Schema violation', details: validation.error });
+               res.status(validation.status).send({
+                   error: validation.status === 503 ? 'Service Unavailable' : 'Schema violation',
+                   ...(validation.status === 400 && { details: validation.error })
+               });
                return;
            }
        }
@@ -241,7 +242,7 @@ app.get('/observatory', async (_req, res) => {
        console.error('Final error handler:', error);
        const msg = error instanceof Error ? error.message : String(error);
        if (msg.includes('Strict Fail') || msg.includes('Strict Mode') || msg.includes('Strict:')) {
-          res.status(503).send(msg);
+          res.status(503).send('Service Unavailable');
        } else {
           res.status(500).send('Error loading observatory data');
        }
