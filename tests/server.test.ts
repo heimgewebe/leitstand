@@ -230,6 +230,8 @@ describe('POST /events', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Schema violation');
+    expect(res.body.details).toBeDefined();
+    expect(typeof res.body.details).toBe('string');
   });
 
   it('should return 503 Service Unavailable without details on plexer validator missing', async () => {
