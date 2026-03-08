@@ -232,6 +232,38 @@ describe('POST /events', () => {
     expect(res.body.error).toBe('Schema violation');
   });
 
+  it('should return 503 Service Unavailable without details on plexer validator missing', async () => {
+    const validators = await import('../src/validation/validators.js');
+    vi.spyOn(validators, 'validatePlexerReport').mockReturnValueOnce({ valid: false, error: 'Schema missing', status: 503 });
+
+    const res = await request(app)
+      .post('/events')
+      .send({
+        type: 'plexer.delivery.report.v1',
+        payload: { counts: { pending: 0, failed: 0 } }
+      });
+
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('Service Unavailable');
+    expect(res.body.details).toBeUndefined();
+  });
+
+  it('should return 500 Validation unavailable without details on plexer validator compile failure', async () => {
+    const validators = await import('../src/validation/validators.js');
+    vi.spyOn(validators, 'validatePlexerReport').mockReturnValueOnce({ valid: false, error: 'Failed to compile validator', status: 500 });
+
+    const res = await request(app)
+      .post('/events')
+      .send({
+        type: 'plexer.delivery.report.v1',
+        payload: { counts: { pending: 0, failed: 0 } }
+      });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Validation unavailable');
+    expect(res.body.details).toBeUndefined();
+  });
+
   it('should return 500 without details on observatory refresh failure', async () => {
     const { exec } = await import('child_process');
     vi.mocked(exec).mockImplementationOnce((cmd, opts, callback) => {
