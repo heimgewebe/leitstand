@@ -19,10 +19,14 @@ describe('POST /events concurrency', () => {
         // Ensure clean state for artifacts
         try {
             await fs.unlink(metaPath);
-        } catch {}
+        } catch {
+            // Ignore ENOENT
+        }
         try {
             await fs.unlink(artifactPath);
-        } catch {}
+        } catch {
+            // Ignore ENOENT
+        }
     });
 
     afterEach(async () => {
