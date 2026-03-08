@@ -101,10 +101,11 @@ describe('validatePlexerReport', () => {
 
     expect(result.valid).toBe(false);
     expect(result.status).toBe(503);
-    expect(result.error).toContain('Schema missing');
+    expect(result.error).toBe('Schema missing');
+    expect(JSON.stringify(result)).not.toContain('vendor/contracts');
   });
 
-  it('should return 500 if schema compilation fails (e.g., malformed schema)', () => {
+  it('should return 500 without details if schema compilation fails', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     // Returning invalid JSON to cause JSON.parse to throw
     vi.mocked(fs.readFileSync).mockReturnValue('invalid json');
@@ -114,7 +115,8 @@ describe('validatePlexerReport', () => {
 
     expect(result.valid).toBe(false);
     expect(result.status).toBe(500);
-    expect(result.error).toContain('Failed to compile validator');
+    expect(result.error).toBe('Failed to compile validator');
+    expect(JSON.stringify(result)).not.toContain('Unexpected token');
   });
 
   it('should reuse compiled validator on subsequent calls', () => {

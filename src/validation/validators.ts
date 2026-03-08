@@ -33,7 +33,7 @@ function compilePlexerReportValidator(): { ok: true; validate: AjvValidateFn } |
   if (!fs.existsSync(PLEXER_REPORT_SCHEMA_PATH)) {
     plexerReportValidate = null;
     compiledStrict = null;
-    return { ok: false, error: `Schema missing at ${PLEXER_REPORT_SCHEMA_PATH}`, status: 503 };
+    return { ok: false, error: 'Schema missing', status: 503 };
   }
 
   try {
@@ -48,7 +48,8 @@ function compilePlexerReportValidator(): { ok: true; validate: AjvValidateFn } |
     plexerReportValidate = null;
     compiledStrict = null;
     const msg = e instanceof Error ? e.message : String(e);
-    return { ok: false, error: `Failed to compile validator: ${msg}`, status: 500 };
+    console.error(`[Validation] Failed to compile validator: ${msg}`);
+    return { ok: false, error: 'Failed to compile validator', status: 500 };
   }
 }
 
