@@ -173,7 +173,7 @@ app.post('/events', async (req, res) => {
                        : validation.status === 503
                            ? 'Service Unavailable'
                            : 'Validation unavailable',
-                   ...(validation.status === 400 && { details: validation.error })
+                   ...(validation.status === 400 ? { details: validation.error } : {})
                });
                return;
            }

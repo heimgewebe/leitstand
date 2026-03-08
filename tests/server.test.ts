@@ -2,7 +2,16 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/server.js';
 import { resetEnvConfig } from '../src/config.js';
-import { resetValidators } from '../src/validation/validators.js';
+import { resetValidators, validatePlexerReport } from '../src/validation/validators.js';
+
+// Mock validation
+vi.mock('../src/validation/validators.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/validation/validators.js')>();
+  return {
+    ...actual,
+    validatePlexerReport: vi.fn(actual.validatePlexerReport)
+  };
+});
 
 // Mock child_process for fetch scripts
 import * as cp from 'child_process';
@@ -239,8 +248,7 @@ describe('POST /events', () => {
     vi.stubEnv('LEITSTAND_EVENTS_TOKEN', 'test-token');
     resetEnvConfig();
 
-    const validators = await import('../src/validation/validators.js');
-    vi.spyOn(validators, 'validatePlexerReport').mockReturnValueOnce({ valid: false, error: 'Schema missing', status: 503 });
+    vi.mocked(validatePlexerReport).mockReturnValueOnce({ valid: false, error: 'Schema missing', status: 503 });
 
     const res = await request(app)
       .post('/events')
@@ -260,8 +268,7 @@ describe('POST /events', () => {
     vi.stubEnv('LEITSTAND_EVENTS_TOKEN', 'test-token');
     resetEnvConfig();
 
-    const validators = await import('../src/validation/validators.js');
-    vi.spyOn(validators, 'validatePlexerReport').mockReturnValueOnce({ valid: false, error: 'Failed to compile validator', status: 500 });
+    vi.mocked(validatePlexerReport).mockReturnValueOnce({ valid: false, error: 'Failed to compile validator', status: 500 });
 
     const res = await request(app)
       .post('/events')
@@ -281,7 +288,7 @@ describe('POST /events', () => {
     vi.mocked(exec).mockImplementationOnce((cmd, opts, callback) => {
       const cb = typeof opts === 'function' ? opts : callback;
       if (cb) cb(new Error('SENSITIVE_INFO_DO_NOT_LEAK'), '', 'Internal Error');
-      return { stdout: { on: () => {} }, stderr: { on: () => {} } } as unknown;
+      return { stdout: { on: () => {} }, stderr: { on: () => {} } } as unknown as import('child_process').ChildProcess;
     });
 
     const res = await request(app)
@@ -304,7 +311,7 @@ describe('POST /events', () => {
     vi.mocked(exec).mockImplementationOnce((cmd, opts, callback) => {
       const cb = typeof opts === 'function' ? opts : callback;
       if (cb) cb(new Error('SENSITIVE_INFO_DO_NOT_LEAK'), '', 'Internal Error');
-      return { stdout: { on: () => {} }, stderr: { on: () => {} } } as unknown;
+      return { stdout: { on: () => {} }, stderr: { on: () => {} } } as unknown as import('child_process').ChildProcess;
     });
 
     const res = await request(app)
