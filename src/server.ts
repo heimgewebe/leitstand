@@ -12,6 +12,39 @@ import { validatePlexerReport } from './validation/validators.js';
 
 const execPromise = promisify(exec);
 
+// In-memory queue for _meta.json updates to prevent race conditions during read-modify-write cycles
+// This is process-local and assumes a single writer within this server process.
+let metaUpdateQueue = Promise.resolve();
+
+async function enqueueMetaUpdate(updateFn: (meta: Record<string, unknown>) => Record<string, unknown>): Promise<void> {
+  metaUpdateQueue = metaUpdateQueue.then(async () => {
+    try {
+      const metaPath = join(process.cwd(), 'artifacts', '_meta.json');
+      const tempPath = `${metaPath}.tmp`;
+      let meta: Record<string, unknown> = {};
+
+      try {
+        const content = await fs.promises.readFile(metaPath, 'utf8');
+        meta = JSON.parse(content);
+      } catch (e) {
+        // Assume file does not exist or is invalid, proceed with empty meta
+      }
+
+      const updatedMeta = updateFn(meta);
+
+      await fs.promises.writeFile(tempPath, JSON.stringify(updatedMeta, null, 2));
+      await fs.promises.rename(tempPath, metaPath);
+    } catch (err) {
+      console.warn('[Meta] Failed to update forensics:', err);
+    }
+  }).catch((err) => {
+    // Ensure the queue continues even if a previous update failed catastrophically
+    console.error('[Meta] Critical error in update queue:', err);
+  });
+
+  return metaUpdateQueue;
+}
+
 const app: Express = express();
 const port = envConfig.PORT;
 
@@ -179,32 +212,20 @@ app.post('/events', async (req, res) => {
        // Ensure dir exists?
        // We assume artifacts dir exists or we should create it
        const artifactsDir = join(process.cwd(), 'artifacts');
-       if (!fs.existsSync(artifactsDir)) {
-          fs.mkdirSync(artifactsDir, { recursive: true });
-       }
 
-       fs.writeFileSync(artifactPath, JSON.stringify(payload, null, 2));
+       await fs.promises.mkdir(artifactsDir, { recursive: true });
 
-       // Forensics update
-       try {
-           const metaPath = join(process.cwd(), 'artifacts', '_meta.json');
-           let meta: Record<string, unknown> = {};
-           if (fs.existsSync(metaPath)) {
-               try {
-                   meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-               } catch (e) {
-                   console.debug('[Event] Meta-Datei nicht lesbar, verwende Standardwert');
-               }
-           }
+       await fs.promises.writeFile(artifactPath, JSON.stringify(payload, null, 2));
+
+       // Forensics update (queued to prevent race conditions)
+       enqueueMetaUpdate((meta) => {
            meta.plexer_report = {
              fetched_at: new Date().toISOString(),
              source_kind: 'event',
              bytes: Buffer.byteLength(JSON.stringify(payload))
            };
-           fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
-       } catch (metaErr) {
-           console.warn('[Event] Failed to update forensics for plexer report:', metaErr);
-       }
+           return meta;
+       });
 
        console.log('[Event] Plexer Delivery Report saved.');
        res.status(200).send({ status: 'saved' });
