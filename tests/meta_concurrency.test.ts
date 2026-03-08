@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
-import { app } from '../src/server.js';
+import { app, __wait_for_meta_queue } from '../src/server.js';
 import { resetEnvConfig } from '../src/config.js';
 import { resetValidators } from '../src/validation/validators.js';
 import fs from 'node:fs/promises';
@@ -58,10 +58,8 @@ describe('POST /events concurrency', () => {
             expect(res.body).toEqual({ status: 'saved' });
         });
 
-        // Small wait for the async queue to finish (since it is un-awaited in the handler)
-        // In a real environment, we'd want a way to wait for the queue explicitly,
-        // but for a test, a small delay should suffice given the iterations.
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Deterministically wait for all queued updates to finish
+        await __wait_for_meta_queue();
 
         // Verify _meta.json integrity and existence
         const metaContent = await fs.readFile(metaPath, 'utf8');

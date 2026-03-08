@@ -12,14 +12,12 @@ import { validatePlexerReport } from './validation/validators.js';
 
 const execPromise = promisify(exec);
 
-// In-memory queue for _meta.json updates to prevent race conditions during read-modify-write cycles
-// This is process-local and assumes a single writer within this server process.
+// In-memory queue for _meta.json updates to prevent race conditions during read-modify-write cycles.
+// Process-local only; not suitable for multi-process deployments (e.g. clusters or multiple containers).
 let metaUpdateQueue = Promise.resolve();
 
 /**
- * In-memory queue for _meta.json updates to prevent race conditions during read-modify-write cycles.
- * This is process-local and assumes a single writer within this server process.
- * Not suitable for multi-process deployments (e.g. PM2 cluster or multiple containers).
+ * Enqueues a read-modify-write operation for _meta.json.
  */
 async function enqueueMetaUpdate(updateFn: (meta: Record<string, unknown>) => Record<string, unknown>): Promise<void> {
   metaUpdateQueue = metaUpdateQueue.then(async () => {
@@ -308,6 +306,14 @@ if (isDirectRun) {
   app.listen(port, () => {
     console.log(`Leitstand server running at http://localhost:${port}`);
   });
+}
+
+/**
+ * Test helper to wait for all currently enqueued metadata updates to complete.
+ * Not intended for production use.
+ */
+export async function __wait_for_meta_queue(): Promise<void> {
+  await metaUpdateQueue;
 }
 
 export { app };
