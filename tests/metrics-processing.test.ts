@@ -133,4 +133,54 @@ describe('processRepoStatus', () => {
     expect(processed.issues).toBeUndefined();
     expect(processed.status).toBe('ok');
   });
+
+  it('should prefer ai_context over config for profile_expected (precedence check: true wins over false)', () => {
+    const repo: RepoData = {
+      issues: ['missing .wgx/profile.yml'],
+      status: 'fail',
+      ai_context: {
+        heimgewebe: {
+          wgx: {
+            profile_expected: true
+          }
+        }
+      },
+      config: {
+        wgx: {
+          profile_expected: false
+        }
+      }
+    };
+
+    const processed = processRepoStatus(repo);
+
+    // ai_context (true) should win, so issue remains
+    expect(processed.issues).toContain('missing .wgx/profile.yml');
+    expect(processed.status).toBe('fail');
+  });
+
+  it('should prefer ai_context over config for profile_expected (precedence check: false wins over true)', () => {
+    const repo: RepoData = {
+      issues: ['missing .wgx/profile.yml'],
+      status: 'fail',
+      ai_context: {
+        heimgewebe: {
+          wgx: {
+            profile_expected: false
+          }
+        }
+      },
+      config: {
+        wgx: {
+          profile_expected: true
+        }
+      }
+    };
+
+    const processed = processRepoStatus(repo);
+
+    // ai_context (false) should win, so issue is removed
+    expect(processed.issues).not.toContain('missing .wgx/profile.yml');
+    expect(processed.status).toBe('ok');
+  });
 });
