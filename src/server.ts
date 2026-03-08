@@ -19,15 +19,22 @@ let metaUpdateQueue = Promise.resolve();
 async function enqueueMetaUpdate(updateFn: (meta: Record<string, unknown>) => Record<string, unknown>): Promise<void> {
   metaUpdateQueue = metaUpdateQueue.then(async () => {
     try {
-      const metaPath = join(process.cwd(), 'artifacts', '_meta.json');
+      const artifactsDir = join(process.cwd(), 'artifacts');
+      const metaPath = join(artifactsDir, '_meta.json');
       const tempPath = `${metaPath}.tmp`;
-      let meta: Record<string, unknown> = {};
 
+      // Ensure artifacts directory exists
+      await fs.promises.mkdir(artifactsDir, { recursive: true });
+
+      let meta: Record<string, unknown> = {};
       try {
         const content = await fs.promises.readFile(metaPath, 'utf8');
         meta = JSON.parse(content);
       } catch (e) {
-        // Assume file does not exist or is invalid, proceed with empty meta
+        if (e instanceof Error && (e as any).code !== 'ENOENT') {
+          console.warn('[Meta] Warning: _meta.json could not be read or parsed, starting with empty object:', e.message);
+        }
+        // Proceed with empty meta on ENOENT or parse error
       }
 
       const updatedMeta = updateFn(meta);
@@ -218,7 +225,7 @@ app.post('/events', async (req, res) => {
        await fs.promises.writeFile(artifactPath, JSON.stringify(payload, null, 2));
 
        // Forensics update (queued to prevent race conditions)
-       enqueueMetaUpdate((meta) => {
+       await enqueueMetaUpdate((meta) => {
            meta.plexer_report = {
              fetched_at: new Date().toISOString(),
              source_kind: 'event',
