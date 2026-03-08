@@ -16,6 +16,11 @@ const execPromise = promisify(exec);
 // This is process-local and assumes a single writer within this server process.
 let metaUpdateQueue = Promise.resolve();
 
+/**
+ * In-memory queue for _meta.json updates to prevent race conditions during read-modify-write cycles.
+ * This is process-local and assumes a single writer within this server process.
+ * Not suitable for multi-process deployments (e.g. PM2 cluster or multiple containers).
+ */
 async function enqueueMetaUpdate(updateFn: (meta: Record<string, unknown>) => Record<string, unknown>): Promise<void> {
   metaUpdateQueue = metaUpdateQueue.then(async () => {
     try {
@@ -224,8 +229,9 @@ app.post('/events', async (req, res) => {
 
        await fs.promises.writeFile(artifactPath, JSON.stringify(payload, null, 2));
 
-       // Forensics update (queued to prevent race conditions)
-       await enqueueMetaUpdate((meta) => {
+       // Forensics update (queued to prevent race conditions).
+       // Treated as best-effort forensics: failure to update meta does not block or fail the event response.
+       void enqueueMetaUpdate((meta) => {
            meta.plexer_report = {
              fetched_at: new Date().toISOString(),
              source_kind: 'event',
