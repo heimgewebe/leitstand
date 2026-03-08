@@ -9,6 +9,7 @@ import { envConfig } from './config.js';
 import { getObservatoryData } from './controllers/observatory.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
+import { randomBytes } from 'crypto';
 
 const execPromise = promisify(exec);
 
@@ -230,7 +231,11 @@ app.post('/events', async (req, res) => {
 
        await fs.promises.mkdir(artifactsDir, { recursive: true });
 
-       await fs.promises.writeFile(artifactPath, JSON.stringify(payload, null, 2));
+       const serializedPayload = JSON.stringify(payload, null, 2);
+       const tempArtifactPath = artifactPath + '.' + process.pid + '.' + randomBytes(8).toString('hex') + '.tmp';
+
+       await fs.promises.writeFile(tempArtifactPath, serializedPayload);
+       await fs.promises.rename(tempArtifactPath, artifactPath);
 
        // Forensics update (queued to prevent race conditions).
        // Treated as best-effort forensics: failure to update meta does not block or fail the event response.
