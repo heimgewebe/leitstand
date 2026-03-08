@@ -134,7 +134,7 @@ describe('processRepoStatus', () => {
     expect(processed.status).toBe('ok');
   });
 
-  it('should prefer ai_context over config for profile_expected (precedence check: true wins over false)', () => {
+  it('should prefer ai_context over config when ai_context.profile_expected is true and config.profile_expected is false', () => {
     const repo: RepoData = {
       issues: ['missing .wgx/profile.yml'],
       status: 'fail',
@@ -159,7 +159,7 @@ describe('processRepoStatus', () => {
     expect(processed.status).toBe('fail');
   });
 
-  it('should prefer ai_context over config for profile_expected (precedence check: false wins over true)', () => {
+  it('should prefer ai_context over config when ai_context.profile_expected is false and config.profile_expected is true', () => {
     const repo: RepoData = {
       issues: ['missing .wgx/profile.yml'],
       status: 'fail',
