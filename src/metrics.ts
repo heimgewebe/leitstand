@@ -62,9 +62,6 @@ export function processRepoStatus(repo: RepoData): RepoData {
   const newRepo = { ...repo };
   let issues = [...(repo.issues || [])];
 
-  // repoStatus was assigned but never used, except implicit logic below
-  // let repoStatus = repo.status || 'unknown';
-
   // Determine if profile is expected (default to true if not specified)
   // Check both ai_context path and potential config path
   const profileExpected =
@@ -80,7 +77,6 @@ export function processRepoStatus(repo: RepoData): RepoData {
      // Re-evaluate status
      if (issues.length === 0) {
        // If no issues remain, it's definitely OK
-       // repoStatus = 'ok'; // Not used locally
        newRepo.status = 'ok';
      } else {
        // If issues remain, we preserve the original status because we don't know
