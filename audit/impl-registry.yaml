@@ -1,0 +1,22 @@
+implementations:
+  - id: impl.service.server
+    path: src/server.ts
+    impl_type: service
+    status: active
+    documented_by:
+      - docs/index.md
+    verified_by:
+      - tests/server.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.cli.main
+    path: src/cli.ts
+    impl_type: cli
+    status: active
+    documented_by:
+      - docs/index.md
+    verified_by:
+      - tests/cli.test.ts
+    supersedes: []
+    deprecated_by: []

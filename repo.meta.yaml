@@ -1,0 +1,80 @@
+repo_name: leitstand
+repo_type: service
+role: dashboard_and_digest_generator
+status: active
+summary: >
+  Dashboard and control-room for the heimgewebe organism - daily system digest generator.
+
+owners:
+  - heimgewebe-team
+
+primary_languages:
+  - typescript
+  - markdown
+
+entrypoints:
+  - README.md
+  - AGENTS.md
+  - docs/index.md
+
+canonical_sources:
+  - repo.meta.yaml
+  - AGENTS.md
+  - docs/index.md
+
+discovery_roots:
+  - docs/
+  - src/
+  - scripts/
+  - tests/
+  - .github/workflows/
+
+generated_artifacts:
+  - docs/_generated/doc-index.md
+  - docs/_generated/system-map.md
+  - docs/_generated/orphans.md
+  - docs/_generated/impl-index.md
+  - docs/_generated/backlinks.md
+  - docs/_generated/supersession-map.md
+  - docs/_generated/agent-readiness.md
+
+safe_read_paths:
+  - README.md
+  - AGENTS.md
+  - docs/
+
+guarded_write_paths:
+  - docs/
+  - scripts/
+  - src/
+  - .github/workflows/
+
+forbidden_write_paths:
+  - docs/_generated/
+
+required_checks:
+  - repo-structure-guard
+  - docs-relations-guard
+  - generated-files-guard
+
+indexing:
+  enabled: true
+  require_frontmatter_for_docs: true
+  require_registry_for_critical_impl: true
+  fail_on_untyped_docs: true
+  fail_on_missing_doc_index: true
+  fail_on_orphans: false
+  fail_on_unmapped_critical_impl: false
+
+related_repos:
+  - metarepo
+  - wgx
+  - semantAH
+  - chronik
+  - hausKI
+
+keywords:
+  - dashboard
+  - digest
+  - control-room
+  - agent-ready
