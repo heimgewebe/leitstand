@@ -48,3 +48,15 @@ jobs:
     - name: Drift Gates
       if: success()
       run: bash scripts/ci/check-drift-gates.sh
+
+    - name: Repo Structure Guard
+      if: success()
+      run: bash scripts/ci/repo-structure-guard.sh
+
+    - name: Docs Relations Guard
+      if: success()
+      run: bash scripts/ci/docs-relations-guard.sh
+
+    - name: Generated Files Guard
+      if: success()
+      run: bash scripts/ci/generated-files-guard.sh

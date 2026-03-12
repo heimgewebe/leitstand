@@ -2,6 +2,16 @@
 
 Leitstand is the visual control center of the Heimgewebe organism. It is organized into strict normative invariants (contracts) and operative runbooks. This router connects the "What is true?" (Contracts) with the "How does it stay true?" (Checks).
 
+## Generated Overviews
+
+- [Documentation Index](_generated/doc-index.md)
+- [System Map](_generated/system-map.md)
+- [Orphaned Documents](_generated/orphans.md)
+- [Implementation Index](_generated/impl-index.md)
+- [Backlinks Map](_generated/backlinks.md)
+- [Supersession Map](_generated/supersession-map.md)
+- [Agent Readiness](_generated/agent-readiness.md)
+
 ## 1. Normative Invariants
 
 Small, stable, hard rules and diagnostic signals.

@@ -1,3 +1,12 @@
+---
+id: docs.blueprints.leitstand.manifest
+title: Leitstand – Heimgewebe-Visualisierung(en)
+doc_type: architecture
+status: active
+canonicality: canonical
+summary: >
+  Blaupause: Leitstand – Heimgewebe-Visualisierung(en).
+---
 # Blaupause: Leitstand – Heimgewebe-Visualisierung(en)
 
 (Arbeitsrahmen, der nicht alles auf einmal will, sondern Orientierung + Reihenfolge erzwingt)

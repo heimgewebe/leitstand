@@ -1,3 +1,12 @@
+---
+id: docs.deploy.heimserver.naming
+title: Heimserver Naming Policy
+doc_type: reference
+status: active
+canonicality: derived
+summary: >
+  Heimserver Naming Policy (Referenzkopie).
+---
 # Heimserver Naming Policy (Referenzkopie)
 
 Stand: 2026-02-03

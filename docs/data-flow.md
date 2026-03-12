@@ -1,3 +1,12 @@
+---
+id: docs.data.flow
+title: Data Flow & Required Inputs
+doc_type: architecture
+status: active
+canonicality: canonical
+summary: >
+  Beschreibt die Datenströme, die der Leitstand konsumiert.
+---
 # Leitstand – Data Flow & Required Inputs
 
 Dieses Dokument beschreibt die Datenströme, die der Leitstand konsumiert.

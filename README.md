@@ -2,6 +2,9 @@
 
 Dashboard and control-room for the **heimgewebe** organism.
 
+**Repo Status:** Active
+**Repo Type:** Service
+
 ## Overview
 
 `leitstand` is the central monitoring and reporting system for the heimgewebe multi-repo ecosystem. In this initial iteration, it provides a **daily system digest generator** that combines data from multiple sources into a unified markdown report.
@@ -45,6 +48,11 @@ For details, refer to:
 - [Runtime Contract](docs/runtime.contract.md) (Normative)
 - [Access Matrix](docs/access.matrix.md)
 - [Drift Signals](docs/drift.signals.md)
+
+## Important Agent & Documentation Links
+
+- [AGENTS.md](AGENTS.md) - Agentic read path and working boundaries
+- [docs/index.md](docs/index.md) - Canonical entry point for all documentation
 
 ## Features
 

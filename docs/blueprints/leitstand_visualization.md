@@ -1,3 +1,12 @@
+---
+id: docs.blueprints.leitstand.visualization
+title: Visualisierung des Heimgewebes im Leitstand
+doc_type: architecture
+status: active
+canonicality: canonical
+summary: >
+  Blaupause: Visualisierung des Heimgewebes im Leitstand.
+---
 # Blaupause: Visualisierung des Heimgewebes im Leitstand
 
 ## Phase 1: Anatomie (Strukturelle Übersicht)

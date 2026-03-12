@@ -1,3 +1,12 @@
+---
+id: docs.deployment
+title: Deployment
+doc_type: guide
+status: active
+canonicality: canonical
+summary: >
+  General deployment guide for Leitstand.
+---
 # Deployment
 
 ## Artifact Ingestion

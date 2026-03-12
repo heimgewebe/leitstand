@@ -1,0 +1,32 @@
+implementations:
+  - id: impl.service.server
+    path: src/server.ts
+    impl_type: service
+    status: active
+    documented_by:
+      - docs/index.md
+    verified_by:
+      - tests/
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.cli.digest
+    path: src/cli.ts
+    impl_type: cli
+    status: active
+    documented_by:
+      - docs/index.md
+    verified_by:
+      - tests/
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.script.deployment
+    path: scripts/leitstand-up
+    impl_type: script
+    status: active
+    documented_by:
+      - docs/runbooks/ops.runbook.leitstand-gateway.md
+    verified_by: []
+    supersedes: []
+    deprecated_by: []
