@@ -1,3 +1,12 @@
+---
+id: docs.runbooks.ops.runbook.leitstand-gateway
+title: ops.runbook.leitstand-gateway
+doc_type: runbook
+status: active
+canonicality: canonical
+summary: >
+  Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers.
+---
 # ops.runbook.leitstand-gateway
 
 Stand: 2026-02-03 (abgeleitet aus heimserver.context.md)

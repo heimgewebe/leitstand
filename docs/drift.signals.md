@@ -1,3 +1,12 @@
+---
+id: docs.drift.signals
+title: Drift-Signale
+doc_type: reference
+status: active
+canonicality: canonical
+summary: >
+  Typical indicators for operational configuration errors (drift).
+---
 # Drift-Signale
 
 Typische Indikatoren für Fehler in der Betriebskonfiguration (Drift).

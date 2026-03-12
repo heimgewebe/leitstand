@@ -1,3 +1,12 @@
+---
+id: docs.deploy-cloudflare
+title: Deploying Leitstand to Cloudflare Pages
+doc_type: guide
+status: active
+canonicality: canonical
+summary: >
+  Guide on how to deploy Leitstand to Cloudflare Pages with strict artifact fetching.
+---
 # Deploying Leitstand to Cloudflare Pages
 
 Leitstand relies on a deterministic build process where data artifacts are fetched *before* the static site generation.

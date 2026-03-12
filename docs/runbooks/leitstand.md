@@ -1,3 +1,12 @@
+---
+id: docs.runbooks.leitstand
+title: Leitstand Runbook
+doc_type: runbook
+status: active
+canonicality: canonical
+summary: >
+  Operative documentation for Leitstand inputs, data flow, contract vendoring, alerts, deployment, and troubleshooting.
+---
 # Leitstand Runbook
 
 ## Inputs and Data Flow

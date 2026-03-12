@@ -1,3 +1,12 @@
+---
+id: docs.blueprints.leitstand_manifest
+title: Leitstand Manifest
+doc_type: architecture
+status: active
+canonicality: canonical
+summary: >
+  Manifest defining Leitstand as an epistemic projector of the Heimgewebe organism.
+---
 # Blaupause: Leitstand – Heimgewebe-Visualisierung(en)
 
 (Arbeitsrahmen, der nicht alles auf einmal will, sondern Orientierung + Reihenfolge erzwingt)

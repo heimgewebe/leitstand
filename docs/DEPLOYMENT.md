@@ -1,3 +1,12 @@
+---
+id: docs.DEPLOYMENT
+title: Deployment
+doc_type: guide
+status: active
+canonicality: canonical
+summary: >
+  Documentation on deployment, artifact ingestion, and event ingestion for Leitstand.
+---
 # Deployment
 
 ## Artifact Ingestion

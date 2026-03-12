@@ -1,3 +1,12 @@
+---
+id: docs.decisions.wgx-leitstand
+title: leitstand has a tracked WGX profile
+doc_type: decision
+status: active
+canonicality: canonical
+summary: >
+  Decision to track a WGX profile in the leitstand repository.
+---
 # Decision: leitstand has a tracked WGX profile
 
 ## Context

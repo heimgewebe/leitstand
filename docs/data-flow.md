@@ -1,3 +1,12 @@
+---
+id: docs.data-flow
+title: Leitstand Data Flow
+doc_type: architecture
+status: active
+canonicality: canonical
+summary: >
+  Describes the data flows that Leitstand consumes, establishing it as the control center of the Heimgewebe.
+---
 # Leitstand – Data Flow & Required Inputs
 
 Dieses Dokument beschreibt die Datenströme, die der Leitstand konsumiert.

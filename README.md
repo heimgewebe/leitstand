@@ -6,6 +6,10 @@ Dashboard and control-room for the **heimgewebe** organism.
 
 `leitstand` is the central monitoring and reporting system for the heimgewebe multi-repo ecosystem. In this initial iteration, it provides a **daily system digest generator** that combines data from multiple sources into a unified markdown report.
 
+### Key Entry Points
+- [AGENTS.md](AGENTS.md) - Agentic reading boundaries and instructions.
+- [docs/index.md](docs/index.md) - Documentation entry point.
+
 ### The Heimgewebe Organism
 
 The heimgewebe organization consists of several interconnected repositories:

@@ -1,3 +1,12 @@
+---
+id: docs.runtime.contract
+title: Runtime Contract
+doc_type: reference
+status: active
+canonicality: canonical
+summary: >
+  Describes the immutable conditions for the operation of the Leitstand.
+---
 # Runtime Contract
 
 Dieses Dokument beschreibt die unveränderlichen Bedingungen für den Betrieb des Leitstands.
