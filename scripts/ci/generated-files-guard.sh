@@ -14,13 +14,29 @@ log_info "Running Generated Files Guard..."
 GENERATED_DIR="docs/_generated"
 HEADER="<!-- This is a generated file. Do not edit manually. -->"
 
-if [[ -d "$GENERATED_DIR" ]]; then
-    FILES=$(find "$GENERATED_DIR" -type f -name "*.md")
-    for file in $FILES; do
-        if ! grep -Fq "$HEADER" "$file"; then
-            fail "Generated file '$file' is missing the required warning header."
-        fi
-    done
+REQUIRED_FILES=(
+    "doc-index.md"
+    "system-map.md"
+    "orphans.md"
+    "impl-index.md"
+    "backlinks.md"
+    "supersession-map.md"
+    "agent-readiness.md"
+)
+
+if [[ ! -d "$GENERATED_DIR" ]]; then
+    fail "Required directory '$GENERATED_DIR' is missing."
 fi
+
+for filename in "${REQUIRED_FILES[@]}"; do
+    file="$GENERATED_DIR/$filename"
+    if [[ ! -f "$file" ]]; then
+        fail "Required generated file placeholder '$file' is missing."
+    fi
+
+    if ! head -n 1 "$file" | grep -Fq "$HEADER"; then
+        fail "Generated file '$file' is missing the required warning header on the first line."
+    fi
+done
 
 log_success "Generated Files Guard passed."

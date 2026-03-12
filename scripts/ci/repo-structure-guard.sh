@@ -12,6 +12,8 @@ cd "$REPO_ROOT"
 log_info "Running Repo Structure Guard..."
 
 FILES=(
+    "README.md"
+    "AGENTS.md"
     "repo.meta.yaml"
     "docs/index.md"
 )
@@ -24,6 +26,15 @@ done
 
 if [[ ! -d "docs/_generated" ]]; then
     fail "Required directory 'docs/_generated' is missing."
+fi
+
+# Basic check: repo.meta.yaml contains repo_name and repo_type
+if ! grep -q "^repo_name:" "repo.meta.yaml"; then
+    fail "repo.meta.yaml must contain 'repo_name:'."
+fi
+
+if ! grep -q "^repo_type:" "repo.meta.yaml"; then
+    fail "repo.meta.yaml must contain 'repo_type:'."
 fi
 
 log_success "Repo Structure Guard passed."

@@ -47,6 +47,7 @@ guarded_write_paths:
   - docs/
   - scripts/
   - src/
+  - .github/workflows/
 
 forbidden_write_paths:
   - docs/_generated/
