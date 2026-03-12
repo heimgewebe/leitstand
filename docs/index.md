@@ -6,6 +6,16 @@ Leitstand is the visual control center of the Heimgewebe organism. It is organiz
 * Generated Overviews: [doc-index.md](_generated/doc-index.md), [system-map.md](_generated/system-map.md), [orphans.md](_generated/orphans.md)
 * Agent readiness & supersession: [agent-readiness.md](_generated/agent-readiness.md), [supersession-map.md](_generated/supersession-map.md)
 
+## Repo Observatorium
+
+- [architecture-drift.md](_generated/architecture-drift.md)
+- [doc-coverage.md](_generated/doc-coverage.md)
+- [knowledge-gaps.md](_generated/knowledge-gaps.md)
+- [implicit-dependencies.md](_generated/implicit-dependencies.md)
+- [change-resonance.md](_generated/change-resonance.md)
+- [staleness-report.md](_generated/staleness-report.md)
+- [agent-readiness.md](_generated/agent-readiness.md)
+
 ## 1. Normative Invariants
 
 Small, stable, hard rules and diagnostic signals.

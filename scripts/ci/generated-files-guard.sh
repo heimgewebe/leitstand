@@ -11,6 +11,12 @@ GENERATED_FILES=(
   "docs/_generated/backlinks.md"
   "docs/_generated/supersession-map.md"
   "docs/_generated/agent-readiness.md"
+  "docs/_generated/architecture-drift.md"
+  "docs/_generated/doc-coverage.md"
+  "docs/_generated/knowledge-gaps.md"
+  "docs/_generated/implicit-dependencies.md"
+  "docs/_generated/change-resonance.md"
+  "docs/_generated/staleness-report.md"
 )
 
 missing=0
