@@ -27,6 +27,7 @@ discovery_roots:
   - src/
   - scripts/
   - tests/
+  - deploy/
   - .github/workflows/
 
 generated_artifacts:
@@ -47,6 +48,7 @@ guarded_write_paths:
   - docs/
   - scripts/
   - src/
+  - deploy/
   - .github/workflows/
 
 forbidden_write_paths:

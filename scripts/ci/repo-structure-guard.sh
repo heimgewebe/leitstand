@@ -15,6 +15,7 @@ FILES=(
     "README.md"
     "AGENTS.md"
     "repo.meta.yaml"
+    "agent-policy.yaml"
     "docs/index.md"
 )
 

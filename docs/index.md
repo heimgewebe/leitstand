@@ -1,3 +1,12 @@
+---
+id: docs.index
+title: Leitstand Documentation Router
+doc_type: index
+status: active
+canonicality: canonical
+summary: >
+  Canonical entry point for all documentation.
+---
 # Leitstand Documentation Router
 
 Leitstand is the visual control center of the Heimgewebe organism. It is organized into strict normative invariants (contracts) and operative runbooks. This router connects the "What is true?" (Contracts) with the "How does it stay true?" (Checks).

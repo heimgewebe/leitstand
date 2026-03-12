@@ -13,8 +13,6 @@ log_info "Running Docs Relations Guard..."
 
 # Basic check: make sure that files in docs/ (excluding _generated) have frontmatter `---`
 # and contain the required fields.
-DOC_FILES=$(find docs/ -type f -name "*.md" -not -path "docs/_generated/*" -not -name "index.md")
-
 REQUIRED_FIELDS=(
     "id"
     "title"
@@ -24,7 +22,7 @@ REQUIRED_FIELDS=(
     "summary"
 )
 
-for file in $DOC_FILES; do
+find docs/ -type f -name "*.md" -not -path "docs/_generated/*" -print0 | while IFS= read -r -d '' file; do
     if ! head -n 1 "$file" | grep -q "^---$"; then
         fail "Markdown document '$file' is missing YAML frontmatter (must start with '---')."
     fi
