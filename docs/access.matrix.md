@@ -1,3 +1,13 @@
+---
+id: docs.access.matrix
+title: Zugriffsmatrix
+doc_type: reference
+status: active
+canonicality: canonical
+summary: >
+  Zugriffsmatrix
+---
+
 # Zugriffsmatrix
 
 Diese Tabelle definiert die erlaubten Zugriffswege auf den Leitstand.

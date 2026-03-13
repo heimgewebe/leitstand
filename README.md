@@ -283,6 +283,10 @@ leitstand/
 - Node.js >= 18.0.0
 - pnpm >= 8.0.0
 
+## Repository Discovery
+- See [AGENTS.md](AGENTS.md) for agentic discovery rules and paths.
+- See [docs/index.md](docs/index.md) for the canonical documentation index.
+
 ## Future Enhancements
 
 This is the initial iteration focused on generating daily digests and operational views. Future versions may include:
