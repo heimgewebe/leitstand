@@ -3,7 +3,7 @@ id: docs.runbooks.ops.runbook.leitstand-gateway
 title: ops.runbook.leitstand-gateway
 doc_type: runbook
 status: active
-canonicality: derived
+canonicality: canonical
 summary: >
   ops.runbook.leitstand-gateway
 ---

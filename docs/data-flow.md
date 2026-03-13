@@ -3,7 +3,7 @@ id: docs.data-flow
 title: Leitstand – Data Flow & Required Inputs
 doc_type: architecture
 status: active
-canonicality: derived
+canonicality: canonical
 summary: >
   Leitstand – Data Flow & Required Inputs
 ---

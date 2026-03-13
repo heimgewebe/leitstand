@@ -12,6 +12,7 @@ REQUIRED_FILES=(
   "repo.meta.yaml"
   "agent-policy.yaml"
   "docs/index.md"
+  "audit/impl-registry.yaml"
 )
 
 missing=0

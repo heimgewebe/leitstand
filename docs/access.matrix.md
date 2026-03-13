@@ -3,7 +3,7 @@ id: docs.access.matrix
 title: Zugriffsmatrix
 doc_type: reference
 status: active
-canonicality: derived
+canonicality: canonical
 summary: >
   Zugriffsmatrix
 ---

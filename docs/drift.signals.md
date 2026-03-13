@@ -3,7 +3,7 @@ id: docs.drift.signals
 title: Drift-Signale
 doc_type: reference
 status: active
-canonicality: derived
+canonicality: canonical
 summary: >
   Drift-Signale
 ---

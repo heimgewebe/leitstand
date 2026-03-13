@@ -3,7 +3,7 @@ id: docs.deploy-cloudflare
 title: Deploying Leitstand to Cloudflare Pages
 doc_type: reference
 status: active
-canonicality: derived
+canonicality: canonical
 summary: >
   Deploying Leitstand to Cloudflare Pages
 ---
