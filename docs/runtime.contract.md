@@ -1,3 +1,13 @@
+---
+id: docs.runtime.contract
+title: Runtime Contract
+doc_type: reference
+status: active
+canonicality: derived
+summary: >
+  Runtime Contract
+---
+
 # Runtime Contract
 
 Dieses Dokument beschreibt die unveränderlichen Bedingungen für den Betrieb des Leitstands.

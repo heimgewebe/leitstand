@@ -33,6 +33,7 @@ All new documents and critical implementations must be discoverable:
 - `docs/` (Except generated content)
 - `scripts/`
 - `src/`
+- `deploy/`
 - `.github/workflows/`
 
 ## Required Checks

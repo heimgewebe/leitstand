@@ -1,3 +1,13 @@
+---
+id: docs.runbooks.leitstand
+title: Leitstand Runbook
+doc_type: reference
+status: active
+canonicality: derived
+summary: >
+  Leitstand Runbook
+---
+
 # Leitstand Runbook
 
 ## Inputs and Data Flow

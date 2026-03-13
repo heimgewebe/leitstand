@@ -1,12 +1,14 @@
 safe_read_paths:
   - README.md
   - AGENTS.md
+  - repo.meta.yaml
   - docs/
 
 guarded_write_paths:
   - docs/
   - scripts/
   - src/
+  - deploy/
   - .github/workflows/
 
 forbidden_write_paths:

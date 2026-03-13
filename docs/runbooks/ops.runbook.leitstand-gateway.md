@@ -1,3 +1,13 @@
+---
+id: docs.runbooks.ops.runbook.leitstand-gateway
+title: ops.runbook.leitstand-gateway
+doc_type: reference
+status: active
+canonicality: derived
+summary: >
+  ops.runbook.leitstand-gateway
+---
+
 # ops.runbook.leitstand-gateway
 
 Stand: 2026-02-03 (abgeleitet aus heimserver.context.md)

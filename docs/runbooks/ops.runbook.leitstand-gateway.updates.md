@@ -1,3 +1,13 @@
+---
+id: docs.runbooks.ops.runbook.leitstand-gateway.updates
+title: ops.runbook.leitstand-gateway.updates
+doc_type: reference
+status: active
+canonicality: derived
+summary: >
+  ops.runbook.leitstand-gateway.updates
+---
+
 # ops.runbook.leitstand-gateway.updates
 
 Stand: 2026-02-03

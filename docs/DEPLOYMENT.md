@@ -1,3 +1,13 @@
+---
+id: docs.DEPLOYMENT
+title: Deployment
+doc_type: reference
+status: active
+canonicality: derived
+summary: >
+  Deployment
+---
+
 # Deployment
 
 ## Artifact Ingestion
