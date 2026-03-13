@@ -3,7 +3,7 @@ id: docs.index
 title: Leitstand Documentation Router
 doc_type: reference
 status: active
-canonicality: derived
+canonicality: canonical
 summary: >
   Leitstand Documentation Router
 ---

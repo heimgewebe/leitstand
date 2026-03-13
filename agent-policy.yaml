@@ -19,7 +19,7 @@ forbidden_write_paths:
 requires_target_proof_for:
   - src/
   - infra/
-  - deployment/
+  - deploy/
   - .github/workflows/
 
 required_checks_before_patch:
@@ -31,5 +31,5 @@ required_checks_before_patch:
 
 human_review_required_for:
   - security/
-  - deployment/
+  - deploy/
   - credentials/

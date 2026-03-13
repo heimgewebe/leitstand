@@ -27,6 +27,7 @@ discovery_roots:
   - src/
   - scripts/
   - tests/
+  - deploy/
   - .github/workflows/
 
 generated_artifacts:

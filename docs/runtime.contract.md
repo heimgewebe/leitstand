@@ -3,7 +3,7 @@ id: docs.runtime.contract
 title: Runtime Contract
 doc_type: reference
 status: active
-canonicality: derived
+canonicality: canonical
 summary: >
   Runtime Contract
 ---
