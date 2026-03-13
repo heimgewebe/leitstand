@@ -1,7 +1,7 @@
 ---
 id: docs.runbooks.leitstand
 title: Leitstand Runbook
-doc_type: reference
+doc_type: runbook
 status: active
 canonicality: derived
 summary: >

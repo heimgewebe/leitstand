@@ -1,7 +1,7 @@
 ---
 id: docs.data-flow
 title: Leitstand – Data Flow & Required Inputs
-doc_type: reference
+doc_type: architecture
 status: active
 canonicality: derived
 summary: >

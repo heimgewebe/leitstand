@@ -1,7 +1,7 @@
 ---
 id: docs.decisions.wgx-leitstand
 title: Decision: leitstand has a tracked WGX profile
-doc_type: reference
+doc_type: decision
 status: active
 canonicality: derived
 summary: >

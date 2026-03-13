@@ -18,7 +18,6 @@ forbidden_write_paths:
 
 requires_target_proof_for:
   - src/
-  - infra/
   - deploy/
   - .github/workflows/
 

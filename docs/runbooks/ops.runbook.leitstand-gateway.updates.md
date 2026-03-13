@@ -1,7 +1,7 @@
 ---
 id: docs.runbooks.ops.runbook.leitstand-gateway.updates
 title: ops.runbook.leitstand-gateway.updates
-doc_type: reference
+doc_type: runbook
 status: active
 canonicality: derived
 summary: >

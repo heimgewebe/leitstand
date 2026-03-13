@@ -1,7 +1,7 @@
 ---
 id: docs.blueprints.leitstand_visualization
 title: Blaupause: Visualisierung des Heimgewebes im Leitstand
-doc_type: reference
+doc_type: architecture
 status: active
 canonicality: derived
 summary: >
