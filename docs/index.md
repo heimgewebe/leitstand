@@ -39,3 +39,14 @@ Tools that enforce the rules automatically.
 
 - [Vendor Contracts Script](../scripts/vendor-contracts.mjs) (Vendors schemas offline)
 - [Check Artifacts Script](../scripts/check-artifacts.mjs) (Strict-Mode Gate)
+
+## 4. Architecture Decisions & Blueprints
+
+- [WGX Leitstand Decision](decisions/wgx-leitstand.md)
+- [Leitstand Manifest Blueprint](blueprints/leitstand_manifest.md)
+- [Leitstand Visualization Blueprint](blueprints/leitstand_visualization.md)
+
+## 5. Deployment
+
+- [Deployment Overview](DEPLOYMENT.md)
+- [Cloudflare Deployment](deploy-cloudflare.md)

@@ -1,0 +1,7 @@
+rules:
+  - trigger: "scripts/vendor-contracts.mjs"
+    require: "vendor/contracts/_pin.json"
+    message: "Vendored Contracts Consistency"
+  - trigger: "scripts/leitstand-up|deploy/docker-compose"
+    require: "docs/runbooks/ops.runbook.leitstand-gateway.updates.md"
+    message: "Update-Mechanik Drift-Regel"

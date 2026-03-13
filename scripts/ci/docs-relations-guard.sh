@@ -33,6 +33,27 @@ while IFS= read -r -d '' file; do
     fi
   done
 
+  # Check canonical references
+  canonicality=$(echo "$frontmatter" | grep -E "^canonicality:" | awk '{print $2}' | tr -d '\r')
+  filename=$(basename "$file")
+
+  if [ "$canonicality" = "canonical" ]; then
+    # Must be referenced (if not index.md)
+    if [ "$filename" != "index.md" ]; then
+      # Find if any other .md file (excluding _generated) links to this file's basename
+      if ! grep -qF "$filename" $(find docs/ -type f -name "*.md" -not -path "docs/_generated/*"); then
+         echo "ERROR: File '$file' is canonical but not referenced by any other document." >&2
+         missing=1
+      fi
+    fi
+  elif [ "$canonicality" = "derived" ]; then
+    # Must have a 'source' in frontmatter
+    if ! echo "$frontmatter" | grep -Eq "^source:"; then
+      echo "ERROR: File '$file' is derived but missing 'source:' in frontmatter." >&2
+      missing=1
+    fi
+  fi
+
 done < <(find docs/ -type f -name "*.md" -not -path "docs/_generated/*" -print0)
 
 if [ "$missing" -eq 1 ]; then
