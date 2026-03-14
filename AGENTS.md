@@ -10,6 +10,7 @@ This repository provides the dashboard and control-room for the heimgewebe organ
 ## Canonical Sources
 - `repo.meta.yaml` (Repo identity and structure truth)
 - `AGENTS.md` (Agent reading path and working boundaries)
+- `agent-policy.yaml` (Change policies and rules)
 - `docs/index.md` (Canonical documentation router)
 - Vendored contracts from metarepo
 
@@ -20,16 +21,20 @@ All new documents and critical implementations must be discoverable:
 - Critical implementations must be registered in `audit/impl-registry.yaml`.
 
 ## Generated Files
-- `docs/_generated/` contains generated overviews (`doc-index.md`, `system-map.md`, `orphans.md`, etc.).
-- Generated files must **not** be manually edited.
+- `docs/_generated/` currently contains structural placeholders for overviews (`doc-index.md`, `system-map.md`, `orphans.md`, etc.).
+- A full semantic graph generator is not yet active.
+- Generated files must **not** be manually edited, to preserve the placeholder structure.
 
 ## Safe Read Paths
 - `README.md`
 - `AGENTS.md`
-- `docs/`
 - `repo.meta.yaml`
+- `agent-policy.yaml`
+- `audit/`
+- `docs/`
 
 ## Guarded / Risky Paths
+- `audit/`
 - `docs/` (Except generated content)
 - `scripts/`
 - `src/`
@@ -40,6 +45,7 @@ All new documents and critical implementations must be discoverable:
 - `repo-structure-guard`
 - `docs-relations-guard`
 - `generated-files-guard`
+- `check-drift-gates`
 - `lint` and `test` (pnpm run lint, pnpm test)
 
 ## Common Traps

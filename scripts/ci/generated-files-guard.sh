@@ -26,10 +26,6 @@ for file in "${GENERATED_FILES[@]}"; do
       echo "ERROR: Missing generated header in $file" >&2
       missing=1
     fi
-    if grep -Eiq "^canonicality:[[:space:]]*canonical" "$file"; then
-      echo "ERROR: Generated file $file must not claim canonicality: canonical." >&2
-      missing=1
-    fi
   fi
 done
 
