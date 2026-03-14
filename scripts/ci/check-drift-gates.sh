@@ -155,7 +155,7 @@ awk '
     log_info "Checking Rule: $msg (trigger: $trigger)"
     if echo "$MODIFIED_FILES" | grep -E -q "$trigger"; then
         log_info "Trigger matched ($trigger)"
-        if ! echo "$MODIFIED_FILES" | grep -q "$require"; then
+        if ! echo "$MODIFIED_FILES" | grep -F -q "$require"; then
             fail "Drift Rule Violation: $msg. Modified files matched trigger '$trigger', but required file '$require' was not modified."
         fi
         log_success "Rule '$msg' Passed."

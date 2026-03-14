@@ -40,9 +40,14 @@ while IFS= read -r -d '' file; do
   if [ "$canonicality" = "canonical" ]; then
     # Must be referenced (if not index.md)
     if [ "$filename" != "index.md" ]; then
-      # Find if any other .md file (excluding _generated) links to this file's basename
-      if ! grep -qF "$filename" $(find docs/ -type f -name "*.md" -not -path "docs/_generated/*"); then
-         echo "ERROR: File '$file' is canonical but not referenced by any other document." >&2
+      # Escape filename for regex usage (escape dots)
+      escaped_filename=$(echo "$filename" | sed 's/\./\\./g')
+
+      # Search for a markdown link target pointing to this file in other documents.
+      # E.g., looking for `](...filename...)`
+      # We exclude the current file and generated files.
+      if ! grep -Eq "\]\([^)]*${escaped_filename}[^)]*\)" $(find docs/ -type f -name "*.md" -not -path "docs/_generated/*" -not -path "$file"); then
+         echo "ERROR: File '$file' is canonical but not referenced via markdown link target by any other document." >&2
          missing=1
       fi
     fi
