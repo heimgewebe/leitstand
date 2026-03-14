@@ -124,29 +124,44 @@ if [[ -n "$MODIFIED_FILES" ]]; then
     echo "$MODIFIED_FILES"
 fi
 
-# 2. Vendored Contracts Consistency
-log_info "2. Checking Vendored Contracts Consistency..."
-if echo "$MODIFIED_FILES" | grep -q "scripts/vendor-contracts.mjs"; then
-    log_info "scripts/vendor-contracts.mjs was modified."
-    if ! echo "$MODIFIED_FILES" | grep -q "vendor/contracts/_pin.json"; then
-        fail "scripts/vendor-contracts.mjs was modified, but vendor/contracts/_pin.json was not updated. You must run 'pnpm vendor:contracts' and commit the vendored files."
-    fi
-    log_success "Vendored Contracts Consistency Passed."
-else
-    log_info "scripts/vendor-contracts.mjs was not modified."
+# 2. Implicit Dependencies (Drift Map)
+log_info "2. Checking Implicit Dependencies from docs/drift.map.yaml..."
+
+if [[ ! -f "docs/drift.map.yaml" ]]; then
+    fail "docs/drift.map.yaml is missing."
 fi
 
-# 3. Update-Mechanik Drift-Regel
-log_info "3. Checking Update-Mechanik Drift-Regel..."
-UPDATE_MECHANIC_FILES="scripts/leitstand-up|deploy/docker-compose"
-if echo "$MODIFIED_FILES" | grep -E -q "$UPDATE_MECHANIC_FILES"; then
-    log_info "Update mechanics modified."
-    if ! echo "$MODIFIED_FILES" | grep -q "docs/runbooks/ops.runbook.leitstand-gateway.updates.md"; then
-        fail "Update mechanics were modified, but docs/runbooks/ops.runbook.leitstand-gateway.updates.md was not touched. Drift Rule violation! Please touch/update the runbook in the same PR."
+# Parse the rules and evaluate them
+awk '
+  /^[[:space:]]*- trigger:/ {
+    trigger = $0
+    sub(/^[[:space:]]*- trigger:[[:space:]]*"/, "", trigger)
+    sub(/"[[:space:]]*$/, "", trigger)
+    getline
+    req = $0
+    sub(/^[[:space:]]*require:[[:space:]]*"/, "", req)
+    sub(/"[[:space:]]*$/, "", req)
+    getline
+    msg = $0
+    sub(/^[[:space:]]*message:[[:space:]]*"/, "", msg)
+    sub(/"[[:space:]]*$/, "", msg)
+    print trigger "@@@" req "@@@" msg
+  }
+' docs/drift.map.yaml | while IFS= read -r line; do
+    trigger="${line%%@@@*}"
+    rest="${line#*@@@}"
+    require="${rest%%@@@*}"
+    msg="${rest#*@@@}"
+    log_info "Checking Rule: $msg (trigger: $trigger)"
+    if echo "$MODIFIED_FILES" | grep -E -q "$trigger"; then
+        log_info "Trigger matched ($trigger)"
+        if ! echo "$MODIFIED_FILES" | grep -F -q "$require"; then
+            fail "Drift Rule Violation: $msg. Modified files matched trigger '$trigger', but required file '$require' was not modified."
+        fi
+        log_success "Rule '$msg' Passed."
+    else
+        log_info "Trigger not matched for rule: $msg"
     fi
-    log_success "Update-Mechanik Drift-Regel Passed."
-else
-    log_info "Update mechanics not modified."
-fi
+done
 
 log_success "All Drift Gates Passed!"

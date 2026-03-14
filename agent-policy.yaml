@@ -2,9 +2,12 @@ safe_read_paths:
   - README.md
   - AGENTS.md
   - repo.meta.yaml
+  - agent-policy.yaml
+  - audit/
   - docs/
 
 guarded_write_paths:
+  - audit/
   - docs/
   - scripts/
   - src/
@@ -25,6 +28,7 @@ required_checks_before_patch:
   - repo-structure-guard
   - docs-relations-guard
   - generated-files-guard
+  - check-drift-gates
   - lint
   - test
 

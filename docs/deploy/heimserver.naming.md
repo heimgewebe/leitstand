@@ -4,6 +4,7 @@ title: Heimserver Naming Policy (Referenzkopie)
 doc_type: reference
 status: active
 canonicality: derived
+source: ops/heimserver/docs/deploy/heimserver.naming.md
 summary: >
   Heimserver Naming Policy (Referenzkopie)
 ---

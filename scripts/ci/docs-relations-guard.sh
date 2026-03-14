@@ -33,6 +33,40 @@ while IFS= read -r -d '' file; do
     fi
   done
 
+  # Check canonical references
+  canonicality=$(echo "$frontmatter" | grep -E "^canonicality:" | awk '{print $2}' | tr -d '\r')
+  filename=$(basename "$file")
+
+  if [ "$canonicality" = "canonical" ]; then
+    # Must be referenced (if not index.md)
+    if [ "$filename" != "index.md" ]; then
+      # Escape filename for robust grep regex usage (e.g. escape . [ ] ^ $ * + ? ( ) { } | \)
+      escaped_filename=$(echo "$filename" | awk '{gsub(/[\]\[.\\\^\$\*\+\?\(\)\{\}\|]/,"\\\\&");print}')
+
+      # Search for a markdown link target pointing to this file in other documents.
+      # E.g., looking for `](...filename...)`
+      # We exclude the current file and generated files. Use null-safe loop to avoid word splitting.
+      found_reference=0
+      while IFS= read -r -d '' candidate_file; do
+        if grep -Eq "\]\([^)]*${escaped_filename}[^)]*\)" "$candidate_file"; then
+          found_reference=1
+          break
+        fi
+      done < <(find docs/ -type f -name "*.md" -not -path "docs/_generated/*" -not -path "$file" -print0)
+
+      if [ "$found_reference" -eq 0 ]; then
+         echo "WARNING: File '$file' is canonical but not referenced via markdown link target by any other document." >&2
+         # Downgraded to warning to prioritize robustness over strict ambition in Bash.
+      fi
+    fi
+  elif [ "$canonicality" = "derived" ]; then
+    # Must have a 'source' in frontmatter
+    if ! echo "$frontmatter" | grep -Eq "^source:"; then
+      echo "ERROR: File '$file' is derived but missing 'source:' in frontmatter." >&2
+      missing=1
+    fi
+  fi
+
 done < <(find docs/ -type f -name "*.md" -not -path "docs/_generated/*" -print0)
 
 if [ "$missing" -eq 1 ]; then

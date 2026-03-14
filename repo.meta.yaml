@@ -27,6 +27,7 @@ discovery_roots:
   - src/
   - scripts/
   - tests/
+  - audit/
   - deploy/
   - .github/workflows/
 
@@ -43,9 +44,12 @@ safe_read_paths:
   - README.md
   - AGENTS.md
   - repo.meta.yaml
+  - agent-policy.yaml
+  - audit/
   - docs/
 
 guarded_write_paths:
+  - audit/
   - docs/
   - scripts/
   - src/
@@ -54,11 +58,16 @@ guarded_write_paths:
 
 forbidden_write_paths:
   - docs/_generated/
+  - secrets/
+  - snapshots/
 
 required_checks:
   - repo-structure-guard
   - docs-relations-guard
   - generated-files-guard
+  - check-drift-gates
+  - lint
+  - test
 
 indexing:
   enabled: true
