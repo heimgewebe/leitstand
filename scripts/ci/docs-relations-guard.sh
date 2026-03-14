@@ -40,13 +40,21 @@ while IFS= read -r -d '' file; do
   if [ "$canonicality" = "canonical" ]; then
     # Must be referenced (if not index.md)
     if [ "$filename" != "index.md" ]; then
-      # Escape filename for regex usage (escape dots)
-      escaped_filename=$(echo "$filename" | sed 's/\./\\./g')
+      # Escape filename for robust grep regex usage (e.g. escape . [ ] ^ $ * + ? ( ) { } | \)
+      escaped_filename=$(echo "$filename" | awk '{gsub(/[\]\[.\\\^\$\*\+\?\(\)\{\}\|]/,"\\\\&");print}')
 
       # Search for a markdown link target pointing to this file in other documents.
       # E.g., looking for `](...filename...)`
-      # We exclude the current file and generated files.
-      if ! grep -Eq "\]\([^)]*${escaped_filename}[^)]*\)" $(find docs/ -type f -name "*.md" -not -path "docs/_generated/*" -not -path "$file"); then
+      # We exclude the current file and generated files. Use null-safe loop to avoid word splitting.
+      found_reference=0
+      while IFS= read -r -d '' candidate_file; do
+        if grep -Eq "\]\([^)]*${escaped_filename}[^)]*\)" "$candidate_file"; then
+          found_reference=1
+          break
+        fi
+      done < <(find docs/ -type f -name "*.md" -not -path "docs/_generated/*" -not -path "$file" -print0)
+
+      if [ "$found_reference" -eq 0 ]; then
          echo "WARNING: File '$file' is canonical but not referenced via markdown link target by any other document." >&2
          # Downgraded to warning to prioritize robustness over strict ambition in Bash.
       fi
