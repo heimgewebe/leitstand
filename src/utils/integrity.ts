@@ -39,7 +39,10 @@ export async function loadIntegritySummaries(options: IntegrityLoadOptions): Pro
   const { artifactDir, legacyArtifactPath, fixtureDir, legacyFixturePath, strict } = options;
   const integritySummaries: IntegritySummary[] = [];
 
-  const loadIntegrityFile = async (path: string, sourceLabel: string): Promise<IntegritySummary | null> => {
+  const loadIntegrityFile = async (
+    path: string,
+    sourceLabel: 'artifact' | 'fixture'
+  ): Promise<IntegritySummary | null> => {
     try {
       const json = await readJsonFile<IntegritySummary>(path);
       if (json && typeof json === 'object') {
@@ -54,7 +57,11 @@ export async function loadIntegritySummaries(options: IntegrityLoadOptions): Pro
   };
 
   // Helper for bounded concurrency
-  const loadIntegrityFilesBatched = async (dir: string, jsonFiles: string[], sourceLabel: string) => {
+  const loadIntegrityFilesBatched = async (
+    dir: string,
+    jsonFiles: string[],
+    sourceLabel: 'artifact' | 'fixture'
+  ): Promise<void> => {
     for (let i = 0; i < jsonFiles.length; i += MAX_CONCURRENT_FILE_LOADS) {
       const batch = jsonFiles.slice(i, i + MAX_CONCURRENT_FILE_LOADS);
       const summaries = await Promise.all(batch.map(file => loadIntegrityFile(join(dir, file), sourceLabel)));
