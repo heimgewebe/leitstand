@@ -136,13 +136,21 @@
         }
 
         // Debug Output
-        statusEl.innerHTML = "<strong>Live data loaded!</strong>";
+        statusEl.textContent = "";
+        const strong = document.createElement("strong");
+        strong.textContent = "Live data loaded!";
+        statusEl.appendChild(strong);
         statusEl.style.color = "green";
         if (isDebug) {
           preEl.textContent = JSON.stringify(data, null, 2);
         }
       } catch (e) {
-        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
+        statusEl.textContent = "";
+        const strong = document.createElement("strong");
+        strong.textContent = "Runtime fetch failed.";
+        statusEl.appendChild(strong);
+        statusEl.appendChild(document.createElement("br"));
+        statusEl.appendChild(document.createTextNode(String(e)));
         statusEl.style.color = "red";
         if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
       }
