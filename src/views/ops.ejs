@@ -382,17 +382,41 @@
             if (routine.risk === 'low') riskColor = 'green';
             if (routine.risk === 'medium') riskColor = 'orange';
 
-            card.innerHTML = `
-              <div class="routine-header">
-                <span>${routine.id}</span>
-                <span style="color: ${riskColor}">Risk: ${routine.risk}</span>
-              </div>
-              <p>${routine.reason}</p>
-              <div class="routine-actions">
-                <span>Action required in acs:</span>
-                <a href="${ACS_URL}/" class="acs-link" target="_blank">Open in acs &rarr;</a>
-              </div>
-            `;
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'routine-header';
+
+            const idSpan = document.createElement('span');
+            idSpan.textContent = routine.id;
+
+            const riskSpan = document.createElement('span');
+            riskSpan.style.color = riskColor;
+            riskSpan.textContent = `Risk: ${routine.risk}`;
+
+            headerDiv.appendChild(idSpan);
+            headerDiv.appendChild(riskSpan);
+
+            const reasonP = document.createElement('p');
+            reasonP.textContent = routine.reason;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'routine-actions';
+
+            const actionLabel = document.createElement('span');
+            actionLabel.textContent = 'Action required in acs:';
+
+            const acsLink = document.createElement('a');
+            acsLink.href = `${ACS_URL}/`;
+            acsLink.className = 'acs-link';
+            acsLink.target = '_blank';
+            acsLink.textContent = 'Open in acs →';
+
+            actionsDiv.appendChild(actionLabel);
+            actionsDiv.appendChild(document.createTextNode(' '));
+            actionsDiv.appendChild(acsLink);
+
+            card.appendChild(headerDiv);
+            card.appendChild(reasonP);
+            card.appendChild(actionsDiv);
             routinesList.appendChild(card);
           });
         }
