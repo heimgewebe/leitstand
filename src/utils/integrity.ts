@@ -30,6 +30,8 @@ export interface IntegrityLoadOptions {
   strict: boolean;
 }
 
+const MAX_CONCURRENT_FILE_LOADS = 10;
+
 /**
  * Loads integrity summaries from artifacts or fixtures with fallback.
  */
@@ -37,7 +39,10 @@ export async function loadIntegritySummaries(options: IntegrityLoadOptions): Pro
   const { artifactDir, legacyArtifactPath, fixtureDir, legacyFixturePath, strict } = options;
   const integritySummaries: IntegritySummary[] = [];
 
-  const loadIntegrityFile = async (path: string, sourceLabel: string): Promise<IntegritySummary | null> => {
+  const loadIntegrityFile = async (
+    path: string,
+    sourceLabel: 'artifact' | 'fixture'
+  ): Promise<IntegritySummary | null> => {
     try {
       const json = await readJsonFile<IntegritySummary>(path);
       if (json && typeof json === 'object') {
@@ -51,14 +56,26 @@ export async function loadIntegritySummaries(options: IntegrityLoadOptions): Pro
     }
   };
 
+  // Helper for bounded concurrency
+  const loadIntegrityFilesBatched = async (
+    dir: string,
+    jsonFiles: string[],
+    sourceLabel: 'artifact' | 'fixture'
+  ): Promise<void> => {
+    for (let i = 0; i < jsonFiles.length; i += MAX_CONCURRENT_FILE_LOADS) {
+      const batch = jsonFiles.slice(i, i + MAX_CONCURRENT_FILE_LOADS);
+      const summaries = await Promise.all(batch.map(file => loadIntegrityFile(join(dir, file), sourceLabel)));
+      for (const summary of summaries) {
+        if (summary) integritySummaries.push(summary);
+      }
+    }
+  };
+
   // 1. Try loading from artifacts/integrity/*.json
   try {
     const files = await readdir(artifactDir);
     const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
-    for (const file of jsonFiles) {
-      const summary = await loadIntegrityFile(join(artifactDir, file), 'artifact');
-      if (summary) integritySummaries.push(summary);
-    }
+    await loadIntegrityFilesBatched(artifactDir, jsonFiles, 'artifact');
   } catch (e) {
     // Directory might not exist, which is fine
   }
@@ -82,10 +99,7 @@ export async function loadIntegritySummaries(options: IntegrityLoadOptions): Pro
     try {
       const files = await readdir(fixtureDir);
       const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
-      for (const file of jsonFiles) {
-        const summary = await loadIntegrityFile(join(fixtureDir, file), 'fixture');
-        if (summary) integritySummaries.push(summary);
-      }
+      await loadIntegrityFilesBatched(fixtureDir, jsonFiles, 'fixture');
     } catch (e) { /* ignore */ }
 
     // Try legacy fixture
