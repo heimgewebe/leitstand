@@ -12,23 +12,25 @@ describe('Security Hardening - Client-side XSS Prevention', () => {
     // 2. error status rendering in observatory.ejs / observatory_debug.html
 
     if (filePath.endsWith('ops.ejs')) {
-      expect(content).not.toContain('card.innerHTML = `');
-      expect(content).toContain('.textContent = routine.');
-      expect(content).toContain('acsLink.rel = \'noopener noreferrer\'');
+      // Ensure dangerous innerHTML usage with routine data is removed
+      expect(content).not.toMatch(/card\.innerHTML\s*=\s*`/);
+      // Ensure safe textContent is used for dynamic data
+      expect(content).toMatch(/\.textContent\s*=\s*routine\./);
+      // Ensure security attribute is set for dynamically created links
+      expect(content).toMatch(/\.rel\s*=\s*['"]noopener noreferrer['"]/);
     }
 
     if (filePath.includes('observatory')) {
       // Should not concatenate Error string into innerHTML
       expect(content).not.toMatch(/statusEl\.innerHTML\s*=\s*".*String\(e\)/);
-      // Should use textContent for clearing or setting static text
-      expect(content).toContain('statusEl.textContent = ""');
-      // Should use textContent on strong element for the failure message
-      expect(content).toContain('.textContent = "Runtime fetch failed."');
+      // Should use safe textContent or individual node construction
+      expect(content).toMatch(/\.textContent\s*=\s*""/);
+      expect(content).toMatch(/\.textContent\s*=\s*['"]Runtime fetch failed\.['"]/);
+    }
 
-      // Ensure target="_blank" links have noopener noreferrer
-      if (content.includes('target="_blank"')) {
-        expect(content).toContain('rel="noopener noreferrer"');
-      }
+    // Global check for all target="_blank" links
+    if (content.includes('target="_blank"')) {
+      expect(content).toContain('rel="noopener noreferrer"');
     }
   };
 
