@@ -54,7 +54,7 @@
            <%= locals.view_meta.forensics.observatory.bytes %> bytes |
            Source: <%= locals.view_meta.forensics.observatory.source_url %>
            <% if (locals.view_meta.forensics.observatory.sha) { %> | SHA: <span title="<%= locals.view_meta.forensics.observatory.sha %>"><%= locals.view_meta.forensics.observatory.sha.substring(0, 7) %>...</span><% } %>
-           <% if (locals.view_meta.forensics.observatory.schema_ref) { %> | Schema: <a href="<%= locals.view_meta.forensics.observatory.schema_ref %>" target="_blank" style="color: #555; text-decoration: underline;">ref</a><% } %><br>
+           <% if (locals.view_meta.forensics.observatory.schema_ref) { %> | Schema: <a href="<%= locals.view_meta.forensics.observatory.schema_ref %>" target="_blank" rel="noopener noreferrer" style="color: #555; text-decoration: underline;">ref</a><% } %><br>
         <% } %>
         <% if (locals.view_meta.forensics.integrity) { %>
            <strong>Integrity:</strong>
@@ -136,13 +136,21 @@
         }
 
         // Debug Output
-        statusEl.innerHTML = "<strong>Live data loaded!</strong>";
+        statusEl.textContent = "";
+        const strong = document.createElement("strong");
+        strong.textContent = "Live data loaded!";
+        statusEl.appendChild(strong);
         statusEl.style.color = "green";
         if (isDebug) {
           preEl.textContent = JSON.stringify(data, null, 2);
         }
       } catch (e) {
-        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
+        statusEl.textContent = "";
+        const strong = document.createElement("strong");
+        strong.textContent = "Runtime fetch failed.";
+        statusEl.appendChild(strong);
+        statusEl.appendChild(document.createElement("br"));
+        statusEl.appendChild(document.createTextNode(String(e)));
         statusEl.style.color = "red";
         if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
       }
@@ -545,7 +553,7 @@
             </td>
             <td style="padding: 10px; text-align: right;">
                <% if (s.summary_url) { %>
-                  <a href="<%= s.summary_url %>" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>
+                  <a href="<%= s.summary_url %>" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #1976d2;">&rarr;</a>
                <% } %>
             </td>
           </tr>

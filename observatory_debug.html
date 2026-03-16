@@ -102,13 +102,21 @@
         }
 
         // Debug Output
-        statusEl.innerHTML = "<strong>Live data loaded!</strong>";
+        statusEl.textContent = "";
+        const strong = document.createElement("strong");
+        strong.textContent = "Live data loaded!";
+        statusEl.appendChild(strong);
         statusEl.style.color = "green";
         if (isDebug) {
           preEl.textContent = JSON.stringify(data, null, 2);
         }
       } catch (e) {
-        statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
+        statusEl.textContent = "";
+        const strong = document.createElement("strong");
+        strong.textContent = "Runtime fetch failed.";
+        statusEl.appendChild(strong);
+        statusEl.appendChild(document.createElement("br"));
+        statusEl.appendChild(document.createTextNode(String(e)));
         statusEl.style.color = "red";
         if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
       }
@@ -182,7 +190,7 @@
             <td style="padding: 10px; color: #666;">2023-10-27T10:00:00Z</td>
             <td style="padding: 10px; text-align: right;">
 
-                  <a href="https://example.com/meta" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>
+                  <a href="https://example.com/meta" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #1976d2;">&rarr;</a>
 
             </td>
           </tr>
@@ -199,7 +207,7 @@
             <td style="padding: 10px; color: #666;">2023-10-27T10:00:00Z</td>
             <td style="padding: 10px; text-align: right;">
 
-                  <a href="https://example.com/reports/integrity/semantAH.summary.json" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>
+                  <a href="https://example.com/reports/integrity/semantAH.summary.json" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #1976d2;">&rarr;</a>
 
             </td>
           </tr>
@@ -216,7 +224,7 @@
             <td style="padding: 10px; color: #666;">2023-10-27T11:00:00Z</td>
             <td style="padding: 10px; text-align: right;">
 
-                  <a href="https://example.com/wgx" target="_blank" style="text-decoration: none; color: #1976d2;">&rarr;</a>
+                  <a href="https://example.com/wgx" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #1976d2;">&rarr;</a>
 
             </td>
           </tr>
