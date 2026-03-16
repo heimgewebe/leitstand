@@ -24,6 +24,11 @@ describe('Security Hardening - Client-side XSS Prevention', () => {
       expect(content).toContain('statusEl.textContent = ""');
       // Should use textContent on strong element for the failure message
       expect(content).toContain('.textContent = "Runtime fetch failed."');
+
+      // Ensure target="_blank" links have noopener noreferrer
+      if (content.includes('target="_blank"')) {
+        expect(content).toContain('rel="noopener noreferrer"');
+      }
     }
   };
 
