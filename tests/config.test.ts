@@ -23,64 +23,81 @@ describe('config', () => {
   });
 
   describe('envConfig', () => {
-      it('should validate PORT as integer', () => {
-          vi.stubEnv('PORT', '4000');
-          resetEnvConfig();
-          expect(envConfig.PORT).toBe(4000);
-      });
+    it('should validate PORT as integer', () => {
+      vi.stubEnv('PORT', '4000');
+      resetEnvConfig();
+      expect(envConfig.PORT).toBe(4000);
+    });
 
-      it('should fallback to default PORT 3000 if invalid', () => {
-          vi.stubEnv('PORT', 'invalid-port');
-          resetEnvConfig();
-          // z.coerce.number() will result in NaN, which fails .int()/.positive(),
-          // but safeParse catches it and returns default object which has 3000.
-          // Wait, safeParse fails -> we log warning -> return default object (PORT: 3000)
-          expect(envConfig.PORT).toBe(3000);
-      });
+    it('should fallback to default PORT 3000 if invalid', () => {
+      vi.stubEnv('PORT', 'invalid-port');
+      resetEnvConfig();
+      // z.coerce.number() will result in NaN, which fails .int()/.positive(),
+      // but safeParse catches it and returns default object which has 3000.
+      // Wait, safeParse fails -> we log warning -> return default object (PORT: 3000)
+      expect(envConfig.PORT).toBe(3000);
+    });
 
-      it('should fallback to default PORT 3000 if non-positive', () => {
-        vi.stubEnv('PORT', '-500');
+    it('should fallback to default PORT 3000 if non-positive', () => {
+      vi.stubEnv('PORT', '-500');
+      resetEnvConfig();
+      // safeParse fails -> returns defaults -> 3000
+      expect(envConfig.PORT).toBe(3000);
+    });
+
+    describe('LEITSTAND_ACS_URL', () => {
+      // Ops Viewer specific config tests
+      it('should accept valid HTTP/HTTPS URLs', () => {
+        vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
         resetEnvConfig();
-        // safeParse fails -> returns defaults -> 3000
-        expect(envConfig.PORT).toBe(3000);
+        expect(envConfig.acsUrl).toBe('http://localhost:8000');
+
+        vi.stubEnv('LEITSTAND_ACS_URL', 'https://acs.internal');
+        resetEnvConfig();
+        expect(envConfig.acsUrl).toBe('https://acs.internal');
       });
 
-      describe('LEITSTAND_ACS_URL', () => {
-        // Ops Viewer specific config tests
-        it('should accept valid HTTP/HTTPS URLs', () => {
-          vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
-          resetEnvConfig();
-          expect(envConfig.acsUrl).toBe('http://localhost:8000');
-
-          vi.stubEnv('LEITSTAND_ACS_URL', 'https://acs.internal');
-          resetEnvConfig();
-          expect(envConfig.acsUrl).toBe('https://acs.internal');
-        });
-
-        it('should allow empty string (disabled/unconfigured)', () => {
-          vi.stubEnv('LEITSTAND_ACS_URL', '');
-          resetEnvConfig();
-          expect(envConfig.acsUrl).toBe('');
-        });
-
-        it('should reject invalid URLs (non-http/s) and trigger global fallback', () => {
-          // Set a valid PORT override alongside invalid URL
-          vi.stubEnv('PORT', '4001');
-          vi.stubEnv('LEITSTAND_ACS_URL', 'ftp://malicious-server.com');
-          resetEnvConfig();
-
-          // Validation fails -> global fallback to defaults
-          // This confirms safeParse failure invalidates the ENTIRE env config object
-          expect(envConfig.acsUrl).toBe('');
-          expect(envConfig.PORT).toBe(3000); // Should revert to default, ignoring the valid 4001
-        });
-
-        it('should reject invalid URL strings', () => {
-          vi.stubEnv('LEITSTAND_ACS_URL', 'not-a-url');
-          resetEnvConfig();
-          expect(envConfig.acsUrl).toBe('');
-        });
+      it('should allow empty string (disabled/unconfigured)', () => {
+        vi.stubEnv('LEITSTAND_ACS_URL', '');
+        resetEnvConfig();
+        expect(envConfig.acsUrl).toBe('');
       });
+
+      it('should reject invalid URLs (non-http/s) and trigger global fallback', () => {
+        // Set a valid PORT override alongside invalid URL
+        vi.stubEnv('PORT', '4001');
+        vi.stubEnv('LEITSTAND_ACS_URL', 'ftp://malicious-server.com');
+        resetEnvConfig();
+
+        // Validation fails -> global fallback to defaults
+        // This confirms safeParse failure invalidates the ENTIRE env config object
+        expect(envConfig.acsUrl).toBe('');
+        expect(envConfig.PORT).toBe(3000); // Should revert to default, ignoring the valid 4001
+      });
+
+      it('should reject invalid URL strings', () => {
+        vi.stubEnv('LEITSTAND_ACS_URL', 'not-a-url');
+        resetEnvConfig();
+        expect(envConfig.acsUrl).toBe('');
+      });
+    });
+
+    it('should reset the cache when resetEnvConfig is called', () => {
+      vi.stubEnv('PORT', '5000');
+      resetEnvConfig();
+      // Accessing PORT to populate the cache
+      expect(envConfig.PORT).toBe(5000);
+
+      // Change environment variable without resetting
+      vi.stubEnv('PORT', '6000');
+      // Should still be cached as 5000
+      expect(envConfig.PORT).toBe(5000);
+
+      // Reset the cache
+      resetEnvConfig();
+      // Now it should pick up the new value
+      expect(envConfig.PORT).toBe(6000);
+    });
   });
   
   it('should load valid configuration', async () => {
