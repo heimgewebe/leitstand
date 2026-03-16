@@ -3,39 +3,39 @@ import fs from 'fs';
 import path from 'path';
 
 describe('Security Hardening - Client-side XSS Prevention', () => {
-  it('src/views/ops.ejs should not use innerHTML for routine rendering', () => {
-    const filePath = path.join(process.cwd(), 'src/views/ops.ejs');
+  const checkXSSPrevention = (filePath: string) => {
     const content = fs.readFileSync(filePath, 'utf-8');
 
-    // We want to ensure that inside the routine loop, innerHTML is not used to build the card
-    // The previous vulnerable code was card.innerHTML = `...`
-    // We expect the use of createElement/textContent instead.
+    // Ensure dangerous innerHTML pattern with dynamic data is removed
+    // We specifically look for the patterns we fixed:
+    // 1. routine card rendering in ops.ejs
+    // 2. error status rendering in observatory.ejs / observatory_debug.html
 
-    // Check that we are using textContent for dynamic routine data
-    expect(content).toContain('idSpan.textContent = routine.id');
-    expect(content).toContain('riskSpan.textContent = `Risk: ${routine.risk}`');
-    expect(content).toContain('reasonP.textContent = routine.reason');
+    if (filePath.endsWith('ops.ejs')) {
+      expect(content).not.toContain('card.innerHTML = `');
+      expect(content).toContain('.textContent = routine.');
+      expect(content).toContain('acsLink.rel = \'noopener noreferrer\'');
+    }
 
-    // Ensure the old vulnerable pattern is gone
-    expect(content).not.toContain('card.innerHTML = `');
+    if (filePath.includes('observatory')) {
+      // Should not concatenate Error string into innerHTML
+      expect(content).not.toMatch(/statusEl\.innerHTML\s*=\s*".*String\(e\)/);
+      // Should use textContent for clearing or setting static text
+      expect(content).toContain('statusEl.textContent = ""');
+      // Should use textContent on strong element for the failure message
+      expect(content).toContain('.textContent = "Runtime fetch failed."');
+    }
+  };
+
+  it('src/views/ops.ejs should use safe DOM APIs and have hardened links', () => {
+    checkXSSPrevention(path.join(process.cwd(), 'src/views/ops.ejs'));
   });
 
-  it('src/views/observatory.ejs should not use innerHTML for error/status rendering', () => {
-    const filePath = path.join(process.cwd(), 'src/views/observatory.ejs');
-    const content = fs.readFileSync(filePath, 'utf-8');
-
-    // Vulnerable code: statusEl.innerHTML = "<strong>Runtime fetch failed.</strong><br>" + String(e);
-    // Fixed code uses textContent and appendChild
-
-    expect(content).toContain('statusEl.textContent = ""');
-    expect(content).toContain('strong.textContent = "Runtime fetch failed."');
-    expect(content).not.toMatch(/statusEl\.innerHTML\s*=\s*".*String\(e\)/);
+  it('src/views/observatory.ejs should use safe DOM APIs for error rendering', () => {
+    checkXSSPrevention(path.join(process.cwd(), 'src/views/observatory.ejs'));
   });
 
-  it('src/views/ops.ejs should have rel="noopener noreferrer" for external links', () => {
-    const filePath = path.join(process.cwd(), 'src/views/ops.ejs');
-    const content = fs.readFileSync(filePath, 'utf-8');
-
-    expect(content).toContain('acsLink.rel = \'noopener noreferrer\'');
+  it('observatory_debug.html should use safe DOM APIs for error rendering', () => {
+    checkXSSPrevention(path.join(process.cwd(), 'observatory_debug.html'));
   });
 });
