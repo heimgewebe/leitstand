@@ -203,28 +203,38 @@ export async function loadLatestMetrics(metricsDir: string): Promise<MetricsSnap
     }
 
     // Fallback: pick the most recently modified metrics file
-    const stats = await Promise.all(
-      jsonFiles.map(async (file) => {
-        const filePath = join(metricsDir, file);
-        const fileStat = await stat(filePath);
-        return { file, filePath, mtime: fileStat.mtime };
-      })
-    );
+    // Bounded concurrency (batch size 10) to reduce file descriptor (FD) pressure
+    // and prevent overwhelming the file system when many metrics files exist.
+    // Note: This still performs one stat() call per candidate file, but limits concurrent execution.
+    const MAX_CONCURRENT_STATS = 10;
+    let latest: { file: string; filePath: string; mtime: Date } | null = null;
 
-    const latest = stats.reduce((currentLatest, entry) => {
-      if (!currentLatest) return entry;
+    for (let i = 0; i < jsonFiles.length; i += MAX_CONCURRENT_STATS) {
+      const batch = jsonFiles.slice(i, i + MAX_CONCURRENT_STATS);
+      const stats = await Promise.all(
+        batch.map(async (file) => {
+          const filePath = join(metricsDir, file);
+          const fileStat = await stat(filePath);
+          return { file, filePath, mtime: fileStat.mtime };
+        })
+      );
 
-      if (entry.mtime > currentLatest.mtime) {
-        return entry;
+      for (const entry of stats) {
+        if (!latest) {
+          latest = entry;
+          continue;
+        }
+
+        if (entry.mtime > latest.mtime) {
+          latest = entry;
+        } else if (entry.mtime.getTime() === latest.mtime.getTime()) {
+          // Stable tie-breaker: lexicographic order
+          if (entry.file > latest.file) {
+            latest = entry;
+          }
+        }
       }
-
-      // Stable tie-breaker: lexicographic order
-      if (entry.mtime.getTime() === currentLatest.mtime.getTime()) {
-        return entry.file > currentLatest.file ? entry : currentLatest;
-      }
-
-      return currentLatest;
-    }, null as { file: string; filePath: string; mtime: Date } | null);
+    }
 
     return latest ? await loadMetricsSnapshot(latest.filePath) : null;
   } catch (error) {
