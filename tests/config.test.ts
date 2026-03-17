@@ -23,6 +23,16 @@ describe('config', () => {
   });
 
   describe('envConfig', () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
     it('should validate PORT as integer', () => {
       vi.stubEnv('PORT', '4000');
       resetEnvConfig();
@@ -32,17 +42,18 @@ describe('config', () => {
     it('should fallback to default PORT 3000 if invalid', () => {
       vi.stubEnv('PORT', 'invalid-port');
       resetEnvConfig();
-      // z.coerce.number() will result in NaN, which fails .int()/.positive(),
-      // but safeParse catches it and returns default object which has 3000.
-      // Wait, safeParse fails -> we log warning -> return default object (PORT: 3000)
+      // z.coerce.number() coerces 'invalid-port' to NaN, failing .int().positive()
+      // safeParse() fails -> parsedEnv() warns and returns the defaults object (PORT: 3000)
       expect(envConfig.PORT).toBe(3000);
+      expect(warnSpy).toHaveBeenCalled();
     });
 
     it('should fallback to default PORT 3000 if non-positive', () => {
       vi.stubEnv('PORT', '-500');
       resetEnvConfig();
-      // safeParse fails -> returns defaults -> 3000
+      // -500 fails .positive() -> safeParse() fails -> warns and returns defaults (PORT: 3000)
       expect(envConfig.PORT).toBe(3000);
+      expect(warnSpy).toHaveBeenCalled();
     });
 
     describe('LEITSTAND_ACS_URL', () => {
@@ -73,12 +84,14 @@ describe('config', () => {
         // This confirms safeParse failure invalidates the ENTIRE env config object
         expect(envConfig.acsUrl).toBe('');
         expect(envConfig.PORT).toBe(3000); // Should revert to default, ignoring the valid 4001
+        expect(warnSpy).toHaveBeenCalled();
       });
 
       it('should reject invalid URL strings', () => {
         vi.stubEnv('LEITSTAND_ACS_URL', 'not-a-url');
         resetEnvConfig();
         expect(envConfig.acsUrl).toBe('');
+        expect(warnSpy).toHaveBeenCalled();
       });
     });
 
