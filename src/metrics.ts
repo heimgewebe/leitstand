@@ -203,7 +203,9 @@ export async function loadLatestMetrics(metricsDir: string): Promise<MetricsSnap
     }
 
     // Fallback: pick the most recently modified metrics file
-    // Optimization: Use bounded concurrency (batch size 10) to avoid overwhelming the file system
+    // Bounded concurrency (batch size 10) to reduce file descriptor (FD) pressure
+    // and prevent overwhelming the file system when many metrics files exist.
+    // Note: This still performs one stat() call per candidate file, but limits concurrent execution.
     const MAX_CONCURRENT_STATS = 10;
     let latest: { file: string; filePath: string; mtime: Date } | null = null;
 
