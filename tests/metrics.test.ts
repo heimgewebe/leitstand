@@ -125,7 +125,7 @@ describe('metrics', () => {
 
     for (let i = 0; i < fileCount; i++) {
       // Filenames: m00.json, m01.json, ...
-      const fileName = \`m\${i.toString().padStart(2, '0')}.json\`;
+      const fileName = `m${i.toString().padStart(2, '0')}.json`;
       const filePath = join(testDir, fileName);
       await writeFile(filePath, JSON.stringify({ repoCount: i }));
 
