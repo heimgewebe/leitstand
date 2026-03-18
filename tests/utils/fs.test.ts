@@ -32,23 +32,26 @@ describe('readJsonFile', () => {
     const filePath = join(testDir, 'empty.json');
     await writeFile(filePath, '');
 
-    await expect(readJsonFile(filePath)).rejects.toThrow(EmptyFileError);
-    await expect(readJsonFile(filePath)).rejects.toThrow(`File is empty: ${filePath}`);
+    const error = await readJsonFile(filePath).catch(e => e);
+    expect(error).toBeInstanceOf(EmptyFileError);
+    expect(error.message).toBe(`File is empty: ${filePath}`);
   });
 
   it('should throw EmptyFileError if the file contains only whitespace', async () => {
     const filePath = join(testDir, 'whitespace.json');
     await writeFile(filePath, '   \n\t  ');
 
-    await expect(readJsonFile(filePath)).rejects.toThrow(EmptyFileError);
+    const error = await readJsonFile(filePath).catch(e => e);
+    expect(error).toBeInstanceOf(EmptyFileError);
   });
 
   it('should throw InvalidJsonError if the file contains invalid JSON', async () => {
     const filePath = join(testDir, 'invalid.json');
     await writeFile(filePath, '{ "foo": "bar", }'); // Trailing comma is invalid in standard JSON
 
-    await expect(readJsonFile(filePath)).rejects.toThrow(InvalidJsonError);
-    await expect(readJsonFile(filePath)).rejects.toThrow(`Invalid JSON in ${filePath}`);
+    const error = await readJsonFile(filePath).catch(e => e);
+    expect(error).toBeInstanceOf(InvalidJsonError);
+    expect(error.message).toMatch(`Invalid JSON in ${filePath}`);
   });
 
   it('should throw original error (e.g. ENOENT) if the file does not exist', async () => {
