@@ -12,11 +12,7 @@ describe('readJsonFile', () => {
   });
 
   afterEach(async () => {
-    try {
-      await rm(testDir, { recursive: true, force: true });
-    } catch {
-      // Ignore ENOENT
-    }
+    await rm(testDir, { recursive: true, force: true });
   });
 
   it('should successfully parse a valid JSON file', async () => {
@@ -51,7 +47,7 @@ describe('readJsonFile', () => {
 
     const error = await readJsonFile(filePath).catch(e => e);
     expect(error).toBeInstanceOf(InvalidJsonError);
-    expect(error.message).toMatch(`Invalid JSON in ${filePath}`);
+    expect(error.message).toContain(`Invalid JSON in ${filePath}`);
   });
 
   it('should throw original error (e.g. ENOENT) if the file does not exist', async () => {
