@@ -5,6 +5,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 import { readJsonFile } from './utils/fs.js';
+import { isLoopbackAddress } from './utils/network.js';
 import { envConfig } from './config.js';
 import { getObservatoryData } from './controllers/observatory.js';
 import fs from 'fs';
@@ -98,9 +99,8 @@ app.post('/events', async (req, res) => {
     // Dev/Preview: Permissive (no token required)
     // Security Hardening: Unauthenticated access is strictly limited to localhost.
     const remoteAddress = req.socket.remoteAddress;
-    const isLocal = remoteAddress === '127.0.0.1' || remoteAddress === '::ffff:127.0.0.1' || remoteAddress === '::1';
 
-    if (!isLocal) {
+    if (!isLoopbackAddress(remoteAddress)) {
       console.warn(`[Event] Blocked unauthenticated remote access attempt from ${remoteAddress}`);
       res.status(401).send('Unauthorized: Token required for remote access');
       return;
