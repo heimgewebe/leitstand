@@ -55,7 +55,7 @@ describe('Security Fix: Event Authentication Localhost Restriction', () => {
       expect(res.status).toBe(200);
     });
 
-    it('should still allow remote access with a valid token regardless of origin', async () => {
+    it('should allow token-authenticated requests regardless of localhost restriction', async () => {
       vi.stubEnv('LEITSTAND_EVENTS_TOKEN', 'secret-token');
       resetEnvConfig();
 
