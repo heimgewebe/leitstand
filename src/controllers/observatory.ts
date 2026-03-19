@@ -48,6 +48,8 @@ export interface ObservatoryViewData {
   };
 }
 
+const SELF_STATE_SCHEMA_V1 = "heimgeist.self_state.bundle.v1";
+
 /**
  * Controller for loading Observatory view data
  */
@@ -115,12 +117,11 @@ export async function getObservatoryData(): Promise<ObservatoryViewData> {
 
   // Check Schema
   let selfStateSchemaValid = false;
-  const EXPECTED_SCHEMA = "heimgeist.self_state.bundle.v1";
   if (selfState) {
-    if (selfState.schema === EXPECTED_SCHEMA) {
+    if (selfState.schema === SELF_STATE_SCHEMA_V1) {
       selfStateSchemaValid = true;
     } else {
-      console.warn(`[SelfState] Schema mismatch. Expected ${EXPECTED_SCHEMA}, got ${selfState.schema}`);
+      console.warn(`[SelfState] Schema mismatch. Expected ${SELF_STATE_SCHEMA_V1}, got ${selfState.schema}`);
     }
   }
 
