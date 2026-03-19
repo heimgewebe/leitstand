@@ -96,6 +96,15 @@ app.post('/events', async (req, res) => {
       return;
     }
     // Dev/Preview: Permissive (no token required)
+    // Security Hardening: Unauthenticated access is strictly limited to localhost.
+    const remoteAddress = req.socket.remoteAddress;
+    const isLocal = remoteAddress === '127.0.0.1' || remoteAddress === '::ffff:127.0.0.1' || remoteAddress === '::1';
+
+    if (!isLocal) {
+      console.warn(`[Event] Blocked unauthenticated remote access attempt from ${remoteAddress}`);
+      res.status(401).send('Unauthorized: Token required for remote access');
+      return;
+    }
   }
 
   const event = req.body;
