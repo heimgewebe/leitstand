@@ -9,7 +9,7 @@ set -euo pipefail
 
 echo "Running Observer Invariant Guard..."
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$REPO_ROOT" || { echo "❌ Observer Invariant Guard failed: could not change to repo root." >&2; exit 2; }
 
 # Disable errexit temporarily because grep exits 1 if no matches are found
