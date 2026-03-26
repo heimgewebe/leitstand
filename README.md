@@ -18,7 +18,7 @@ Er hat genau drei Kernfunktionen:
 Leitstand ist ausdrücklich **nicht**:
 - ein Orchestrator
 - eine Steuerinstanz
-- eine schreibende Systemkomponente
+- eine extern mutierende bzw. gegenüber anderen Systemen schreibende Systemkomponente
 
 Alle Änderungen im Repo müssen dieser Invariante entsprechen.
 Lokale Artefaktschreibvorgänge (Caches, Digests, Build-Outputs) sind zulässig, solange sie der reinen Darstellungs- und Observer-Pipeline dienen.
@@ -173,7 +173,7 @@ Leitstand acts strictly as a viewer; authentication and authorization enforcemen
 
 ## Data Flow & Contracts
 
-Leitstand is the **visual control center** of the Heimgewebe organism. To provide accurate and stable views, Leitstand relies on clearly defined data contracts and a strict separation of concerns.
+Leitstand is the **visual monitoring center** of the Heimgewebe organism. To provide accurate and stable views, Leitstand relies on clearly defined data contracts and a strict separation of concerns.
 
 ```mermaid
 flowchart TD

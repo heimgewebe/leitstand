@@ -10,7 +10,7 @@ summary: >
 
 # Leitstand Documentation Router
 
-Leitstand is the visual control center of the Heimgewebe organism. It strictly adheres to the Observer Invariant: It does not orchestrate or mutate external systems (see [Non-Goals](architecture/non-goals.md) and [Feature Classification](architecture/feature-classification.md)). It is organized into strict normative invariants (contracts) and operative runbooks. This router connects the "What is true?" (Contracts) with the "How does it stay true?" (Checks).
+Leitstand is the visual monitoring center of the Heimgewebe organism. It strictly adheres to the Observer Invariant: It does not orchestrate or mutate external systems (see [Non-Goals](architecture/non-goals.md) and [Feature Classification](architecture/feature-classification.md)). It is organized into strict normative invariants (contracts) and operative runbooks. This router connects the "What is true?" (Contracts) with the "How does it stay true?" (Checks).
 
 ## Canonicality & Discovery
 * *Note: Generated files are currently structural placeholders. A full semantic graph generator is not yet active.*
