@@ -12,7 +12,8 @@ Please report privately via:
 - or direct contact with the maintainers
 
 ## Non-Goals
-- No authentication logic
+- No user/session authentication logic (no accounts, no login flows)
+- POST `/events` has an optional token guard: if `LEITSTAND_EVENTS_TOKEN` is set, the token is required; otherwise the route is disabled in strict mode or only accepts unauthenticated requests from localhost (remote requests are blocked).
 - No secret storage
 - No dynamic schema fetching beyond allowlisted references
 
