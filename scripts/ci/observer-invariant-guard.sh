@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$REPO_ROOT" || { echo "❌ Observer Invariant Guard failed: could not change to repo root." >&2; exit 2; }
+
 # Observer Invariant Guard (Heuristic)
 #
-# NOTICE: This is a heuristic guard. It protects the `src/` directory against 
-# obvious new outgoing mutating requests. It is not a complete semantic proof 
+# NOTICE: This is a heuristic guard. It protects the `src/` directory against
+# obvious new outgoing mutating requests. It is not a complete semantic proof
 # (e.g., AST parsing), but blocks common patterns like `method: 'POST'` or `.post(`.
 
 echo "Running Observer Invariant Guard..."
 
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-cd "$REPO_ROOT" || { echo "❌ Observer Invariant Guard failed: could not change to repo root." >&2; exit 2; }
-
+# Find matches for mutating HTTP methods.
+# grep exits 0=matches found, 1=no matches, >1=real error; only >1 indicates a scan failure.
 set +e
 RAW_MATCHES=$(grep -rnI -E "(method:[[:space:]]*['\"](POST|PUT|DELETE|PATCH)['\"]|\.(post|put|delete|patch)[[:space:]]*\()" src/ 2>/dev/null)
 SCAN_STATUS=$?
@@ -27,8 +29,18 @@ if [ -z "$RAW_MATCHES" ]; then
     exit 0
 fi
 
-# Filter out common incoming Express route definitions and explicit known exceptions
-VIOLATIONS=$(echo "$RAW_MATCHES" | grep -vE "(app|router)\.(post|put|delete|patch)[[:space:]]*\(" | grep -v "observer-invariant-guard: allow-known-exception" || true)
+# Filter out common incoming Express route definitions and explicit known exceptions.
+set +e
+VIOLATIONS=$(echo "$RAW_MATCHES" \
+    | grep -vE "(app|router)\.(post|put|delete|patch)[[:space:]]*\(" \
+    | grep -v "observer-invariant-guard: allow-known-exception")
+VIOLATIONS_STATUS=$?
+set -e
+
+if [ "$VIOLATIONS_STATUS" -gt 1 ]; then
+    echo "❌ Observer Invariant Guard failed: error while filtering known exceptions." >&2
+    exit "$VIOLATIONS_STATUS"
+fi
 
 if [ -n "$VIOLATIONS" ]; then
     echo "❌ Observer Invariant Guard failed: unexpected outbound mutating request pattern detected in src/"
