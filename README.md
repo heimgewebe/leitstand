@@ -18,11 +18,10 @@ Er hat genau drei Kernfunktionen:
 Leitstand ist ausdrücklich **nicht**:
 - ein Orchestrator
 - eine Steuerinstanz
-- eine schreibende Steuerkomponente gegenüber anderen Systemen
-
-Lokale Artefaktschreibvorgänge (Digests, Rendering-Cache) dienen ausschließlich Darstellung und Verdichtung und gelten nicht als systemsteuernde Schreibvorgänge.
+- eine schreibende Systemkomponente
 
 Alle Änderungen im Repo müssen dieser Invariante entsprechen.
+Lokale Artefaktschreibvorgänge (Caches, Digests, Build-Outputs) sind zulässig, solange sie der reinen Darstellungs- und Observer-Pipeline dienen.
 
 ### The Heimgewebe Organism
 

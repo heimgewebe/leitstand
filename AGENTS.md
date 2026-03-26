@@ -5,7 +5,8 @@ This repository provides the dashboard and control-room for the heimgewebe organ
 
 ## Read This First
 - **Primary read path**: Start with `README.md` and this `AGENTS.md` file. Then review `docs/index.md` for normative invariants and runbooks.
-- Understand that this is a UI / Observer. It does not generate raw insights or execute motorik actions (except for self-healing).
+- Understand that this is a UI / Observer: it does not generate raw insights and does not execute motorik actions.
+- If actions are required, Leitstand may **request** them explicitly via the agent-control-surface (acs), but authorization and execution remain outside Leitstand.
 
 ## Canonical Sources
 - `repo.meta.yaml` (Repo identity and structure truth)

@@ -12,7 +12,8 @@ Please report privately via:
 - or direct contact with the maintainers
 
 ## Non-Goals
-- No authentication logic
+- No user/session authentication logic (no accounts, no login flows)
+- A small token-based ingestion guard exists for POST /events to prevent unauthorized triggers.
 - No secret storage
 - No dynamic schema fetching beyond allowlisted references
 

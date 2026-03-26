@@ -15,7 +15,11 @@ Es ist die verbindliche Sicht auf den Organismus-Fluss:
 
     aussensensor → chronik → semantAH → leitstand → hausKI → chronik
 
-Leitstand ist damit das „Regelzentrum“ des Heimgewebes.
+Leitstand ist damit das **Beobachtungs- und Visualisierungszentrum** des Heimgewebes.
+
+Wichtig (Invariante):
+- Leitstand **orchestriert nicht** und **mutiert keine externen Systeme**.
+- Leitstand konsumiert Artefakte/Events und erzeugt lediglich **lokale Darstellungs-/Digest-Artefakte**.
 
 ---
 
