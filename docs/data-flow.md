@@ -17,9 +17,10 @@ Es ist die verbindliche Sicht auf den Organismus-Fluss:
 
 Leitstand ist damit das **Beobachtungs- und Visualisierungszentrum** des Heimgewebes.
 
-Wichtig (Invariante):
-- Leitstand **orchestriert nicht** und **mutiert keine externen Systeme**.
-- Leitstand konsumiert Artefakte/Events und erzeugt lediglich **lokale Darstellungs-/Digest-Artefakte**.
+Wichtig (Invariante, bezogen auf den Kern-Datenpfad `aussensensor → chronik → semantAH → leitstand → hausKI → chronik`):
+- Leitstand **orchestriert nicht** und **mutiert keine externen Systeme** im Normalbetrieb entlang dieses Datenpfads.
+- Leitstand konsumiert Artefakte/Events und erzeugt entlang dieses Pfads lediglich **lokale Darstellungs-/Digest-Artefakte**.
+- Ausnahme (bewusstes, optionales Fallback): Wenn `LEITSTAND_OPS_ALLOW_JOB_FALLBACK=true` gesetzt ist, kann der Ops Viewer POST-Requests an acs (`/api/audit/git`) auslösen; dies ist ein explizit opt-in konfigurierter externer Seiteneffekt außerhalb des Kern-Datenpfads.
 
 ---
 
