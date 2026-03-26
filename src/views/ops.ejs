@@ -195,7 +195,7 @@
                   // Sync endpoint not available, fallback to Job Flow (POST)
                   console.log(`Sync endpoint missing (${res.status}), falling back to Job Flow (POST)`);
                   res = await fetch(`${ACS_URL}/api/audit/git?repo=${encodeURIComponent(repo)}`, {
-                      method: 'POST',
+                      method: 'POST', // observer-invariant-guard: allow-known-exception
                       headers: getAuthHeaders()
                   });
               } else {

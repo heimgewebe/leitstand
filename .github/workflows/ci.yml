@@ -60,3 +60,7 @@ jobs:
     - name: Drift Gates
       if: success()
       run: bash scripts/ci/check-drift-gates.sh
+
+    - name: Observer Invariant Guard
+      if: success()
+      run: bash scripts/ci/observer-invariant-guard.sh
