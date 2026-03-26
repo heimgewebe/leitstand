@@ -18,7 +18,9 @@ Er hat genau drei Kernfunktionen:
 Leitstand ist ausdrücklich **nicht**:
 - ein Orchestrator
 - eine Steuerinstanz
-- eine schreibende Systemkomponente
+- eine schreibende Steuerkomponente gegenüber anderen Systemen
+
+Lokale Artefaktschreibvorgänge (Digests, Rendering-Cache) dienen ausschließlich Darstellung und Verdichtung und gelten nicht als systemsteuernde Schreibvorgänge.
 
 Alle Änderungen im Repo müssen dieser Invariante entsprechen.
 

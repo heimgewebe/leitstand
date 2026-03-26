@@ -273,7 +273,7 @@ app.post('/events', async (req, res) => {
   }
 });
 
-// Ops Viewer Route - Read-only view. No side effects allowed.
+// Ops Viewer Route - Viewer UI; may request orchestration from ACS depending on configuration (allowJobFallback).
 app.get('/ops', (_req, res) => {
   res.render('ops', {
     acsUrl: envConfig.acsUrl,

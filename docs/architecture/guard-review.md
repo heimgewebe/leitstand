@@ -1,3 +1,13 @@
+---
+id: docs.architecture.guard-review
+title: Guard Review
+doc_type: architecture
+status: active
+canonicality: informational
+summary: >
+  Bewertet die existierenden Guards des Heimgewebe-Ökosystems im Kontext von Leitstand.
+---
+
 # Guard Review
 
 Dieses Dokument bewertet die existierenden Guards des Heimgewebe-Ökosystems im Kontext von Leitstand. 
