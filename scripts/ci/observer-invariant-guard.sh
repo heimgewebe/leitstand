@@ -13,6 +13,7 @@ cd "$REPO_ROOT"
 echo "Running Observer Invariant Guard..."
 
 # Find matches for mutating HTTP methods, excluding common incoming Express route definitions (app.post, router.post)
+# grep exits 0=matches found, 1=no matches, >1=real error; only >1 indicates a scan failure.
 set +e
 MATCHES=$(grep -rnI -E "(method:[[:space:]]*['\"](POST|PUT|DELETE|PATCH)['\"]|\.(post|put|delete|patch)[[:space:]]*\()" src/ | grep -vE "(app|router)\.(post|put|delete|patch)[[:space:]]*\(")
 grep_status=$?
