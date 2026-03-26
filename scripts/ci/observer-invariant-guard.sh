@@ -9,7 +9,7 @@ set -euo pipefail
 
 echo "Running Observer Invariant Guard..."
 
-# Find matches for mutating HTTP methods, excluding incoming Express routes (app.post, router.post)
+# Find matches for mutating HTTP methods, excluding common incoming Express route definitions (app.post, router.post)
 MATCHES=$(grep -rnI -E "(method:[[:space:]]*['\"](POST|PUT|DELETE|PATCH)['\"]|\.(post|put|delete|patch)\()" src/ | grep -vE "(app|router)\.(post|put|delete|patch)\(" || true)
 
 if [ -z "$MATCHES" ]; then
