@@ -1,16 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$REPO_ROOT"
+
 # Observer Invariant Guard (Heuristic)
 #
-# NOTICE: This is a heuristical guard. It protects the `src/` directory against 
-# obvious new outgoing mutating requests. It is not a complete semantic proof 
+# NOTICE: This is a heuristic guard. It protects the `src/` directory against
+# obvious new outgoing mutating requests. It is not a complete semantic proof
 # (e.g., AST parsing), but blocks common patterns like `method: 'POST'` or `.post(`.
 
 echo "Running Observer Invariant Guard..."
 
 # Find matches for mutating HTTP methods, excluding common incoming Express route definitions (app.post, router.post)
-MATCHES=$(grep -rnI -E "(method:[[:space:]]*['\"](POST|PUT|DELETE|PATCH)['\"]|\.(post|put|delete|patch)\()" src/ | grep -vE "(app|router)\.(post|put|delete|patch)\(" || true)
+set +e
+MATCHES=$(grep -rnI -E "(method:[[:space:]]*['\"](POST|PUT|DELETE|PATCH)['\"]|\.(post|put|delete|patch)[[:space:]]*\()" src/ | grep -vE "(app|router)\.(post|put|delete|patch)[[:space:]]*\(")
+grep_status=$?
+set -e
+
+if [ "$grep_status" -gt 1 ]; then
+    echo "❌ Observer Invariant Guard failed: error while scanning src/ for mutating HTTP methods." >&2
+    exit "$grep_status"
+fi
 
 if [ -z "$MATCHES" ]; then
     echo "✅ No mutating HTTP methods found. Observer invariant is intact."
@@ -18,7 +29,15 @@ if [ -z "$MATCHES" ]; then
 fi
 
 # Filter out the known exceptions explicitly marked in code
-VIOLATIONS=$(echo "$MATCHES" | grep -v "observer-invariant-guard: allow-known-exception" || true)
+set +e
+VIOLATIONS=$(echo "$MATCHES" | grep -v "observer-invariant-guard: allow-known-exception")
+violations_status=$?
+set -e
+
+if [ "$violations_status" -gt 1 ]; then
+    echo "❌ Observer Invariant Guard failed: error while filtering known exceptions." >&2
+    exit "$violations_status"
+fi
 
 if [ -n "$VIOLATIONS" ]; then
     echo "❌ Observer Invariant Guard failed: unexpected outbound mutating request pattern detected in src/"
