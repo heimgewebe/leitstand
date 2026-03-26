@@ -1,3 +1,8 @@
+# DEPLOYMENT MODE: Public Static Mirror
+# This workflow deploys Leitstand as static HTML to GitHub Pages.
+# It acts strictly as a "Mode B" public mirror/preview.
+# It does NOT represent the canonical Mode A internal runtime.
+# Consequently, dynamic endpoints (/events, /ops) are not available here.
 name: Deploy to Pages
 
 on:

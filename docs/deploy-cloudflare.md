@@ -10,6 +10,9 @@ summary: >
 
 # Deploying Leitstand to Cloudflare Pages
 
+> **Deployment Mode: B (Public Static Mirror)**
+> This mode acts purely as a static read-only mirror. Dynamic endpoints (`/events`, `/ops` fallbacks) are inactive.
+
 Leitstand relies on a deterministic build process where data artifacts are fetched *before* the static site generation.
 
 ## Required Environment Variables
