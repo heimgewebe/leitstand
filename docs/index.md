@@ -47,7 +47,18 @@ Tools that enforce the rules automatically.
 - [Leitstand Manifest Blueprint](blueprints/leitstand_manifest.md)
 - [Leitstand Visualization Blueprint](blueprints/leitstand_visualization.md)
 
-## 5. Deployment
+## 5. Deployment Modes
 
-- [Deployment Overview](DEPLOYMENT.md)
-- [Cloudflare Deployment](deploy-cloudflare.md)
+Leitstand operates in exactly one of two explicit modes:
+
+**Mode A — Canonical Runtime (Internal Gateway)**
+- Scope: canonical operative environment.
+- Topology: internal-only, Reverse Proxy required, FQDN `leitstand.heimgewebe.home.arpa`.
+- Features: fully dynamic, `/events` ingestion active, `/ops` viewer configurable.
+- Documentation: [Runtime Contract](runtime.contract.md), [Deployment Overview](DEPLOYMENT.md)
+
+**Mode B — Public Static Mirror / Preview**
+- Scope: optional, read-only public mirror or PR preview.
+- Topology: static host (Cloudflare Pages, GitHub Pages).
+- Features: static build only. No active runtime, no `/events` ingestion, no `/ops` dynamic fallbacks.
+- Documentation: [Cloudflare Deployment](deploy-cloudflare.md), `.github/workflows/pages.yml`

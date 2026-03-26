@@ -14,6 +14,8 @@ Dieses Dokument beschreibt die unveränderlichen Bedingungen für den Betrieb de
 
 ## 1. Scope / Phase
 
+Dieses Dokument definiert ausschließlich **Mode A (Canonical Runtime)**.
+
 Aktuell läuft das Deployment auf dem Heimserver nur während der Entwicklungs-/Integrationsphase. Der hier definierte Contract (FQDN, intern-only, Proxy/Host-Match) bleibt davon unberührt und gilt normativ.
 
 ## 2. Kanonischer Host
