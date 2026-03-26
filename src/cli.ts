@@ -202,11 +202,13 @@ async function main(): Promise<void> {
     // Write markdown file
     const markdownPath = join(outputDir, `${dateStr}.md`);
     const markdown = renderDailyDigestMarkdown(digest);
+    // Observer boundary: local artifact update for presentation/digest pipeline, not a system command path.
     await writeFile(markdownPath, markdown, 'utf-8');
     console.log(`✓ Written: ${markdownPath}`);
     
     // Write JSON file
     const jsonPath = join(outputDir, `${dateStr}.json`);
+    // Observer boundary: local artifact update for presentation/digest pipeline, not a system command path.
     await writeFile(jsonPath, JSON.stringify(digest, null, 2), 'utf-8');
     console.log(`✓ Written: ${jsonPath}`);
     
