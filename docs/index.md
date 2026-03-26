@@ -61,4 +61,5 @@ Leitstand operates in exactly one of two explicit modes:
 - Scope: optional, read-only public mirror or PR preview.
 - Topology: static host (Cloudflare Pages, GitHub Pages).
 - Features: static build only. No active runtime, no `/events` ingestion, no `/ops` dynamic fallbacks.
+- Nature: derived projection of Mode A; may be stale and is not an operational source of truth.
 - Documentation: [Cloudflare Deployment](deploy-cloudflare.md), `.github/workflows/pages.yml`
