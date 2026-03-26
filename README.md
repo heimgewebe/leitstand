@@ -6,6 +6,22 @@ Dashboard and control-room for the **heimgewebe** organism.
 
 `leitstand` is the central monitoring and reporting system for the heimgewebe multi-repo ecosystem. In this initial iteration, it provides a **daily system digest generator** that combines data from multiple sources into a unified markdown report.
 
+## Purpose
+
+Leitstand ist das **epistemische Beobachtungs- und Verdichtungsmodul** des Systems.
+
+Er hat genau drei Kernfunktionen:
+- Beobachten (Events, Metrics, Insights konsumieren)
+- Verdichten (Digests, Zusammenfassungen erzeugen)
+- Visualisieren (UI, Views, Reports bereitstellen)
+
+Leitstand ist ausdrücklich **nicht**:
+- ein Orchestrator
+- eine Steuerinstanz
+- eine schreibende Systemkomponente
+
+Alle Änderungen im Repo müssen dieser Invariante entsprechen.
+
 ### The Heimgewebe Organism
 
 The heimgewebe organization consists of several interconnected repositories:

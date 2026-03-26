@@ -44,6 +44,7 @@ async function enqueueMetaUpdate(updateFn: (meta: Record<string, unknown>) => Re
 
       const updatedMeta = updateFn(meta);
 
+      // Observer boundary: local artifact update for presentation/digest pipeline, not a system command path.
       await fs.promises.writeFile(tempPath, JSON.stringify(updatedMeta, null, 2));
       await fs.promises.rename(tempPath, metaPath);
     } catch (err) {
@@ -164,6 +165,7 @@ app.post('/events', async (req, res) => {
         ...(schema_ref && { OBSERVATORY_SCHEMA_REF: schema_ref })
       };
 
+      // Observer boundary: expected read-only fetch path; no orchestration intended here.
       await execPromise('node scripts/fetch-observatory.mjs', { env });
 
       console.log('[Event] Observatory refresh complete.');
@@ -194,6 +196,7 @@ app.post('/events', async (req, res) => {
 
     try {
       // Execute the fetch script with the provided URL
+      // Observer boundary: expected read-only fetch path; no orchestration intended here.
       await execPromise('node scripts/fetch-integrity.mjs', {
         env: { ...process.env, INTEGRITY_URL: finalUrl }
       });
@@ -243,6 +246,7 @@ app.post('/events', async (req, res) => {
        const serializedPayload = JSON.stringify(payload, null, 2);
        const tempArtifactPath = artifactPath + '.' + process.pid + '.' + randomBytes(8).toString('hex') + '.tmp';
 
+       // Observer boundary: local artifact update for presentation/digest pipeline, not a system command path.
        await fs.promises.writeFile(tempArtifactPath, serializedPayload);
        await fs.promises.rename(tempArtifactPath, artifactPath);
 
@@ -269,7 +273,7 @@ app.post('/events', async (req, res) => {
   }
 });
 
-// Ops Viewer Route
+// Ops Viewer Route - Read-only view. No side effects allowed.
 app.get('/ops', (_req, res) => {
   res.render('ops', {
     acsUrl: envConfig.acsUrl,
