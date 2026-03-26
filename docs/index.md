@@ -49,7 +49,7 @@ Tools that enforce the rules automatically.
 
 ## 5. Deployment Modes
 
-Leitstand operates in exactly one of two explicit modes:
+Each Leitstand deployment instance operates in exactly one of two explicit modes. A project may run a canonical runtime and an optional static mirror as separate instances in parallel.
 
 **Mode A — Canonical Runtime (Internal Gateway)**
 - Scope: canonical operative environment.
@@ -62,4 +62,4 @@ Leitstand operates in exactly one of two explicit modes:
 - Topology: static host (Cloudflare Pages, GitHub Pages).
 - Features: static build only. No active runtime, no `/events` ingestion, no `/ops` dynamic fallbacks.
 - Nature: derived projection of Mode A; may be stale and is not an operational source of truth.
-- Documentation: [Cloudflare Deployment](deploy-cloudflare.md), `.github/workflows/pages.yml`
+- Documentation: [Cloudflare Deployment](deploy-cloudflare.md), [../.github/workflows/pages.yml](../.github/workflows/pages.yml)
