@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel || pwd)"
-cd "$REPO_ROOT"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$REPO_ROOT" || { echo "❌ Observer Invariant Guard failed: could not change to repo root." >&2; exit 2; }
 
 # Observer Invariant Guard (Heuristic)
 #
@@ -12,32 +12,34 @@ cd "$REPO_ROOT"
 
 echo "Running Observer Invariant Guard..."
 
-# Find matches for mutating HTTP methods, excluding common incoming Express route definitions (app.post, router.post)
+# Find matches for mutating HTTP methods.
 # grep exits 0=matches found, 1=no matches, >1=real error; only >1 indicates a scan failure.
 set +e
-MATCHES=$(grep -rnI -E "(method:[[:space:]]*['\"](POST|PUT|DELETE|PATCH)['\"]|\.(post|put|delete|patch)[[:space:]]*\()" src/ | grep -vE "(app|router)\.(post|put|delete|patch)[[:space:]]*\(")
-grep_status=$?
+RAW_MATCHES=$(grep -rnI -E "(method:[[:space:]]*['\"](POST|PUT|DELETE|PATCH)['\"]|\.(post|put|delete|patch)[[:space:]]*\()" src/ 2>/dev/null)
+SCAN_STATUS=$?
 set -e
 
-if [ "$grep_status" -gt 1 ]; then
-    echo "❌ Observer Invariant Guard failed: error while scanning src/ for mutating HTTP methods." >&2
-    exit "$grep_status"
+if [ "$SCAN_STATUS" -gt 1 ]; then
+    echo "❌ Observer Invariant Guard failed: error while scanning src/" >&2
+    exit "$SCAN_STATUS"
 fi
 
-if [ -z "$MATCHES" ]; then
+if [ -z "$RAW_MATCHES" ]; then
     echo "✅ No mutating HTTP methods found. Observer invariant is intact."
     exit 0
 fi
 
-# Filter out the known exceptions explicitly marked in code
+# Filter out common incoming Express route definitions and explicit known exceptions.
 set +e
-VIOLATIONS=$(echo "$MATCHES" | grep -v "observer-invariant-guard: allow-known-exception")
-violations_status=$?
+VIOLATIONS=$(echo "$RAW_MATCHES" \
+    | grep -vE "(app|router)\.(post|put|delete|patch)[[:space:]]*\(" \
+    | grep -v "observer-invariant-guard: allow-known-exception")
+VIOLATIONS_STATUS=$?
 set -e
 
-if [ "$violations_status" -gt 1 ]; then
+if [ "$VIOLATIONS_STATUS" -gt 1 ]; then
     echo "❌ Observer Invariant Guard failed: error while filtering known exceptions." >&2
-    exit "$violations_status"
+    exit "$VIOLATIONS_STATUS"
 fi
 
 if [ -n "$VIOLATIONS" ]; then
