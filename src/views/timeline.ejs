@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Zeitachse – Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Chronological event timeline of the Heimgewebe organism – all system events in temporal order.">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-glass: rgba(255, 255, 255, 0.04);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --border-active: rgba(255, 255, 255, 0.15);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #3b82f6;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* Navigation */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 20px;
+      background: rgba(10, 14, 26, 0.92);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 0.82em;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    nav a:hover { color: var(--text-primary); background: var(--bg-glass); }
+    nav a.active { color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+    nav .title { font-weight: 700; font-size: 0.9em; color: var(--text-primary); margin-right: 16px; }
+
+    /* Main Layout */
+    .main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* Page Header */
+    .page-header {
+      margin-bottom: 28px;
+    }
+
+    .page-header h1 {
+      font-size: 1.6em;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .page-header .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.88em;
+    }
+
+    /* Filter Bar */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+      padding: 16px 20px;
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 12px;
+    }
+
+    .filter-bar label {
+      font-size: 0.78em;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .filter-bar select,
+    .filter-bar input[type="number"] {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-glass);
+      color: var(--text-primary);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 0.85em;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .filter-bar select:focus,
+    .filter-bar input:focus {
+      border-color: var(--accent);
+    }
+
+    .filter-bar input[type="number"] { width: 70px; }
+
+    .filter-bar .spacer { flex: 1; }
+
+    .filter-bar .stats {
+      font-size: 0.82em;
+      color: var(--text-muted);
+    }
+
+    .filter-bar .stats strong {
+      color: var(--text-secondary);
+    }
+
+    /* Timeline */
+    .timeline {
+      position: relative;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, var(--border-glass), transparent);
+      border-radius: 1px;
+    }
+
+    /* Date Separator */
+    .date-separator {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0 16px 0;
+      padding-left: 40px;
+    }
+
+    .date-separator .date-badge {
+      font-size: 0.72em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-glass);
+      padding: 4px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .date-separator .line {
+      flex: 1;
+      height: 1px;
+      background: var(--border-glass);
+    }
+
+    /* Event Item */
+    .event-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 12px 0;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      border-radius: 8px;
+    }
+
+    .event-item:hover {
+      background: var(--bg-glass);
+    }
+
+    .event-item .dot-container {
+      position: relative;
+      width: 36px;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      padding-top: 3px;
+    }
+
+    .event-item .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 2px solid;
+      background: var(--bg-primary);
+      z-index: 1;
+      position: relative;
+    }
+
+    .event-item .event-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .event-item .event-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .event-item .event-kind {
+      font-size: 0.82em;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .event-item .event-repo {
+      font-size: 0.75em;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .event-item .event-severity {
+      font-size: 0.72em;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+
+    .event-item .severity-error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .event-item .severity-warn {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .event-item .severity-info {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .event-item .event-time {
+      font-size: 0.78em;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Event Detail (expandable) */
+    .event-detail {
+      display: none;
+      margin-top: 10px;
+      padding: 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      font-size: 0.82em;
+    }
+
+    .event-detail.expanded { display: block; }
+
+    .event-detail pre {
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9em;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    .event-detail .detail-label {
+      font-size: 0.72em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state h2 {
+      font-size: 1.3em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      font-size: 0.9em;
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Source Badge */
+    .source-badge {
+      text-align: center;
+      margin-top: 32px;
+      font-size: 0.75em;
+      color: var(--text-muted);
+    }
+
+    .source-badge .warn { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="title">Leitstand</span>
+    <a href="/">Home</a>
+    <a href="/observatory">Observatorium</a>
+    <a href="/anatomy">Anatomie</a>
+    <a href="/timeline" class="active">Zeitachse</a>
+    <a href="/ops">Ops</a>
+  </nav>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>Zeitachse</h1>
+      <p class="subtitle">Chronologische Ereignisse des Heimgewebe-Organismus</p>
+    </div>
+
+    <% if (events && events.length > 0) { %>
+      <!-- Filter Bar -->
+      <div class="filter-bar" id="filterBar">
+        <label for="filterKind">Typ</label>
+        <select id="filterKind">
+          <option value="">Alle</option>
+          <% const kinds = [...new Set(events.map(e => e.kind))].sort(); %>
+          <% kinds.forEach(function(k) { %>
+            <option value="<%= k %>"><%= k %></option>
+          <% }); %>
+        </select>
+
+        <label for="filterRepo">Repo</label>
+        <select id="filterRepo">
+          <option value="">Alle</option>
+          <% const repos = [...new Set(events.filter(e => e.repo).map(e => e.repo))].sort(); %>
+          <% repos.forEach(function(r) { %>
+            <option value="<%= r %>"><%= r %></option>
+          <% }); %>
+        </select>
+
+        <label for="filterSeverity">Severity</label>
+        <select id="filterSeverity">
+          <option value="">Alle</option>
+          <option value="error">Error</option>
+          <option value="warn">Warn</option>
+          <option value="info">Info</option>
+        </select>
+
+        <div class="spacer"></div>
+
+        <div class="stats">
+          <strong id="visibleCount"><%= events.length %></strong> / <%= events.length %> Events
+        </div>
+      </div>
+
+      <!-- Filterable Timeline -->
+      <div class="timeline" id="timeline">
+        <%
+          let lastDate = '';
+          const kindColors = {};
+          const colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1'];
+          let colorIdx = 0;
+        %>
+        <% events.forEach(function(event, i) { %>
+          <%
+            const dt = new Date(event.timestamp);
+            const dateStr = dt.toISOString().split('T')[0];
+            const timeStr = dt.toISOString().split('T')[1].replace('Z', '').substring(0, 8);
+
+            // Assign color by kind
+            if (!kindColors[event.kind]) {
+              kindColors[event.kind] = colorPalette[colorIdx % colorPalette.length];
+              colorIdx++;
+            }
+            const dotColor = kindColors[event.kind];
+
+            const severityClass = event.severity === 'error' ? 'severity-error'
+              : event.severity === 'warn' ? 'severity-warn'
+              : event.severity === 'info' ? 'severity-info'
+              : '';
+          %>
+
+          <% if (dateStr !== lastDate) { %>
+            <div class="date-separator">
+              <div class="date-badge"><%= dateStr %></div>
+              <div class="line"></div>
+            </div>
+            <% lastDate = dateStr; %>
+          <% } %>
+
+          <div class="event-item"
+               data-kind="<%= event.kind %>"
+               data-repo="<%= event.repo || '' %>"
+               data-severity="<%= event.severity || '' %>"
+               onclick="toggleDetail(<%= i %>)">
+            <div class="dot-container">
+              <div class="dot" style="border-color: <%= dotColor %>;"></div>
+            </div>
+            <div class="event-content">
+              <div class="event-header">
+                <span class="event-kind" style="color: <%= dotColor %>;"><%= event.kind %></span>
+                <% if (event.repo) { %>
+                  <span class="event-repo"><%= event.repo %></span>
+                <% } %>
+                <% if (event.severity) { %>
+                  <span class="event-severity <%= severityClass %>"><%= event.severity %></span>
+                <% } %>
+              </div>
+              <div class="event-time"><%= timeStr %></div>
+              <div class="event-detail" id="detail-<%= i %>">
+                <% if (event.job) { %>
+                  <div class="detail-label">Job</div>
+                  <pre><%= event.job %></pre>
+                <% } %>
+                <% if (event.payload && Object.keys(event.payload).length > 0) { %>
+                  <div class="detail-label" style="<%= event.job ? 'margin-top: 10px;' : '' %>">Payload</div>
+                  <pre><%= JSON.stringify(event.payload, null, 2) %></pre>
+                <% } %>
+                <% if (!event.job && (!event.payload || Object.keys(event.payload).length === 0)) { %>
+                  <div style="color: var(--text-muted); font-style: italic;">Keine weiteren Details</div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+
+      <div class="source-badge">
+        <% if (view_meta.source_kind === 'fixture') { %>
+          <span class="warn">⚠ Fixture-Daten</span> · Chronik nicht erreichbar
+        <% } else { %>
+          Quelle: Chronik · <%= events.length %> Events
+        <% } %>
+        · Zeitfenster: <%= view_meta.since %> – <%= view_meta.until %>
+      </div>
+
+    <% } else { %>
+      <div class="empty-state">
+        <h2>Keine Events</h2>
+        <p>
+          <% if (view_meta.is_strict) { %>
+            Strict Mode: Chronik-Daten nicht verfügbar und Fixture-Fallback ist deaktiviert.
+          <% } else if (view_meta.missing_reason) { %>
+            <%= view_meta.missing_reason %>
+          <% } else { %>
+            Im gewählten Zeitfenster wurden keine Events gefunden.
+          <% } %>
+        </p>
+      </div>
+    <% } %>
+  </div>
+
+  <script>
+    // --- Filtering ---
+    const filterKind = document.getElementById('filterKind');
+    const filterRepo = document.getElementById('filterRepo');
+    const filterSeverity = document.getElementById('filterSeverity');
+    const visibleCount = document.getElementById('visibleCount');
+    const timeline = document.getElementById('timeline');
+
+    function applyFilters() {
+      if (!timeline) return;
+
+      const kind = filterKind ? filterKind.value : '';
+      const repo = filterRepo ? filterRepo.value : '';
+      const severity = filterSeverity ? filterSeverity.value : '';
+
+      const items = timeline.querySelectorAll('.event-item');
+      let count = 0;
+
+      items.forEach(item => {
+        const matchKind = !kind || item.dataset.kind === kind;
+        const matchRepo = !repo || item.dataset.repo === repo;
+        const matchSev = !severity || item.dataset.severity === severity;
+
+        if (matchKind && matchRepo && matchSev) {
+          item.style.display = '';
+          count++;
+        } else {
+          item.style.display = 'none';
+        }
+      });
+
+      // Show/hide date separators based on visible events
+      const separators = timeline.querySelectorAll('.date-separator');
+      separators.forEach(sep => {
+        let next = sep.nextElementSibling;
+        let hasVisible = false;
+        while (next && !next.classList.contains('date-separator')) {
+          if (next.classList.contains('event-item') && next.style.display !== 'none') {
+            hasVisible = true;
+            break;
+          }
+          next = next.nextElementSibling;
+        }
+        sep.style.display = hasVisible ? '' : 'none';
+      });
+
+      if (visibleCount) visibleCount.textContent = count;
+    }
+
+    if (filterKind) filterKind.addEventListener('change', applyFilters);
+    if (filterRepo) filterRepo.addEventListener('change', applyFilters);
+    if (filterSeverity) filterSeverity.addEventListener('change', applyFilters);
+
+    // --- Detail Toggle ---
+    function toggleDetail(idx) {
+      const el = document.getElementById('detail-' + idx);
+      if (el) {
+        el.classList.toggle('expanded');
+      }
+    }
+
+    // Make toggleDetail globally accessible
+    window.toggleDetail = toggleDetail;
+  </script>
+</body>
+</html>
