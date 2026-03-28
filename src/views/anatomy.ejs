@@ -6,8 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Structural topology of the Heimgewebe organism – interactive graph of all organs and their contract-based relationships.">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -21,11 +19,10 @@
       --text-secondary: #94a3b8;
       --text-muted: #64748b;
       --accent: #3b82f6;
-      --glow-strength: 0.35;
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
       overflow: hidden;
@@ -252,9 +249,7 @@
       margin-top: 2px;
     }
 
-    .connection-details {
-      flex: 1;
-    }
+    .connection-details { flex: 1; }
 
     .connection-target {
       color: var(--text-primary);
@@ -298,35 +293,6 @@
       font-size: 1.4em;
       margin-bottom: 8px;
       color: var(--text-secondary);
-    }
-
-    /* D3 Node Styles */
-    .node-circle {
-      cursor: pointer;
-      transition: filter 0.2s ease;
-    }
-
-    .node-label-text {
-      font-family: 'Inter', sans-serif;
-      font-size: 11px;
-      font-weight: 500;
-      fill: var(--text-primary);
-      pointer-events: none;
-      text-anchor: middle;
-      dominant-baseline: central;
-      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.6);
-    }
-
-    .edge-line {
-      stroke-linecap: round;
-    }
-
-    .edge-label {
-      font-family: 'Inter', sans-serif;
-      font-size: 9px;
-      fill: var(--text-muted);
-      pointer-events: none;
-      text-anchor: middle;
     }
 
     /* Tooltip */
@@ -414,7 +380,7 @@
 
   <!-- Detail Panel -->
   <div id="detail-panel">
-    <button class="close-btn" onclick="closeDetail()" title="Schließen">&times;</button>
+    <button class="close-btn" id="close-detail-btn" title="Schließen">&times;</button>
     <div class="node-label" id="dp-label"></div>
     <div class="node-role" id="dp-role"></div>
     <div class="node-achse" id="dp-achse"></div>
@@ -438,266 +404,454 @@
     <% } %>
   </div>
 
-  <!-- D3.js v7 from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <!--
+    Dependency-free force-directed graph.
+    No external CDN or npm dependency required.
+    Implements a minimal force simulation (repulsion + link spring + centering)
+    and renders to SVG via direct DOM manipulation.
+  -->
   <script>
-    // --- Data from server ---
-    const graphData = <%- JSON.stringify({ nodes: anatomy.nodes, edges: anatomy.edges, achsen: anatomy.achsen }) %>;
+    // --- Hardened data injection ---
+    // Neutralize </script> and similar sequences that could break out of script context.
+    // Using EJS unescaped output (<%- %>) for valid JSON, then replacing dangerous sequences.
+    var graphData = JSON.parse(
+      '<%= JSON.stringify({ nodes: anatomy.nodes, edges: anatomy.edges, achsen: anatomy.achsen }).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/<\\//g, "<\\/").replace(/\\u2028/g, "\\\\u2028").replace(/\\u2029/g, "\\\\u2029") %>'
+    );
 
-    const nodes = graphData.nodes.map(n => ({ ...n }));
-    const edges = graphData.edges.map(e => ({ ...e }));
-    const achsen = graphData.achsen;
+    var nodes = graphData.nodes.map(function(n) {
+      return { id: n.id, label: n.label, role: n.role, achse: n.achse, description: n.description, x: 0, y: 0, vx: 0, vy: 0, fx: null, fy: null };
+    });
+    var edges = graphData.edges.map(function(e) {
+      return { source: e.source, target: e.target, contract: e.contract, label: e.label, type: e.type };
+    });
+    var achsen = graphData.achsen;
 
-    // --- Dimensions ---
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    // Build index for fast lookup
+    var nodeIndex = {};
+    nodes.forEach(function(n) { nodeIndex[n.id] = n; });
+
+    // Resolve edge source/target to node references
+    edges.forEach(function(e) {
+      e.sourceNode = nodeIndex[e.source];
+      e.targetNode = nodeIndex[e.target];
+    });
+
+    // Filter out edges with missing nodes
+    edges = edges.filter(function(e) { return e.sourceNode && e.targetNode; });
 
     // --- SVG Setup ---
-    const svg = d3.select('#graph-container')
-      .append('svg')
-      .attr('viewBox', [0, 0, width, height]);
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    var svgNS = 'http://www.w3.org/2000/svg';
 
-    // Defs for glow effects and arrow markers
-    const defs = svg.append('defs');
+    var container = document.getElementById('graph-container');
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    container.appendChild(svg);
+
+    // Defs for arrow markers and glow
+    var defs = document.createElementNS(svgNS, 'defs');
+    svg.appendChild(defs);
 
     // Glow filter
-    const glowFilter = defs.append('filter')
-      .attr('id', 'glow')
-      .attr('x', '-50%').attr('y', '-50%')
-      .attr('width', '200%').attr('height', '200%');
-    glowFilter.append('feGaussianBlur')
-      .attr('stdDeviation', '4')
-      .attr('result', 'blur');
-    const glowMerge = glowFilter.append('feMerge');
-    glowMerge.append('feMergeNode').attr('in', 'blur');
-    glowMerge.append('feMergeNode').attr('in', 'SourceGraphic');
-
-    // Background gradient
-    const bgGrad = defs.append('radialGradient')
-      .attr('id', 'bg-gradient')
-      .attr('cx', '50%').attr('cy', '50%').attr('r', '70%');
-    bgGrad.append('stop').attr('offset', '0%').attr('stop-color', '#111827');
-    bgGrad.append('stop').attr('offset', '100%').attr('stop-color', '#0a0e1a');
-
-    svg.append('rect')
-      .attr('width', width)
-      .attr('height', height)
-      .attr('fill', 'url(#bg-gradient)');
+    var glowFilter = document.createElementNS(svgNS, 'filter');
+    glowFilter.setAttribute('id', 'glow');
+    glowFilter.setAttribute('x', '-50%');
+    glowFilter.setAttribute('y', '-50%');
+    glowFilter.setAttribute('width', '200%');
+    glowFilter.setAttribute('height', '200%');
+    var blur = document.createElementNS(svgNS, 'feGaussianBlur');
+    blur.setAttribute('stdDeviation', '3');
+    blur.setAttribute('result', 'blur');
+    glowFilter.appendChild(blur);
+    var merge = document.createElementNS(svgNS, 'feMerge');
+    var mn1 = document.createElementNS(svgNS, 'feMergeNode');
+    mn1.setAttribute('in', 'blur');
+    merge.appendChild(mn1);
+    var mn2 = document.createElementNS(svgNS, 'feMergeNode');
+    mn2.setAttribute('in', 'SourceGraphic');
+    merge.appendChild(mn2);
+    glowFilter.appendChild(merge);
+    defs.appendChild(glowFilter);
 
     // Arrow markers per edge type
-    const arrowColors = {
+    var arrowDefs = {
       data: 'rgba(148, 163, 184, 0.5)',
       control: 'rgba(239, 68, 68, 0.6)',
       governance: 'rgba(139, 92, 246, 0.5)'
     };
 
-    Object.entries(arrowColors).forEach(([type, color]) => {
-      defs.append('marker')
-        .attr('id', `arrow-${type}`)
-        .attr('viewBox', '0 -5 10 10')
-        .attr('refX', 28)
-        .attr('refY', 0)
-        .attr('markerWidth', 6)
-        .attr('markerHeight', 6)
-        .attr('orient', 'auto')
-        .append('path')
-        .attr('d', 'M0,-4L10,0L0,4')
-        .attr('fill', color);
+    Object.keys(arrowDefs).forEach(function(type) {
+      var marker = document.createElementNS(svgNS, 'marker');
+      marker.setAttribute('id', 'arrow-' + type);
+      marker.setAttribute('viewBox', '0 -5 10 10');
+      marker.setAttribute('refX', '28');
+      marker.setAttribute('refY', '0');
+      marker.setAttribute('markerWidth', '6');
+      marker.setAttribute('markerHeight', '6');
+      marker.setAttribute('orient', 'auto');
+      var path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('d', 'M0,-4L10,0L0,4');
+      path.setAttribute('fill', arrowDefs[type]);
+      marker.appendChild(path);
+      defs.appendChild(marker);
     });
 
-    // --- Zoom ---
-    const g = svg.append('g');
+    // Background
+    var bg = document.createElementNS(svgNS, 'rect');
+    bg.setAttribute('width', width);
+    bg.setAttribute('height', height);
+    bg.setAttribute('fill', '#0a0e1a');
+    svg.appendChild(bg);
 
-    const zoom = d3.zoom()
-      .scaleExtent([0.2, 4])
-      .on('zoom', (event) => {
-        g.attr('transform', event.transform);
-      });
+    // Main group for pan/zoom
+    var gMain = document.createElementNS(svgNS, 'g');
+    svg.appendChild(gMain);
 
-    svg.call(zoom);
+    // Edge group
+    var gEdges = document.createElementNS(svgNS, 'g');
+    gMain.appendChild(gEdges);
 
-    // Initial zoom to center
-    svg.call(zoom.transform, d3.zoomIdentity.translate(width * 0.08, height * 0.05).scale(0.9));
+    // Node group
+    var gNodes = document.createElementNS(svgNS, 'g');
+    gMain.appendChild(gNodes);
 
-    // --- Simulation ---
-    const simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(edges).id(d => d.id).distance(180).strength(0.4))
-      .force('charge', d3.forceManyBody().strength(-800).distanceMax(600))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(45))
-      .force('x', d3.forceX(width / 2).strength(0.04))
-      .force('y', d3.forceY(height / 2).strength(0.04));
+    var NODE_R = 22;
 
-    // --- Edge rendering ---
-    function edgeColor(type) {
+    // --- Edge color/dash helpers ---
+    function edgeStroke(type) {
       if (type === 'control') return 'rgba(239, 68, 68, 0.35)';
       if (type === 'governance') return 'rgba(139, 92, 246, 0.3)';
       return 'rgba(148, 163, 184, 0.18)';
     }
 
     function edgeDash(type) {
-      if (type === 'governance') return '4,4';
-      return 'none';
+      return type === 'governance' ? '4,4' : '';
     }
 
-    const edgeGroup = g.append('g').attr('class', 'edges');
+    function nodeColor(achse) {
+      return (achsen[achse] || { color: '#64748b' }).color;
+    }
 
-    const link = edgeGroup.selectAll('line')
-      .data(edges)
-      .join('line')
-      .attr('class', 'edge-line')
-      .attr('stroke', d => edgeColor(d.type))
-      .attr('stroke-width', d => d.type === 'governance' ? 1 : 1.5)
-      .attr('stroke-dasharray', d => edgeDash(d.type))
-      .attr('marker-end', d => `url(#arrow-${d.type})`);
+    // --- Create SVG elements ---
+    // Edges
+    var edgeEls = edges.map(function(e) {
+      var line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('stroke', edgeStroke(e.type));
+      line.setAttribute('stroke-width', e.type === 'governance' ? '1' : '1.5');
+      line.setAttribute('stroke-linecap', 'round');
+      var dash = edgeDash(e.type);
+      if (dash) line.setAttribute('stroke-dasharray', dash);
+      line.setAttribute('marker-end', 'url(#arrow-' + e.type + ')');
+      gEdges.appendChild(line);
+      return line;
+    });
 
-    // --- Node rendering ---
-    const nodeGroup = g.append('g').attr('class', 'nodes');
+    // Nodes
+    var nodeEls = nodes.map(function(n) {
+      var g = document.createElementNS(svgNS, 'g');
+      g.style.cursor = 'pointer';
 
-    const nodeRadius = 22;
+      // Glow ring
+      var ring = document.createElementNS(svgNS, 'circle');
+      ring.setAttribute('r', NODE_R + 6);
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', nodeColor(n.achse));
+      ring.setAttribute('stroke-width', '1.5');
+      ring.setAttribute('stroke-opacity', '0.2');
+      g.appendChild(ring);
 
-    const node = nodeGroup.selectAll('g')
-      .data(nodes)
-      .join('g')
-      .attr('class', 'node-group')
-      .call(d3.drag()
-        .on('start', dragStarted)
-        .on('drag', dragged)
-        .on('end', dragEnded));
+      // Main circle
+      var circle = document.createElementNS(svgNS, 'circle');
+      circle.setAttribute('r', NODE_R);
+      circle.setAttribute('fill', nodeColor(n.achse) + '20');
+      circle.setAttribute('stroke', nodeColor(n.achse));
+      circle.setAttribute('stroke-width', '2');
+      circle.setAttribute('filter', 'url(#glow)');
+      g.appendChild(circle);
+      n._circle = circle;
 
-    // Glow ring (outer)
-    node.append('circle')
-      .attr('r', nodeRadius + 6)
-      .attr('fill', 'none')
-      .attr('stroke', d => (achsen[d.achse] || { color: '#64748b' }).color)
-      .attr('stroke-width', 1.5)
-      .attr('stroke-opacity', 0.2)
-      .attr('class', 'glow-ring');
+      // Initials inside
+      var initials = document.createElementNS(svgNS, 'text');
+      initials.setAttribute('text-anchor', 'middle');
+      initials.setAttribute('dominant-baseline', 'central');
+      initials.setAttribute('font-size', '13');
+      initials.setAttribute('font-weight', '700');
+      initials.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif');
+      initials.setAttribute('fill', nodeColor(n.achse));
+      initials.setAttribute('pointer-events', 'none');
+      initials.textContent = n.label.substring(0, 2).toUpperCase();
+      g.appendChild(initials);
 
-    // Main circle
-    node.append('circle')
-      .attr('r', nodeRadius)
-      .attr('fill', d => {
-        const color = (achsen[d.achse] || { color: '#64748b' }).color;
-        return color + '20'; // 12% opacity fill
-      })
-      .attr('stroke', d => (achsen[d.achse] || { color: '#64748b' }).color)
-      .attr('stroke-width', 2)
-      .attr('class', 'node-circle')
-      .attr('filter', 'url(#glow)');
+      // Label below
+      var label = document.createElementNS(svgNS, 'text');
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('dy', NODE_R + 16);
+      label.setAttribute('font-size', '11');
+      label.setAttribute('font-weight', '500');
+      label.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif');
+      label.setAttribute('fill', '#f1f5f9');
+      label.setAttribute('pointer-events', 'none');
+      label.textContent = n.label;
+      g.appendChild(label);
+      n._label = label;
 
-    // Node label (abbreviated)
-    node.append('text')
-      .attr('class', 'node-label-text')
-      .attr('dy', nodeRadius + 16)
-      .text(d => d.label);
+      gNodes.appendChild(g);
+      n._el = g;
+      return g;
+    });
 
-    // Node icon (first letter as fallback)
-    node.append('text')
-      .attr('class', 'node-label-text')
-      .attr('font-size', '13px')
-      .attr('font-weight', '700')
-      .attr('fill', d => (achsen[d.achse] || { color: '#64748b' }).color)
-      .text(d => d.label.substring(0, 2).toUpperCase());
+    // --- Initialize positions (circular layout as starting point) ---
+    var cx = width / 2;
+    var cy = height / 2;
+    var layoutR = Math.min(width, height) * 0.3;
+    nodes.forEach(function(n, i) {
+      var angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2;
+      n.x = cx + layoutR * Math.cos(angle);
+      n.y = cy + layoutR * Math.sin(angle);
+    });
 
-    // --- Tooltip ---
-    const tooltip = document.getElementById('tooltip');
-    const ttLabel = tooltip.querySelector('.tt-label');
-    const ttRole = tooltip.querySelector('.tt-role');
+    // --- Force Simulation (vanilla) ---
+    var alpha = 1;
+    var alphaDecay = 0.02;
+    var alphaMin = 0.001;
+    var REPULSION = 12000;
+    var LINK_STRENGTH = 0.06;
+    var LINK_DIST = 180;
+    var CENTER_STRENGTH = 0.01;
+    var DAMPING = 0.6;
 
-    node.on('mouseenter', (event, d) => {
-      const color = (achsen[d.achse] || { color: '#64748b' }).color;
-      ttLabel.textContent = d.label;
-      ttLabel.style.color = color;
-      ttRole.textContent = d.role;
-      tooltip.classList.add('visible');
+    function simulate() {
+      if (alpha < alphaMin) return;
 
-      // Highlight connected edges
-      link.attr('stroke-opacity', e =>
-        (e.source.id === d.id || e.target.id === d.id) ? 1 : 0.15
-      ).attr('stroke-width', e =>
-        (e.source.id === d.id || e.target.id === d.id) ? 2.5 : 1
-      );
+      // Repulsion (all pairs)
+      for (var i = 0; i < nodes.length; i++) {
+        for (var j = i + 1; j < nodes.length; j++) {
+          var dx = nodes[j].x - nodes[i].x;
+          var dy = nodes[j].y - nodes[i].y;
+          var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          var force = alpha * REPULSION / (dist * dist);
+          var fx = (dx / dist) * force;
+          var fy = (dy / dist) * force;
+          nodes[i].vx -= fx;
+          nodes[i].vy -= fy;
+          nodes[j].vx += fx;
+          nodes[j].vy += fy;
+        }
+      }
 
-      // Dim unconnected nodes
-      const connectedIds = new Set();
-      connectedIds.add(d.id);
-      edges.forEach(e => {
-        const sid = typeof e.source === 'object' ? e.source.id : e.source;
-        const tid = typeof e.target === 'object' ? e.target.id : e.target;
-        if (sid === d.id) connectedIds.add(tid);
-        if (tid === d.id) connectedIds.add(sid);
+      // Link spring
+      edges.forEach(function(e) {
+        var s = e.sourceNode;
+        var t = e.targetNode;
+        var dx = t.x - s.x;
+        var dy = t.y - s.y;
+        var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        var displacement = dist - LINK_DIST;
+        var force = alpha * LINK_STRENGTH * displacement;
+        var fx = (dx / dist) * force;
+        var fy = (dy / dist) * force;
+        s.vx += fx;
+        s.vy += fy;
+        t.vx -= fx;
+        t.vy -= fy;
       });
 
-      node.select('.node-circle')
-        .attr('stroke-opacity', n => connectedIds.has(n.id) ? 1 : 0.2)
-        .attr('fill-opacity', n => connectedIds.has(n.id) ? 1 : 0.3);
+      // Center gravity
+      nodes.forEach(function(n) {
+        n.vx += (cx - n.x) * CENTER_STRENGTH * alpha;
+        n.vy += (cy - n.y) * CENTER_STRENGTH * alpha;
+      });
 
-      node.select('.node-label-text')
-        .attr('fill-opacity', n => connectedIds.has(n.id) ? 1 : 0.3);
-    });
+      // Apply velocities
+      nodes.forEach(function(n) {
+        if (n.fx !== null) { n.x = n.fx; n.vx = 0; }
+        else { n.vx *= DAMPING; n.x += n.vx; }
+        if (n.fy !== null) { n.y = n.fy; n.vy = 0; }
+        else { n.vy *= DAMPING; n.y += n.vy; }
+      });
 
-    node.on('mousemove', (event) => {
-      tooltip.style.left = (event.clientX + 16) + 'px';
-      tooltip.style.top = (event.clientY - 10) + 'px';
-    });
+      alpha -= alphaDecay;
 
-    node.on('mouseleave', () => {
-      tooltip.classList.remove('visible');
-      // Restore
-      link.attr('stroke-opacity', 1).attr('stroke-width', d => d.type === 'governance' ? 1 : 1.5);
-      node.select('.node-circle').attr('stroke-opacity', 1).attr('fill-opacity', 1);
-      node.select('.node-label-text').attr('fill-opacity', 1);
-    });
-
-    node.on('click', (event, d) => {
-      event.stopPropagation();
-      showDetail(d);
-    });
-
-    svg.on('click', () => closeDetail());
-
-    // --- Tick ---
-    simulation.on('tick', () => {
-      link
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y);
-
-      node.attr('transform', d => `translate(${d.x},${d.y})`);
-    });
-
-    // --- Drag ---
-    function dragStarted(event, d) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
+      render();
+      requestAnimationFrame(simulate);
     }
 
-    function dragged(event, d) {
-      d.fx = event.x;
-      d.fy = event.y;
+    function render() {
+      edges.forEach(function(e, i) {
+        edgeEls[i].setAttribute('x1', e.sourceNode.x);
+        edgeEls[i].setAttribute('y1', e.sourceNode.y);
+        edgeEls[i].setAttribute('x2', e.targetNode.x);
+        edgeEls[i].setAttribute('y2', e.targetNode.y);
+      });
+
+      nodes.forEach(function(n) {
+        n._el.setAttribute('transform', 'translate(' + n.x + ',' + n.y + ')');
+      });
     }
 
-    function dragEnded(event, d) {
-      if (!event.active) simulation.alphaTarget(0);
-      d.fx = null;
-      d.fy = null;
+    // Start simulation
+    simulate();
+
+    // --- Pan & Zoom (vanilla) ---
+    var transform = { x: 0, y: 0, k: 1 };
+
+    function applyTransform() {
+      gMain.setAttribute('transform', 'translate(' + transform.x + ',' + transform.y + ') scale(' + transform.k + ')');
     }
+
+    svg.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      var scaleFactor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+      var newK = Math.max(0.2, Math.min(4, transform.k * scaleFactor));
+      // Zoom towards cursor
+      var rect = svg.getBoundingClientRect();
+      var mx = e.clientX - rect.left;
+      var my = e.clientY - rect.top;
+      transform.x = mx - (mx - transform.x) * (newK / transform.k);
+      transform.y = my - (my - transform.y) * (newK / transform.k);
+      transform.k = newK;
+      applyTransform();
+    }, { passive: false });
+
+    // Pan
+    var isPanning = false;
+    var panStart = { x: 0, y: 0 };
+
+    svg.addEventListener('mousedown', function(e) {
+      if (e.target === svg || e.target === bg) {
+        isPanning = true;
+        panStart.x = e.clientX - transform.x;
+        panStart.y = e.clientY - transform.y;
+        svg.style.cursor = 'grabbing';
+      }
+    });
+
+    window.addEventListener('mousemove', function(e) {
+      if (isPanning) {
+        transform.x = e.clientX - panStart.x;
+        transform.y = e.clientY - panStart.y;
+        applyTransform();
+      }
+    });
+
+    window.addEventListener('mouseup', function() {
+      isPanning = false;
+      svg.style.cursor = '';
+    });
+
+    // --- Node Drag ---
+    var dragNode = null;
+
+    nodes.forEach(function(n) {
+      n._el.addEventListener('mousedown', function(e) {
+        e.stopPropagation();
+        dragNode = n;
+        n.fx = n.x;
+        n.fy = n.y;
+        // Reheat simulation
+        alpha = 0.3;
+        simulate();
+      });
+    });
+
+    window.addEventListener('mousemove', function(e) {
+      if (dragNode) {
+        var rect = svg.getBoundingClientRect();
+        dragNode.fx = (e.clientX - rect.left - transform.x) / transform.k;
+        dragNode.fy = (e.clientY - rect.top - transform.y) / transform.k;
+      }
+    });
+
+    window.addEventListener('mouseup', function() {
+      if (dragNode) {
+        dragNode.fx = null;
+        dragNode.fy = null;
+        dragNode = null;
+      }
+    });
+
+    // --- Tooltip ---
+    var tooltip = document.getElementById('tooltip');
+    var ttLabel = tooltip.querySelector('.tt-label');
+    var ttRole = tooltip.querySelector('.tt-role');
+
+    nodes.forEach(function(n) {
+      n._el.addEventListener('mouseenter', function() {
+        var color = nodeColor(n.achse);
+        ttLabel.textContent = n.label;
+        ttLabel.style.color = color;
+        ttRole.textContent = n.role;
+        tooltip.classList.add('visible');
+
+        // Highlight: find connected IDs
+        var connected = {};
+        connected[n.id] = true;
+        edges.forEach(function(e) {
+          if (e.sourceNode.id === n.id) connected[e.targetNode.id] = true;
+          if (e.targetNode.id === n.id) connected[e.sourceNode.id] = true;
+        });
+
+        // Dim unconnected
+        edges.forEach(function(e, i) {
+          var isConn = (e.sourceNode.id === n.id || e.targetNode.id === n.id);
+          edgeEls[i].setAttribute('stroke-opacity', isConn ? '1' : '0.08');
+          edgeEls[i].setAttribute('stroke-width', isConn ? '2.5' : '1');
+        });
+
+        nodes.forEach(function(nn) {
+          var opacity = connected[nn.id] ? '1' : '0.2';
+          nn._circle.setAttribute('stroke-opacity', opacity);
+          nn._circle.setAttribute('fill-opacity', connected[nn.id] ? '1' : '0.3');
+          nn._label.setAttribute('fill-opacity', connected[nn.id] ? '1' : '0.3');
+        });
+      });
+
+      n._el.addEventListener('mousemove', function(e) {
+        tooltip.style.left = (e.clientX + 16) + 'px';
+        tooltip.style.top = (e.clientY - 10) + 'px';
+      });
+
+      n._el.addEventListener('mouseleave', function() {
+        tooltip.classList.remove('visible');
+        // Restore
+        edges.forEach(function(e, i) {
+          edgeEls[i].setAttribute('stroke-opacity', '1');
+          edgeEls[i].setAttribute('stroke-width', e.type === 'governance' ? '1' : '1.5');
+        });
+        nodes.forEach(function(nn) {
+          nn._circle.setAttribute('stroke-opacity', '1');
+          nn._circle.setAttribute('fill-opacity', '1');
+          nn._label.setAttribute('fill-opacity', '1');
+        });
+      });
+
+      // Click → detail panel
+      n._el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showDetail(n);
+      });
+    });
+
+    // Close detail on background click
+    svg.addEventListener('click', function(e) {
+      if (e.target === svg || e.target === bg) closeDetail();
+    });
 
     // --- Detail Panel ---
-    const detailPanel = document.getElementById('detail-panel');
+    var detailPanel = document.getElementById('detail-panel');
+
+    document.getElementById('close-detail-btn').addEventListener('click', closeDetail);
 
     function showDetail(d) {
-      const color = (achsen[d.achse] || { color: '#64748b', label: d.achse }).color;
-      const achseLabel = (achsen[d.achse] || { label: d.achse }).label;
+      var color = nodeColor(d.achse);
+      var achseLabel = (achsen[d.achse] || { label: d.achse }).label;
 
       document.getElementById('dp-label').textContent = d.label;
       document.getElementById('dp-label').style.color = color;
       document.getElementById('dp-role').textContent = d.role;
 
-      const achseEl = document.getElementById('dp-achse');
+      var achseEl = document.getElementById('dp-achse');
       achseEl.textContent = achseLabel;
       achseEl.style.background = color + '20';
       achseEl.style.color = color;
@@ -705,77 +859,80 @@
 
       document.getElementById('dp-desc').textContent = d.description;
 
-      // Incoming edges
-      const incoming = edges.filter(e => {
-        const tid = typeof e.target === 'object' ? e.target.id : e.target;
-        return tid === d.id;
-      });
-
-      const incomingEl = document.getElementById('dp-incoming');
-      incomingEl.innerHTML = '';
+      // Build connection lists via textContent (safe against injection)
+      var incoming = edges.filter(function(e) { return e.targetNode.id === d.id; });
+      var incomingEl = document.getElementById('dp-incoming');
+      incomingEl.textContent = '';
       if (incoming.length === 0) {
-        incomingEl.innerHTML = '<div style="font-size: 0.8em; color: var(--text-muted); padding: 4px 0;">Keine</div>';
+        var empty = document.createElement('div');
+        empty.style.cssText = 'font-size: 0.8em; color: #64748b; padding: 4px 0;';
+        empty.textContent = 'Keine';
+        incomingEl.appendChild(empty);
       } else {
-        incoming.forEach(e => {
-          const sourceNode = nodes.find(n => n.id === (typeof e.source === 'object' ? e.source.id : e.source));
-          const item = document.createElement('div');
-          item.className = 'connection-item';
-          item.innerHTML = `
-            <span class="connection-arrow">←</span>
-            <div class="connection-details">
-              <div class="connection-target">${sourceNode ? sourceNode.label : e.source}</div>
-              <div class="connection-contract">${e.contract}</div>
-            </div>
-          `;
-          incomingEl.appendChild(item);
+        incoming.forEach(function(e) {
+          incomingEl.appendChild(createConnectionItem('←', e.sourceNode.label, e.contract));
         });
       }
 
-      // Outgoing edges
-      const outgoing = edges.filter(e => {
-        const sid = typeof e.source === 'object' ? e.source.id : e.source;
-        return sid === d.id;
-      });
-
-      const outgoingEl = document.getElementById('dp-outgoing');
-      outgoingEl.innerHTML = '';
+      var outgoing = edges.filter(function(e) { return e.sourceNode.id === d.id; });
+      var outgoingEl = document.getElementById('dp-outgoing');
+      outgoingEl.textContent = '';
       if (outgoing.length === 0) {
-        outgoingEl.innerHTML = '<div style="font-size: 0.8em; color: var(--text-muted); padding: 4px 0;">Keine</div>';
+        var emptyOut = document.createElement('div');
+        emptyOut.style.cssText = 'font-size: 0.8em; color: #64748b; padding: 4px 0;';
+        emptyOut.textContent = 'Keine';
+        outgoingEl.appendChild(emptyOut);
       } else {
-        outgoing.forEach(e => {
-          const targetNode = nodes.find(n => n.id === (typeof e.target === 'object' ? e.target.id : e.target));
-          const item = document.createElement('div');
-          item.className = 'connection-item';
-          item.innerHTML = `
-            <span class="connection-arrow">→</span>
-            <div class="connection-details">
-              <div class="connection-target">${targetNode ? targetNode.label : e.target}</div>
-              <div class="connection-contract">${e.contract}</div>
-            </div>
-          `;
-          outgoingEl.appendChild(item);
+        outgoing.forEach(function(e) {
+          outgoingEl.appendChild(createConnectionItem('→', e.targetNode.label, e.contract));
         });
       }
 
       detailPanel.classList.add('visible');
     }
 
+    function createConnectionItem(arrow, targetLabel, contract) {
+      var item = document.createElement('div');
+      item.className = 'connection-item';
+
+      var arrowSpan = document.createElement('span');
+      arrowSpan.className = 'connection-arrow';
+      arrowSpan.textContent = arrow;
+
+      var details = document.createElement('div');
+      details.className = 'connection-details';
+
+      var targetDiv = document.createElement('div');
+      targetDiv.className = 'connection-target';
+      targetDiv.textContent = targetLabel;
+
+      var contractDiv = document.createElement('div');
+      contractDiv.className = 'connection-contract';
+      contractDiv.textContent = contract;
+
+      details.appendChild(targetDiv);
+      details.appendChild(contractDiv);
+      item.appendChild(arrowSpan);
+      item.appendChild(details);
+      return item;
+    }
+
     function closeDetail() {
       detailPanel.classList.remove('visible');
     }
 
-    // Make closeDetail globally accessible for the inline onclick
-    window.closeDetail = closeDetail;
-
     // --- Responsive ---
-    window.addEventListener('resize', () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      svg.attr('viewBox', [0, 0, w, h]);
-      simulation.force('center', d3.forceCenter(w / 2, h / 2));
-      simulation.force('x', d3.forceX(w / 2).strength(0.04));
-      simulation.force('y', d3.forceY(h / 2).strength(0.04));
-      simulation.alpha(0.3).restart();
+    window.addEventListener('resize', function() {
+      var w = window.innerWidth;
+      var h = window.innerHeight;
+      svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      bg.setAttribute('width', w);
+      bg.setAttribute('height', h);
+      cx = w / 2;
+      cy = h / 2;
+      // Gentle reheat
+      alpha = 0.15;
+      simulate();
     });
   </script>
 

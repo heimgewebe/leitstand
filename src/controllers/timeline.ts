@@ -93,12 +93,24 @@ export async function getTimelineData(
     }
 
     // Last fallback: fixture JSON array
+    // Apply the same time-window filtering as the JSONL path for consistent semantics.
     try {
       const fixturePath = join(envConfig.paths.fixtures, 'events.json');
       const raw = await readFile(fixturePath, 'utf-8');
-      const events = JSON.parse(raw) as TimelineEvent[];
+      const allEvents = JSON.parse(raw) as TimelineEvent[];
+
+      const filtered = allEvents.filter((e) => {
+        if (!e.timestamp) return false;
+        const ts = new Date(e.timestamp).toISOString();
+        return ts >= sinceIso && ts < untilIso;
+      });
+
+      // Sort newest first (same as JSONL path)
+      filtered.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+      const events = filtered.slice(0, maxEvents);
       return {
-        events: events.slice(0, maxEvents),
+        events,
         view_meta: {
           source_kind: 'fixture',
           missing_reason: 'chronik_enoent',
@@ -108,8 +120,8 @@ export async function getTimelineData(
           total_loaded: events.length,
         },
       };
-    } catch (e) {
-      // Ignore
+    } catch {
+      // Ignore ENOENT
     }
   }
 
