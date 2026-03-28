@@ -2,6 +2,7 @@ import { join } from 'path';
 import { loadWithFallback } from '../utils/loader.js';
 import { envConfig } from '../config.js';
 import type { AnatomySnapshot } from '../anatomy.js';
+import { validateAnatomySnapshot } from '../anatomy.js';
 
 export interface AnatomyViewData {
   anatomy: AnatomySnapshot | null;
@@ -16,8 +17,10 @@ export interface AnatomyViewData {
 /**
  * Controller for loading Anatomy view data.
  *
- * Follows the same loadWithFallback pattern as the Observatory controller:
- * artifact → fixture → null (in strict mode, fixture fallback is disabled).
+ * Uses loadWithFallback for artifact→fixture resolution, then pipes the
+ * result through validateAnatomySnapshot for structural integrity checks
+ * (nodes, edges, achsen present). This ensures the dedicated loader logic
+ * from anatomy.ts is actually in the data path.
  */
 export async function getAnatomyData(): Promise<AnatomyViewData> {
   const { isStrict, isStrictFail, paths } = envConfig;
@@ -31,23 +34,43 @@ export async function getAnatomyData(): Promise<AnatomyViewData> {
     name: 'Anatomy',
   });
 
-  const anatomy = loaded.data;
-  let schemaValid = false;
+  const raw = loaded.data;
 
-  if (anatomy) {
-    schemaValid = anatomy.schema === 'anatomy.snapshot.v1';
-    if (!schemaValid) {
-      console.warn(`[Anatomy] Schema mismatch: expected anatomy.snapshot.v1, got ${anatomy.schema}`);
+  // Structural validation via the dedicated anatomy validator
+  if (raw) {
+    const validation = validateAnatomySnapshot(raw);
+
+    if (!validation.valid) {
+      console.warn(`[Anatomy] Structural validation failed: ${validation.error}`);
+      return {
+        anatomy: null,
+        view_meta: {
+          source_kind: loaded.source,
+          missing_reason: `invalid_structure: ${validation.error}`,
+          is_strict: isStrict,
+          schema_valid: false,
+        },
+      };
     }
+
+    return {
+      anatomy: raw,
+      view_meta: {
+        source_kind: loaded.source,
+        missing_reason: loaded.reason,
+        is_strict: isStrict,
+        schema_valid: validation.schemaValid,
+      },
+    };
   }
 
   return {
-    anatomy,
+    anatomy: null,
     view_meta: {
       source_kind: loaded.source,
       missing_reason: loaded.reason,
       is_strict: isStrict,
-      schema_valid: schemaValid,
+      schema_valid: false,
     },
   };
 }

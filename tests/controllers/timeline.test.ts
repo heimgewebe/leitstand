@@ -80,10 +80,8 @@ describe('getTimelineData controller', () => {
     // hoursBack=1 → threeDaysAgo is outside window
     const result = await getTimelineData(1);
 
-    // Should have zero events (filtered out), returned as fixture with empty array
-    // The controller returns empty fixture results but continues to the 'missing' path
-    // since the empty array is not > 0 on the JSONL path but the JSON fixture path
-    // returns regardless. Let's check:
+    // JSON fixture path always returns (even with 0 filtered events),
+    // so source_kind is 'fixture' with an empty events array.
     expect(result.events).toHaveLength(0);
   });
 

@@ -410,13 +410,16 @@
     Implements a minimal force simulation (repulsion + link spring + centering)
     and renders to SVG via direct DOM manipulation.
   -->
+
+  <!-- Safe JSON data embed: <script type="application/json"> is never executed by the browser.
+       Using <%- %> for raw JSON output; only </script> sequences are neutralized. -->
+  <script type="application/json" id="anatomy-data"><%- JSON.stringify({ nodes: anatomy.nodes, edges: anatomy.edges, achsen: anatomy.achsen }).replace(/<\//g, '<\\/') %></script>
+
   <script>
     // --- Hardened data injection ---
-    // Neutralize </script> and similar sequences that could break out of script context.
-    // Using EJS unescaped output (<%- %>) for valid JSON, then replacing dangerous sequences.
-    var graphData = JSON.parse(
-      '<%= JSON.stringify({ nodes: anatomy.nodes, edges: anatomy.edges, achsen: anatomy.achsen }).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/<\\//g, "<\\/").replace(/\\u2028/g, "\\\\u2028").replace(/\\u2029/g, "\\\\u2029") %>'
-    );
+    // Read from the inert application/json script block via textContent.
+    // This avoids any HTML-escaping issues that would break JSON.parse().
+    var graphData = JSON.parse(document.getElementById('anatomy-data').textContent);
 
     var nodes = graphData.nodes.map(function(n) {
       return { id: n.id, label: n.label, role: n.role, achse: n.achse, description: n.description, x: 0, y: 0, vx: 0, vy: 0, fx: null, fy: null };

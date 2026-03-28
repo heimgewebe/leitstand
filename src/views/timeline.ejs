@@ -6,8 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Chronological event timeline of the Heimgewebe organism – all system events in temporal order.">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -24,7 +22,7 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
       min-height: 100vh;
@@ -112,7 +110,7 @@
       padding: 7px 12px;
       border-radius: 8px;
       font-size: 0.85em;
-      font-family: 'Inter', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       outline: none;
       transition: border-color 0.2s;
     }
@@ -229,7 +227,7 @@
     .event-item .event-kind {
       font-size: 0.82em;
       font-weight: 600;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
     }
 
     .event-item .event-repo {
@@ -272,7 +270,7 @@
     .event-item .event-time {
       font-size: 0.78em;
       color: var(--text-muted);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
     }
 
     /* Event Detail (expandable) */
@@ -290,7 +288,7 @@
 
     .event-detail pre {
       color: var(--text-secondary);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
       font-size: 0.9em;
       white-space: pre-wrap;
       word-break: break-all;
@@ -428,7 +426,7 @@
                data-kind="<%= event.kind %>"
                data-repo="<%= event.repo || '' %>"
                data-severity="<%= event.severity || '' %>"
-               onclick="toggleDetail(<%= i %>)">
+               data-index="<%= i %>">
             <div class="dot-container">
               <div class="dot" style="border-color: <%= dotColor %>;"></div>
             </div>
@@ -539,16 +537,15 @@
     if (filterRepo) filterRepo.addEventListener('change', applyFilters);
     if (filterSeverity) filterSeverity.addEventListener('change', applyFilters);
 
-    // --- Detail Toggle ---
-    function toggleDetail(idx) {
-      const el = document.getElementById('detail-' + idx);
-      if (el) {
-        el.classList.toggle('expanded');
-      }
-    }
-
-    // Make toggleDetail globally accessible
-    window.toggleDetail = toggleDetail;
+    // --- Detail Toggle (event delegation, no inline onclick) ---
+    document.addEventListener('click', function(e) {
+      var item = e.target.closest('.event-item');
+      if (!item) return;
+      var idx = item.dataset.index;
+      if (idx === undefined) return;
+      var el = document.getElementById('detail-' + idx);
+      if (el) el.classList.toggle('expanded');
+    });
   </script>
 </body>
 </html>

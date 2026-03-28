@@ -62,7 +62,49 @@ export interface AnatomySnapshot {
   achsen: Record<string, Achse>;
 }
 
-const ANATOMY_SCHEMA_V1 = 'anatomy.snapshot.v1';
+export const ANATOMY_SCHEMA_V1 = 'anatomy.snapshot.v1';
+
+export interface AnatomyValidationResult {
+  valid: boolean;
+  schemaValid: boolean;
+  error?: string;
+}
+
+/**
+ * Validates the structural integrity of an anatomy snapshot.
+ *
+ * Checks for required fields (nodes, edges, achsen) and schema version.
+ * Does not throw – returns a result object for the caller to act on.
+ *
+ * @param data - Parsed JSON data to validate
+ * @returns Validation result with structural and schema validity
+ */
+export function validateAnatomySnapshot(data: unknown): AnatomyValidationResult {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, schemaValid: false, error: 'expected a JSON object' };
+  }
+
+  const snapshot = data as Record<string, unknown>;
+
+  if (!Array.isArray(snapshot.nodes) || snapshot.nodes.length === 0) {
+    return { valid: false, schemaValid: false, error: 'nodes array is missing or empty' };
+  }
+
+  if (!Array.isArray(snapshot.edges)) {
+    return { valid: false, schemaValid: false, error: 'edges array is missing' };
+  }
+
+  if (!snapshot.achsen || typeof snapshot.achsen !== 'object') {
+    return { valid: false, schemaValid: false, error: 'achsen map is missing' };
+  }
+
+  const schemaValid = snapshot.schema === ANATOMY_SCHEMA_V1;
+  if (!schemaValid && snapshot.schema) {
+    console.warn(`[Anatomy] Schema mismatch: expected ${ANATOMY_SCHEMA_V1}, got ${snapshot.schema}`);
+  }
+
+  return { valid: true, schemaValid };
+}
 
 /**
  * Loads an anatomy snapshot from a JSON file.
@@ -77,26 +119,9 @@ const ANATOMY_SCHEMA_V1 = 'anatomy.snapshot.v1';
 export async function loadAnatomySnapshot(path: string): Promise<AnatomySnapshot> {
   const raw = await readJsonFile<AnatomySnapshot>(path);
 
-  // Structural validation
-  if (!raw || typeof raw !== 'object') {
-    throw new Error('Invalid anatomy snapshot: expected a JSON object');
-  }
-
-  if (!Array.isArray(raw.nodes) || raw.nodes.length === 0) {
-    throw new Error('Invalid anatomy snapshot: nodes array is missing or empty');
-  }
-
-  if (!Array.isArray(raw.edges)) {
-    throw new Error('Invalid anatomy snapshot: edges array is missing');
-  }
-
-  if (!raw.achsen || typeof raw.achsen !== 'object') {
-    throw new Error('Invalid anatomy snapshot: achsen map is missing');
-  }
-
-  // Schema version check (warn, don't fail – forward compatibility)
-  if (raw.schema && raw.schema !== ANATOMY_SCHEMA_V1) {
-    console.warn(`[Anatomy] Schema version mismatch: expected ${ANATOMY_SCHEMA_V1}, got ${raw.schema}`);
+  const validation = validateAnatomySnapshot(raw);
+  if (!validation.valid) {
+    throw new Error(`Invalid anatomy snapshot: ${validation.error}`);
   }
 
   return {

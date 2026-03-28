@@ -96,4 +96,27 @@ describe('getAnatomyData controller', () => {
     expect(callArgs[1]).toContain('anatomy.snapshot.json');
     expect(callArgs[2]).toMatchObject({ name: 'Anatomy' });
   });
+
+  it('should reject structurally invalid data (missing nodes) and return null anatomy', async () => {
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: {
+        schema: 'anatomy.snapshot.v1',
+        generated_at: '2026-03-28T00:00:00Z',
+        source: 'fixture',
+        // nodes is empty → structural validation fails
+        nodes: [],
+        edges: [],
+        achsen: {},
+      },
+      source: 'fixture',
+      reason: 'enoent',
+    });
+
+    const result = await getAnatomyData();
+
+    expect(result.anatomy).toBeNull();
+    expect(result.view_meta.schema_valid).toBe(false);
+    expect(result.view_meta.missing_reason).toContain('invalid_structure');
+    expect(console.warn).toHaveBeenCalled();
+  });
 });
