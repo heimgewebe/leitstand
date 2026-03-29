@@ -354,6 +354,8 @@ describe('getAnatomyData controller', () => {
     // Fixture fallback must have been used despite artifact throw
     expect(result.health.source_kind).toBe('fixture');
     expect(result.health.totals.ok).toBe(1);
+      // missing_reason must reflect the actual artifact failure, not the generic 'artifact_missing'
+      expect(result.health.missing_reason).toBe('health_metrics_invalid');
     expect(vi.mocked(loadLatestMetrics)).toHaveBeenCalledTimes(2);
   });
 

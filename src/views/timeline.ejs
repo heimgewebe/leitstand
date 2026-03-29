@@ -507,20 +507,6 @@
         <% }); %>
       </div>
 
-      <div class="source-badge">
-        <% if (view_meta.source_kind === 'fixture') { %>
-          <span class="warn">⚠ Fixture-Daten</span> · Chronik nicht erreichbar
-        <% } else { %>
-          Quelle: Chronik · <%= events.length %> Events
-        <% } %>
-        · Zeitfenster: <%= view_meta.since %> – <%= view_meta.until %>
-        · Konfiguration: <%= view_meta.hours_back %>h / max <%= view_meta.max_events %>
-        <% if (view_meta.replay_mode) { %>
-          · <span class="warn">Replay</span>
-          <% if (view_meta.replay_until) { %> bis <%= view_meta.replay_until %><% } %>
-        <% } %>
-      </div>
-
     <% } else { %>
       <div class="empty-state">
         <h2>Keine Events</h2>
@@ -545,6 +531,7 @@
       <% } else { %>
         <span class="warn">Keine Quelle verfügbar</span>
       <% } %>
+        <% if (events && events.length > 0) { %> · <%= events.length %> Events<% } %>
       · Zeitfenster: <%= view_meta.since %> – <%= view_meta.until %>
       · Konfiguration: <%= view_meta.hours_back %>h / max <%= view_meta.max_events %>
       <% if (view_meta.replay_mode) { %>

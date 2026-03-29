@@ -147,11 +147,15 @@ async function loadHealthOverlay(): Promise<HealthOverlay> {
   }
 
   // Step 2: Fixture fallback — only in non-strict mode.
+  // Distinguish why the artifact was not used: it was never there ('artifact_missing')
+  // vs. it existed but failed to load (classified via classifyHealthLoadError).
+  const artifactFallbackReason = artifactErr ? classifyHealthLoadError(artifactErr) : 'artifact_missing';
+
   if (!isStrict) {
     try {
       const metricsFromFixture = await loadLatestMetrics(fixtureMetricsDir);
       if (metricsFromFixture) {
-        return buildHealthOverlay(metricsFromFixture, 'fixture', 'artifact_missing');
+        return buildHealthOverlay(metricsFromFixture, 'fixture', artifactFallbackReason);
       }
     } catch (err) {
       console.warn('[Anatomy] Failed to load fixture health metrics:', err instanceof Error ? err.message : String(err));
