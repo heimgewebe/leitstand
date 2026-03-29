@@ -7,7 +7,7 @@ import { validateAnatomySnapshot } from '../anatomy.js';
 export interface AnatomyViewData {
   anatomy: AnatomySnapshot | null;
   view_meta: {
-    source_kind: string;
+    source_kind: 'artifact' | 'fixture' | 'missing';
     missing_reason: string;
     is_strict: boolean;
     schema_valid: boolean;
@@ -18,9 +18,12 @@ export interface AnatomyViewData {
  * Controller for loading Anatomy view data.
  *
  * Uses loadWithFallback for artifact→fixture resolution, then pipes the
- * result through validateAnatomySnapshot for structural integrity checks
- * (nodes, edges, achsen present). This ensures the dedicated loader logic
- * from anatomy.ts is actually in the data path.
+ * result through validateAnatomySnapshot (from anatomy.ts) for structural
+ * integrity checks (nodes, edges, achsen present).
+ *
+ * Note: loadAnatomySnapshot() in anatomy.ts provides a throwing single-file
+ * loader; the controller intentionally uses loadWithFallback instead so the
+ * artifact→fixture fallback logic is available here.
  */
 export async function getAnatomyData(): Promise<AnatomyViewData> {
   const { isStrict, isStrictFail, paths } = envConfig;
