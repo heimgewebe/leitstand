@@ -79,6 +79,36 @@ describe('getAnatomyData controller', () => {
     expect(result.anatomy).toBeNull();
     expect(result.view_meta.source_kind).toBe('missing');
     expect(result.view_meta.schema_valid).toBe(false);
+    expect(result.view_meta.freshness_state).toBe('unknown');
+    expect(result.view_meta.data_age_minutes).toBeNull();
+  });
+
+  it('should mark freshness as stale when generated_at is older than threshold', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-29T12:00:00.000Z'));
+
+    try {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: {
+          schema: 'anatomy.snapshot.v1',
+          generated_at: '2026-03-20T12:00:00.000Z',
+          source: 'artifact',
+          nodes: [{ id: 'leitstand', label: 'Leitstand', role: 'UI', achse: 'interface', description: 'test' }],
+          edges: [],
+          achsen: { interface: { label: 'Interface', color: '#3B82F6', description: 'UI' } },
+        },
+        source: 'artifact',
+        reason: 'ok',
+      });
+
+      const result = await getAnatomyData();
+
+      expect(result.view_meta.freshness_state).toBe('stale');
+      expect(result.view_meta.data_age_minutes).toBe(9 * 24 * 60);
+      expect(result.view_meta.stale_after_hours).toBe(72);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('should call loadWithFallback with correct paths and name', async () => {

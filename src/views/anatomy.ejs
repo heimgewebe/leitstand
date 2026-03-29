@@ -399,6 +399,16 @@
       Quelle: Artefakt
       <% if (anatomy.generated_at) { %> · <%= anatomy.generated_at %><% } %>
     <% } %>
+    <% if (view_meta.freshness_state === 'stale') { %>
+      · <span class="warn">Stale</span>
+      <% if (view_meta.data_age_minutes !== null) { %>
+        · <%= Math.floor(view_meta.data_age_minutes / 60) %>h alt
+      <% } %>
+    <% } else if (view_meta.freshness_state === 'fresh' && view_meta.data_age_minutes !== null) { %>
+      · Frische: <%= Math.floor(view_meta.data_age_minutes / 60) %>h
+    <% } else { %>
+      · Frische: unbekannt
+    <% } %>
     <% if (!view_meta.schema_valid) { %>
        · <span class="warn">Schema-Mismatch</span>
     <% } %>

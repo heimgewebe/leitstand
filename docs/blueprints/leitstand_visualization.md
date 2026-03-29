@@ -100,12 +100,16 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [x] Server-seitige Begrenzung eingefuhrt (`hours <= 168`, `max <= 1000`).
 - [x] View-Metadaten erweitert (`hours_back`, `max_events`) und in der Source-Badge sichtbar gemacht.
 - [x] Event-Detailpanel bleibt per Klick auf Event expandierbar (Kontext-/Payload-Einsicht).
+- [x] Anatomy-Quelle zeigt Data-Freshness (`fresh/stale/unknown`) auf Basis von `generated_at`.
+- [x] Stale-Schwelle fur Anatomy eingefuhrt (`72h`) und im Controller als Metadatum hinterlegt.
 
 Technische Referenzen:
 
 - `src/server.ts` (robustes Query-Parsing fur Timeline-Parameter)
 - `src/controllers/timeline.ts` (View-Meta um Fenster/Limit erweitert)
 - `src/views/timeline.ejs` (UI-Steuerung und Anzeige der aktiven Konfiguration)
+- `src/controllers/anatomy.ts` (Freshness-Berechnung und Metadaten)
+- `src/views/anatomy.ejs` (Freshness- und Stale-Hinweise in Source-Badge)
 
 ## Phase 1: Anatomie (Strukturelle Übersicht)
 

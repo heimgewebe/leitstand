@@ -11,6 +11,44 @@ export interface AnatomyViewData {
     missing_reason: string;
     is_strict: boolean;
     schema_valid: boolean;
+    data_timestamp: string | null;
+    data_age_minutes: number | null;
+    freshness_state: 'fresh' | 'stale' | 'unknown';
+    stale_after_hours: number;
+  };
+}
+
+const STALE_AFTER_HOURS = 72;
+
+function computeFreshness(generatedAt?: string): {
+  data_timestamp: string | null;
+  data_age_minutes: number | null;
+  freshness_state: 'fresh' | 'stale' | 'unknown';
+} {
+  if (!generatedAt) {
+    return {
+      data_timestamp: null,
+      data_age_minutes: null,
+      freshness_state: 'unknown',
+    };
+  }
+
+  const generatedMs = new Date(generatedAt).getTime();
+  if (Number.isNaN(generatedMs)) {
+    return {
+      data_timestamp: generatedAt,
+      data_age_minutes: null,
+      freshness_state: 'unknown',
+    };
+  }
+
+  const ageMinutes = Math.max(0, Math.floor((Date.now() - generatedMs) / 60000));
+  const freshnessState = ageMinutes > STALE_AFTER_HOURS * 60 ? 'stale' : 'fresh';
+
+  return {
+    data_timestamp: new Date(generatedMs).toISOString(),
+    data_age_minutes: ageMinutes,
+    freshness_state: freshnessState,
   };
 }
 
@@ -41,6 +79,7 @@ export async function getAnatomyData(): Promise<AnatomyViewData> {
 
   // Structural validation via the dedicated anatomy validator
   if (raw) {
+    const freshness = computeFreshness(raw.generated_at);
     const validation = validateAnatomySnapshot(raw);
 
     if (!validation.valid) {
@@ -52,6 +91,10 @@ export async function getAnatomyData(): Promise<AnatomyViewData> {
           missing_reason: `invalid_structure: ${validation.error}`,
           is_strict: isStrict,
           schema_valid: false,
+          data_timestamp: freshness.data_timestamp,
+          data_age_minutes: freshness.data_age_minutes,
+          freshness_state: freshness.freshness_state,
+          stale_after_hours: STALE_AFTER_HOURS,
         },
       };
     }
@@ -63,6 +106,10 @@ export async function getAnatomyData(): Promise<AnatomyViewData> {
         missing_reason: loaded.reason,
         is_strict: isStrict,
         schema_valid: validation.schemaValid,
+        data_timestamp: freshness.data_timestamp,
+        data_age_minutes: freshness.data_age_minutes,
+        freshness_state: freshness.freshness_state,
+        stale_after_hours: STALE_AFTER_HOURS,
       },
     };
   }
@@ -74,6 +121,10 @@ export async function getAnatomyData(): Promise<AnatomyViewData> {
       missing_reason: loaded.reason,
       is_strict: isStrict,
       schema_valid: false,
+      data_timestamp: null,
+      data_age_minutes: null,
+      freshness_state: 'unknown',
+      stale_after_hours: STALE_AFTER_HOURS,
     },
   };
 }
