@@ -179,7 +179,7 @@ describe('getAnatomyData controller', () => {
     vi.mocked(loadLatestMetrics).mockResolvedValueOnce({
       timestamp: '2026-03-29T08:00:00.000Z',
       repoCount: 2,
-      status: { ok: 1, warn: 1, fail: 0 },
+      status: { ok: 99, warn: 99, fail: 99 },
       repos: [
         { name: 'heimgewebe/metarepo', status: 'ok' },
         { name: 'heimgewebe/wgx', status: 'warn' },
@@ -191,6 +191,8 @@ describe('getAnatomyData controller', () => {
     expect(result.health.source_kind).toBe('artifact');
     expect(result.health.totals.ok).toBe(1);
     expect(result.health.totals.warn).toBe(1);
+    expect(result.health.totals.fail).toBe(0);
+    expect(result.health.totals.unknown).toBe(0);
     expect(result.health.by_repo.metarepo).toBe('ok');
     expect(result.health.by_repo.wgx).toBe('warn');
   });

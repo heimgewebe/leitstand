@@ -137,7 +137,7 @@ export async function getTimelineData(
         events,
         view_meta: {
           source_kind: 'fixture',
-          window_state: 'has_events',
+          window_state: events.length === 0 ? 'empty_window' : 'has_events',
           missing_reason: 'chronik_enoent',
           is_strict: isStrict,
           since: sinceIso,

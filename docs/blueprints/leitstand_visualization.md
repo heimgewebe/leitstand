@@ -50,7 +50,7 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 
 - [x] Timeline-Ansicht mit Filterung nach Organ, Typ und Zeitraum implementieren.
 - [ ] Event-Typisierung und visuelle Kodierung vereinheitlichen (Farben/Badges/Icons konsistent).
-- [x] Replay-Modus fur definierte Zeitfenster einfuhren (historische Zustande fur Phasen 1+2 nachvollziehbar).
+- [x] Zeitpunktbasierten Replay-Snapshot fur definierte Zeitfenster einfuhren (historische Zustande fur Phasen 1+2 nachvollziehbar).
 - [x] Kontextpanel fur Event-Details und referenzierte Artefakte bereitstellen.
 - [ ] Akzeptanztest: Ursache-Wirkungsketten uber mindestens einen realen Incident nachvollziehen.
 
@@ -97,11 +97,11 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 
 - [x] Timeline-Zeitfenster im UI steuerbar (`hours`: 6/24/48/72/168).
 - [x] Event-Limit im UI steuerbar (`max`: 100/200/500/1000).
-- [x] Timeline-Replaypunkt im UI steuerbar (`until`) und als historischer Snapshot nutzbar.
+- [x] Timeline-Replayzeitpunkt im UI steuerbar (`until`) und als historischer Snapshot nutzbar.
 - [x] Server-seitige Begrenzung eingefuhrt (`hours <= 168`, `max <= 1000`).
 - [x] View-Metadaten erweitert (`hours_back`, `max_events`) und in der Source-Badge sichtbar gemacht.
 - [x] Replay-Metadaten erweitert (`replay_mode`, `replay_until`) und in der Source-Badge sichtbar gemacht.
-- [x] Event-Detailpanel bleibt per Klick auf Event expandierbar (Kontext-/Payload-Einsicht).
+- [x] Event-Details bleiben per Klick auf Event expandierbar (Kontext-/Payload-Einsicht).
 - [x] Anatomy-Quelle zeigt Data-Freshness (`fresh/stale/unknown`) auf Basis von `generated_at`.
 - [x] Stale-Schwelle fur Anatomy eingefuhrt (`72h`) und im Controller als Metadatum hinterlegt.
 - [x] Anatomy-Graph zeigt Health-Status pro Node (OK/Warn/Fail/Unknown) als Layer inkl. Legende.

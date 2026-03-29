@@ -85,6 +85,9 @@ describe('getTimelineData controller', () => {
     // JSON fixture path always returns (even with 0 filtered events),
     // so source_kind is 'fixture' with an empty events array.
     expect(result.events).toHaveLength(0);
+    expect(result.view_meta.source_kind).toBe('fixture');
+    expect(result.view_meta.window_state).toBe('empty_window');
+    expect(result.view_meta.missing_reason).toBe('chronik_enoent');
   });
 
   it('should respect maxEvents limit after filtering', async () => {

@@ -109,6 +109,20 @@ function emptyHealthOverlay(reason: string): HealthOverlay {
   };
 }
 
+function classifyHealthLoadError(err: unknown): string {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+
+  if (msg.includes('invalid json') || msg.includes('unexpected token') || msg.includes('configuration validation failed')) {
+    return 'health_metrics_invalid';
+  }
+
+  if (msg.includes('enoent') || msg.includes('no such file')) {
+    return 'health_metrics_missing';
+  }
+
+  return 'health_metrics_load_failed';
+}
+
 async function loadHealthOverlay(): Promise<HealthOverlay> {
   const { isStrict, paths } = envConfig;
 
@@ -128,10 +142,10 @@ async function loadHealthOverlay(): Promise<HealthOverlay> {
       }
     }
 
-    return emptyHealthOverlay(isStrict ? 'strict_mode' : 'no_metrics_found');
+    return emptyHealthOverlay(isStrict ? 'health_metrics_missing_strict' : 'health_metrics_missing');
   } catch (err) {
     console.warn('[Anatomy] Failed to load health overlay:', err instanceof Error ? err.message : String(err));
-    return emptyHealthOverlay('health_load_failed');
+    return emptyHealthOverlay(classifyHealthLoadError(err));
   }
 }
 
@@ -160,12 +174,13 @@ function buildHealthOverlay(
         ? 'stale'
         : 'fresh';
 
-  const totals = {
-    ok: Number(metrics.status?.ok || 0),
-    warn: Number(metrics.status?.warn || 0),
-    fail: Number(metrics.status?.fail || 0),
-    unknown: 0,
-  };
+  const totals = Object.values(byRepo).reduce(
+    (acc, status) => {
+      acc[status] += 1;
+      return acc;
+    },
+    { ok: 0, warn: 0, fail: 0, unknown: 0 }
+  );
 
   return {
     source_kind: sourceKind,
