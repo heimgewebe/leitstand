@@ -346,3 +346,65 @@ describe('GET /observatory', () => {
     expect(res.text).not.toContain('SENSITIVE_PATH');
   });
 });
+
+describe('GET /timeline – until UTC contract', () => {
+  const minimalTimelineData = () => ({
+    events: [],
+    view_meta: {
+      source_kind: 'fixture' as const,
+      window_state: 'empty_window',
+      missing_reason: 'chronik_enoent',
+      is_strict: false,
+      hours_back: 48,
+      max_events: 200,
+      total_loaded: 0,
+      replay_mode: false,
+      replay_until: null,
+      since: '2026-01-01T00:00:00.000Z',
+      until: '2026-01-03T00:00:00.000Z',
+    },
+  });
+
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    resetEnvConfig();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should forward a valid Date to getTimelineData when until has explicit UTC (Z suffix)', async () => {
+    const timelineController = await import('../src/controllers/timeline.js');
+    vi.spyOn(timelineController, 'getTimelineData').mockResolvedValueOnce(minimalTimelineData());
+
+    await request(app).get('/timeline?until=2026-01-01T12:00:00.000Z');
+
+    expect(timelineController.getTimelineData).toHaveBeenCalledOnce();
+    const untilArg = vi.mocked(timelineController.getTimelineData).mock.calls[0][2];
+    expect(untilArg).toBeInstanceOf(Date);
+    expect((untilArg as Date).toISOString()).toBe('2026-01-01T12:00:00.000Z');
+  });
+
+  it('should pass undefined to getTimelineData when until has no explicit TZ indicator', async () => {
+    const timelineController = await import('../src/controllers/timeline.js');
+    vi.spyOn(timelineController, 'getTimelineData').mockResolvedValueOnce(minimalTimelineData());
+
+    await request(app).get('/timeline?until=2026-01-01T14:00');
+
+    expect(timelineController.getTimelineData).toHaveBeenCalledOnce();
+    const untilArg = vi.mocked(timelineController.getTimelineData).mock.calls[0][2];
+    expect(untilArg).toBeUndefined();
+  });
+
+  it('should pass undefined to getTimelineData when until param is absent', async () => {
+    const timelineController = await import('../src/controllers/timeline.js');
+    vi.spyOn(timelineController, 'getTimelineData').mockResolvedValueOnce(minimalTimelineData());
+
+    await request(app).get('/timeline');
+
+    expect(timelineController.getTimelineData).toHaveBeenCalledOnce();
+    const untilArg = vi.mocked(timelineController.getTimelineData).mock.calls[0][2];
+    expect(untilArg).toBeUndefined();
+  });
+});

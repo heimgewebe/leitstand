@@ -369,8 +369,38 @@
       <p class="subtitle">Chronologische Ereignisse des Heimgewebe-Organismus</p>
     </div>
 
+    <!-- Window/Replay Controls — always visible (operator can adjust window even when empty) -->
+    <div class="filter-bar" id="windowBar">
+      <label for="windowHours">Fenster</label>
+      <select id="windowHours">
+        <option value="6" <%= view_meta.hours_back === 6 ? 'selected' : '' %>>6h</option>
+        <option value="24" <%= view_meta.hours_back === 24 ? 'selected' : '' %>>24h</option>
+        <option value="48" <%= view_meta.hours_back === 48 ? 'selected' : '' %>>48h</option>
+        <option value="72" <%= view_meta.hours_back === 72 ? 'selected' : '' %>>72h</option>
+        <option value="168" <%= view_meta.hours_back === 168 ? 'selected' : '' %>>7d</option>
+      </select>
+
+      <label for="windowMax">Limit</label>
+      <select id="windowMax">
+        <option value="100" <%= view_meta.max_events === 100 ? 'selected' : '' %>>100</option>
+        <option value="200" <%= view_meta.max_events === 200 ? 'selected' : '' %>>200</option>
+        <option value="500" <%= view_meta.max_events === 500 ? 'selected' : '' %>>500</option>
+        <option value="1000" <%= view_meta.max_events === 1000 ? 'selected' : '' %>>1000</option>
+      </select>
+
+      <label for="replayUntil">Replay bis</label>
+      <input
+        id="replayUntil"
+        type="datetime-local"
+        data-replay-until-utc="<%= view_meta.replay_until || '' %>"
+      >
+
+      <button type="button" id="applyWindow">Aktualisieren</button>
+      <button type="button" id="clearReplay">Live</button>
+    </div>
+
     <% if (events && events.length > 0) { %>
-      <!-- Filter Bar -->
+      <!-- Client-side Event Filters (only useful when events are present) -->
       <div class="filter-bar" id="filterBar">
         <label for="filterKind">Typ</label>
         <select id="filterKind">
@@ -397,33 +427,6 @@
           <option value="warn">Warn</option>
           <option value="info">Info</option>
         </select>
-
-        <label for="windowHours">Fenster</label>
-        <select id="windowHours">
-          <option value="6" <%= view_meta.hours_back === 6 ? 'selected' : '' %>>6h</option>
-          <option value="24" <%= view_meta.hours_back === 24 ? 'selected' : '' %>>24h</option>
-          <option value="48" <%= view_meta.hours_back === 48 ? 'selected' : '' %>>48h</option>
-          <option value="72" <%= view_meta.hours_back === 72 ? 'selected' : '' %>>72h</option>
-          <option value="168" <%= view_meta.hours_back === 168 ? 'selected' : '' %>>7d</option>
-        </select>
-
-        <label for="windowMax">Limit</label>
-        <select id="windowMax">
-          <option value="100" <%= view_meta.max_events === 100 ? 'selected' : '' %>>100</option>
-          <option value="200" <%= view_meta.max_events === 200 ? 'selected' : '' %>>200</option>
-          <option value="500" <%= view_meta.max_events === 500 ? 'selected' : '' %>>500</option>
-          <option value="1000" <%= view_meta.max_events === 1000 ? 'selected' : '' %>>1000</option>
-        </select>
-
-        <label for="replayUntil">Replay bis</label>
-        <input
-          id="replayUntil"
-          type="datetime-local"
-          value="<%= view_meta.replay_until ? view_meta.replay_until.slice(0, 16) : '' %>"
-        >
-
-        <button type="button" id="applyWindow">Aktualisieren</button>
-        <button type="button" id="clearReplay">Live</button>
 
         <div class="spacer"></div>
 
@@ -532,6 +535,23 @@
         </p>
       </div>
     <% } %>
+
+    <!-- Source badge: always visible (shows window config and source even on empty state) -->
+    <div class="source-badge">
+      <% if (view_meta.source_kind === 'fixture') { %>
+        <span class="warn">⚠ Fixture-Daten</span> · Chronik nicht erreichbar
+      <% } else if (view_meta.source_kind === 'chronik') { %>
+        Quelle: Chronik
+      <% } else { %>
+        <span class="warn">Keine Quelle verfügbar</span>
+      <% } %>
+      · Zeitfenster: <%= view_meta.since %> – <%= view_meta.until %>
+      · Konfiguration: <%= view_meta.hours_back %>h / max <%= view_meta.max_events %>
+      <% if (view_meta.replay_mode) { %>
+        · <span class="warn">Replay</span>
+        <% if (view_meta.replay_until) { %> bis <%= view_meta.replay_until %><% } %>
+      <% } %>
+    </div>
   </div>
 
   <script>
@@ -543,6 +563,23 @@
     const windowMax = document.getElementById('windowMax');
     const replayUntil = document.getElementById('replayUntil');
     const applyWindow = document.getElementById('applyWindow');
+
+    // --- Initialize datetime-local input from UTC server value (UTC → local display) ---
+    if (replayUntil) {
+      var utcVal = replayUntil.dataset.replayUntilUtc;
+      if (utcVal) {
+        var replayDt = new Date(utcVal);
+        if (!isNaN(replayDt.getTime())) {
+          var pad2 = function(n) { return String(n).padStart(2, '0'); };
+          replayUntil.value =
+            replayDt.getFullYear() + '-' +
+            pad2(replayDt.getMonth() + 1) + '-' +
+            pad2(replayDt.getDate()) + 'T' +
+            pad2(replayDt.getHours()) + ':' +
+            pad2(replayDt.getMinutes());
+        }
+      }
+    }
     const clearReplay = document.getElementById('clearReplay');
     const visibleCount = document.getElementById('visibleCount');
     const timeline = document.getElementById('timeline');
@@ -603,7 +640,12 @@
           params.set('max', windowMax.value);
         }
         if (replayUntil && replayUntil.value) {
-          params.set('until', replayUntil.value);
+          // Convert local datetime-local value to UTC ISO ("Z" suffix) for explicit TZ contract.
+          // The server only accepts until params with an explicit TZ indicator.
+          var localDt = new Date(replayUntil.value);
+          if (!isNaN(localDt.getTime())) {
+            params.set('until', localDt.toISOString());
+          }
         } else {
           params.delete('until'); // observer-invariant-guard: allow-known-exception
         }

@@ -196,4 +196,139 @@ describe('getAnatomyData controller', () => {
     expect(result.health.by_repo.metarepo).toBe('ok');
     expect(result.health.by_repo.wgx).toBe('warn');
   });
+
+  it('should compute health freshness_state=fresh when metrics timestamp is recent', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-29T12:00:00.000Z'));
+    try {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: null,
+        source: 'missing',
+        reason: 'enoent',
+      });
+      vi.mocked(loadLatestMetrics).mockResolvedValueOnce({
+        timestamp: '2026-03-29T10:00:00.000Z', // 2 h ago — well within 24h
+        repoCount: 1,
+        status: { ok: 1, warn: 0, fail: 0 },
+        repos: [{ name: 'leitstand', status: 'ok' }],
+      });
+
+      const result = await getAnatomyData();
+
+      expect(result.health.freshness_state).toBe('fresh');
+      expect(result.health.data_age_minutes).toBe(120);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('should compute health freshness_state=stale when metrics timestamp is older than threshold', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-29T12:00:00.000Z'));
+    try {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: null,
+        source: 'missing',
+        reason: 'enoent',
+      });
+      vi.mocked(loadLatestMetrics).mockResolvedValueOnce({
+        timestamp: '2026-03-28T10:00:00.000Z', // 26 h ago — exceeds 24h threshold
+        repoCount: 1,
+        status: { ok: 1, warn: 0, fail: 0 },
+        repos: [{ name: 'leitstand', status: 'ok' }],
+      });
+
+      const result = await getAnatomyData();
+
+      expect(result.health.freshness_state).toBe('stale');
+      expect(result.health.data_age_minutes).toBe(26 * 60);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('should compute health freshness_state=unknown when metrics timestamp is absent', async () => {
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: null,
+      source: 'missing',
+      reason: 'enoent',
+    });
+    vi.mocked(loadLatestMetrics).mockResolvedValueOnce({
+      timestamp: undefined,
+      repoCount: 1,
+      status: { ok: 1, warn: 0, fail: 0 },
+      repos: [{ name: 'leitstand', status: 'ok' }],
+    });
+
+    const result = await getAnatomyData();
+
+    expect(result.health.freshness_state).toBe('unknown');
+    expect(result.health.data_age_minutes).toBeNull();
+  });
+
+  it('should fall back to fixture metrics for health in non-strict mode when artifact metrics are absent', async () => {
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: null,
+      source: 'missing',
+      reason: 'enoent',
+    });
+    // First call (artifact metrics dir) → null; second call (fixture metrics dir) → data
+    vi.mocked(loadLatestMetrics)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        timestamp: '2026-03-29T10:00:00.000Z',
+        repoCount: 1,
+        status: { ok: 1, warn: 0, fail: 0 },
+        repos: [{ name: 'chronik', status: 'ok' }],
+      });
+
+    const result = await getAnatomyData();
+
+    expect(result.health.source_kind).toBe('fixture');
+    expect(result.health.by_repo['chronik']).toBe('ok');
+    expect(result.health.totals.ok).toBe(1);
+  });
+
+  it('should not fall back to fixture metrics in strict mode', async () => {
+    vi.stubEnv('LEITSTAND_STRICT', '1');
+    resetEnvConfig();
+
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: null,
+      source: 'missing',
+      reason: 'enoent',
+    });
+    // Artifact metrics → null; fixture should never be tried in strict mode
+    vi.mocked(loadLatestMetrics).mockResolvedValueOnce(null);
+
+    const result = await getAnatomyData();
+
+    expect(result.health.source_kind).toBe('missing');
+    expect(result.health.missing_reason).toBe('health_metrics_missing_strict');
+    // loadLatestMetrics should only have been called once (no fixture fallback)
+    expect(vi.mocked(loadLatestMetrics)).toHaveBeenCalledTimes(1);
+  });
+
+  it('should derive totals from metrics.status aggregate when repos array is empty', async () => {
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: null,
+      source: 'missing',
+      reason: 'enoent',
+    });
+    vi.mocked(loadLatestMetrics).mockResolvedValueOnce({
+      timestamp: '2026-03-29T10:00:00.000Z',
+      repoCount: 5,
+      status: { ok: 3, warn: 1, fail: 1 },
+      repos: [], // no per-repo entries → should fall back to aggregate
+    });
+
+    const result = await getAnatomyData();
+
+    expect(result.health.source_kind).toBe('artifact');
+    expect(result.health.totals.ok).toBe(3);
+    expect(result.health.totals.warn).toBe(1);
+    expect(result.health.totals.fail).toBe(1);
+    expect(result.health.totals.unknown).toBe(0);
+    expect(Object.keys(result.health.by_repo)).toHaveLength(0);
+  });
 });

@@ -349,7 +349,10 @@ app.get('/timeline', async (req, res) => {
       : 200;
 
     const rawUntil = typeof req.query.until === 'string' ? req.query.until : '';
-    const parsedUntil = rawUntil ? new Date(rawUntil) : null;
+    // Only accept ISO strings with an explicit TZ indicator (Z or ±HH:MM) to prevent
+    // silent server-timezone drift when datetime-local values are submitted without TZ.
+    const hasExplicitTz = rawUntil ? /Z$|[+-]\d{2}:\d{2}$/.test(rawUntil) : false;
+    const parsedUntil = (rawUntil && hasExplicitTz) ? new Date(rawUntil) : null;
     const untilOverride = parsedUntil && !Number.isNaN(parsedUntil.getTime()) ? parsedUntil : undefined;
 
     const data = await getTimelineData(hoursBack, maxEvents, untilOverride);

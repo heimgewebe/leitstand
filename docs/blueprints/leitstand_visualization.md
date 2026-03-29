@@ -18,22 +18,22 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 
 - [ ] Scope finalisieren: Leitstand bleibt Observer/UI, keine SSOT- oder Steuerungslogik in der Visualisierung.
 - [ ] Begriffsrahmen aus `leitstand_manifest.md` harmonisieren (artifact-flow, contract-ref, runtime-coupling, code-import, ops-dependency).
-- [ ] Quelleninventar fixieren: je Visualmodul genau eine primare Quelle und Fallback-Regel dokumentieren.
+- [ ] Quelleninventar fixieren: je Visualmodul genau eine primäre Quelle und Fallback-Regel dokumentieren.
 - [ ] Artefakt-Versionierung vereinheitlichen (Timestamp + Quelle + Contract-Version pro Payload sichtbar).
-- [ ] DoD definieren und als Checkliste in Teamablauf ubernehmen (Phase 1-5).
+- [ ] DoD definieren und als Checkliste in Teamablauf übernehmen (Phase 1-5).
 
 ### 1) Datenfundament und Ingestion-Pipeline
 
-- [ ] Loader fur alle Kernartefakte stabilisieren: `fleet.health`, `metrics.snapshot`, `event.line`, `insights.daily`, heimgeist-Insights.
+- [ ] Loader für alle Kernartefakte stabilisieren: `fleet.health`, `metrics.snapshot`, `event.line`, `insights.daily`, heimgeist-Insights.
 - [ ] Zeitstempel-Priorisierung sicherstellen (Dateiname/Domain-Timestamp vor mtime) und als Invariant dokumentieren.
 - [ ] Schema-Validierung hart schalten: Eingaben nur bei validem Contract akzeptieren, sonst klar markierter Fehlerzustand.
-- [ ] Integritatslayer einbauen: Quelle, Schema-ID, Version, Erzeugungszeit und letzte erfolgreiche Aktualisierung je Datensatz.
+- [ ] Integritätslayer einbauen: Quelle, Schema-ID, Version, Erzeugungszeit und letzte erfolgreiche Aktualisierung je Datensatz.
 - [ ] Fallback-Verhalten definieren: leere/fehlende Artefakte zeigen, ohne stille Datenverluste zu kaschieren.
 
 ### 2) Phase 1 umsetzen: Anatomie (statisches Strukturmodell)
 
 - [ ] Organismus-Graph als eigene Sicht aufbauen (Repos als Knoten, Beziehungen als Kanten, Rollen sichtbar).
-- [ ] Datenmapping von Fleet/Contract-Quellen in ein internes, UI-freundliches Graph-Modell abschlieBen.
+- [ ] Datenmapping von Fleet/Contract-Quellen in ein internes, UI-freundliches Graph-Modell abschließen.
 - [ ] Basisinteraktion bauen: zoomen, pannen, Knotenfokus, Legende fur Rollen/Achsen.
 - [ ] Strukturzustand versioniert anzeigen ("Stand: ..."), keine Live-Illusion fur statische Daten.
 - [ ] Akzeptanztest: Jede dargestellte Kante ist auf einen nachvollziehbaren Contract- oder Artefaktbezug zuruckfuhrbar.

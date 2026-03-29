@@ -174,13 +174,22 @@ function buildHealthOverlay(
         ? 'stale'
         : 'fresh';
 
-  const totals = Object.values(byRepo).reduce(
-    (acc, status) => {
-      acc[status] += 1;
-      return acc;
-    },
-    { ok: 0, warn: 0, fail: 0, unknown: 0 }
-  );
+  const totals = Object.keys(byRepo).length > 0
+    ? Object.values(byRepo).reduce(
+        (acc, status) => {
+          acc[status] += 1;
+          return acc;
+        },
+        { ok: 0, warn: 0, fail: 0, unknown: 0 }
+      )
+    : {
+        // Fall back to aggregate values from the metrics snapshot when no per-repo
+        // status entries are present (e.g. aggregate-only snapshot format).
+        ok: metrics.status?.ok ?? 0,
+        warn: metrics.status?.warn ?? 0,
+        fail: metrics.status?.fail ?? 0,
+        unknown: 0,
+      };
 
   return {
     source_kind: sourceKind,
