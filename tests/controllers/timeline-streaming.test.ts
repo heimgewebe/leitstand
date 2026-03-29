@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadEventsFromDir } from '../../src/controllers/timeline.js';
+import { __loadEventsFromDir } from '../../src/controllers/timeline.js';
 
 const SINCE = '2025-01-01T00:00:00.000Z';
 const UNTIL = '2027-01-01T00:00:00.000Z';
@@ -34,7 +34,7 @@ describe('loadEventsFromDir (streaming JSONL path)', () => {
     ].join('\n');
     await writeFile(join(testDir, 'events.jsonl'), lines);
 
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 100);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 100);
 
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe('in.window');
@@ -48,7 +48,7 @@ describe('loadEventsFromDir (streaming JSONL path)', () => {
     ].join('\n');
     await writeFile(join(testDir, 'events.jsonl'), lines);
 
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 100);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 100);
 
     expect(result).toHaveLength(2);
     expect(result.map((e) => e.kind).sort()).toEqual(['after.bad', 'before.bad'].sort());
@@ -61,7 +61,7 @@ describe('loadEventsFromDir (streaming JSONL path)', () => {
     ].join('\n');
     await writeFile(join(testDir, 'events.jsonl'), lines);
 
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 100);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 100);
 
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe('good.ts');
@@ -74,7 +74,7 @@ describe('loadEventsFromDir (streaming JSONL path)', () => {
     ].join('\n');
     await writeFile(join(testDir, 'events.jsonl'), lines);
 
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 100);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 100);
 
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe('has.kind');
@@ -90,7 +90,7 @@ describe('loadEventsFromDir (streaming JSONL path)', () => {
     ).join('\n');
     await writeFile(join(testDir, 'events.jsonl'), lines);
 
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 3);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 3);
 
     expect(result).toHaveLength(3);
   });
@@ -102,7 +102,7 @@ describe('loadEventsFromDir (streaming JSONL path)', () => {
     ].join('\n');
     await writeFile(join(testDir, 'events.jsonl'), lines);
 
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 100);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 100);
 
     expect(result).toHaveLength(2);
     expect(result[0].kind).toBe('newer');
@@ -119,7 +119,7 @@ describe('loadEventsFromDir (streaming JSONL path)', () => {
       JSON.stringify({ timestamp: IN_WINDOW_TS2, kind: 'file2.event', repo: 'test' })
     );
 
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 100);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 100);
 
     expect(result).toHaveLength(2);
     expect(result[0].kind).toBe('file2.event'); // newer first
@@ -136,14 +136,14 @@ describe('loadEventsFromDir (streaming JSONL path)', () => {
       JSON.stringify({ timestamp: IN_WINDOW_TS2, kind: 'jsonl.event', repo: 'test' })
     );
 
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 100);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 100);
 
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe('jsonl.event');
   });
 
   it('should return an empty array for an empty directory', async () => {
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 100);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 100);
     expect(result).toHaveLength(0);
   });
 
@@ -157,7 +157,7 @@ describe('loadEventsFromDir (streaming JSONL path)', () => {
     ].join('\n');
     await writeFile(join(testDir, 'events.jsonl'), lines);
 
-    const result = await loadEventsFromDir(testDir, SINCE, UNTIL, 100);
+    const result = await __loadEventsFromDir(testDir, SINCE, UNTIL, 100);
 
     expect(result.find((e) => e.kind === 'at.boundary')).toBeUndefined();
     expect(result.find((e) => e.kind === 'just.before')).toBeDefined();

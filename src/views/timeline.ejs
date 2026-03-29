@@ -474,10 +474,10 @@
         <p>
           <% if (view_meta.is_strict) { %>
             Strict Mode: Chronik-Daten nicht verfügbar und Fixture-Fallback ist deaktiviert.
-          <% } else if (view_meta.missing_reason) { %>
-            <%= view_meta.missing_reason %>
-          <% } else { %>
+          <% } else if (view_meta.window_state === 'empty_window') { %>
             Im gewählten Zeitfenster wurden keine Events gefunden.
+          <% } else { %>
+            Keine Daten verfügbar.
           <% } %>
         </p>
       </div>
