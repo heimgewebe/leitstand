@@ -539,6 +539,7 @@
 
     // --- Detail Toggle (event delegation, no inline onclick) ---
     document.addEventListener('click', function(e) {
+      if (!(e.target instanceof Element)) return;
       var item = e.target.closest('.event-item');
       if (!item) return;
       var idx = item.dataset.index;

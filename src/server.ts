@@ -336,9 +336,12 @@ app.get('/anatomy', async (_req, res) => {
 });
 
 // Timeline View – Phase 3: Temporal event chronology
-app.get('/timeline', async (_req, res) => {
+app.get('/timeline', async (req, res) => {
   try {
-    const hoursBack = Math.min(Number(_req.query.hours) || 48, 168); // Max 7 days
+    const parsedHours = Number(req.query.hours);
+    const hoursBack = Number.isFinite(parsedHours) && parsedHours > 0
+      ? Math.min(parsedHours, 168)
+      : 48; // Default 48 h; max 7 days
     const data = await getTimelineData(hoursBack);
     res.render('timeline', data);
   } catch (error) {

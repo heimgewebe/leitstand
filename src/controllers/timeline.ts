@@ -2,6 +2,8 @@ import { join } from 'path';
 import { envConfig } from '../config.js';
 import type { EventLine } from '../events.js';
 import { readdir, readFile } from 'fs/promises';
+import { createReadStream } from 'fs';
+import { createInterface } from 'readline';
 
 /**
  * Event data for the timeline, extended for display purposes.
@@ -50,21 +52,22 @@ export async function getTimelineData(
 
   try {
     const events = await loadEventsFromDir(chronikDir, sinceIso, untilIso, maxEvents);
-    if (events.length > 0) {
-      return {
-        events,
-        view_meta: {
-          source_kind: 'chronik',
-          missing_reason: 'ok',
-          is_strict: isStrict,
-          since: sinceIso,
-          until: untilIso,
-          total_loaded: events.length,
-        },
-      };
-    }
+    // Chronik directory is accessible — return chronik result even if no events
+    // are in the current window (avoids masking a valid-but-empty chronik as
+    // "fixture" or "missing").
+    return {
+      events,
+      view_meta: {
+        source_kind: 'chronik',
+        missing_reason: 'ok',
+        is_strict: isStrict,
+        since: sinceIso,
+        until: untilIso,
+        total_loaded: events.length,
+      },
+    };
   } catch (e) {
-    // Ignore ENOENT – directory may not exist
+    // Ignore ENOENT – directory may not exist yet
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
       console.warn('[Timeline] Error loading chronik data:', e instanceof Error ? e.message : String(e));
     }
@@ -101,7 +104,9 @@ export async function getTimelineData(
 
       const filtered = allEvents.filter((e) => {
         if (!e.timestamp) return false;
-        const ts = new Date(e.timestamp).toISOString();
+        const d = new Date(e.timestamp);
+        if (Number.isNaN(d.getTime())) return false;
+        const ts = d.toISOString();
         return ts >= sinceIso && ts < untilIso;
       });
 
@@ -141,8 +146,10 @@ export async function getTimelineData(
 
 /**
  * Loads events from a directory of JSONL files within a time window.
- * Replicates the core logic of events.ts loadRecentEvents but is usable
- * from the web controller context.
+ *
+ * Uses readline streaming to avoid loading entire files into memory —
+ * important for large append-only chronik logs. Files are processed in
+ * batches of 8 to limit concurrent file descriptor usage.
  */
 async function loadEventsFromDir(
   dir: string,
@@ -154,32 +161,59 @@ async function loadEventsFromDir(
   const jsonlFiles = files.filter((f: string) => f.endsWith('.jsonl'));
 
   const events: TimelineEvent[] = [];
+  // Limit concurrent file streams to avoid EMFILE errors on systems with low fd limits.
+  const BATCH_SIZE = 8;
 
-  for (const file of jsonlFiles) {
-    const content = await readFile(join(dir, file), 'utf-8');
-    const lines = content.split('\n');
+  for (let i = 0; i < jsonlFiles.length; i += BATCH_SIZE) {
+    const batch = jsonlFiles.slice(i, i + BATCH_SIZE);
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
+    const batchResults = await Promise.all(
+      batch.map(async (file) => {
+        const filePath = join(dir, file);
+        const fileEvents: TimelineEvent[] = [];
 
-      try {
-        const data = JSON.parse(trimmed);
-        if (!data.timestamp || !data.kind) continue;
+        const fileStream = createReadStream(filePath, { encoding: 'utf-8' });
+        const rl = createInterface({ input: fileStream, crlfDelay: Infinity });
 
-        const ts = new Date(data.timestamp).toISOString();
-        if (ts >= sinceIso && ts < untilIso) {
-          events.push({
-            timestamp: ts,
-            kind: data.kind,
-            repo: data.repo,
-            job: data.job,
-            severity: data.severity,
-            payload: data.payload,
-          });
+        try {
+          for await (const line of rl) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            try {
+              const data = JSON.parse(trimmed);
+              if (!data.timestamp || !data.kind) continue;
+
+              const d = new Date(data.timestamp);
+              if (Number.isNaN(d.getTime())) continue;
+              const ts = d.toISOString();
+
+              if (ts >= sinceIso && ts < untilIso) {
+                fileEvents.push({
+                  timestamp: ts,
+                  kind: data.kind,
+                  repo: data.repo,
+                  job: data.job,
+                  severity: data.severity,
+                  payload: data.payload,
+                });
+              }
+            } catch {
+              // Skip lines with invalid JSON
+            }
+          }
+        } finally {
+          rl.close();
+          fileStream.destroy();
         }
-      } catch {
-        // Skip invalid lines
+
+        return fileEvents;
+      })
+    );
+
+    for (const fileEvents of batchResults) {
+      for (const event of fileEvents) {
+        events.push(event);
       }
     }
   }

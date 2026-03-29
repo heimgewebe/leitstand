@@ -98,8 +98,10 @@ export function validateAnatomySnapshot(data: unknown): AnatomyValidationResult 
     return { valid: false, schemaValid: false, error: 'achsen map is missing' };
   }
 
-  const schemaValid = snapshot.schema === ANATOMY_SCHEMA_V1;
-  if (!schemaValid && snapshot.schema) {
+  // Treat a missing schema as v1 — consistent with loadAnatomySnapshot() defaulting to ANATOMY_SCHEMA_V1.
+  // The warning only fires for an explicit, non-matching schema value (never for undefined).
+  const schemaValid = snapshot.schema === undefined || snapshot.schema === ANATOMY_SCHEMA_V1;
+  if (!schemaValid) {
     console.warn(`[Anatomy] Schema mismatch: expected ${ANATOMY_SCHEMA_V1}, got ${snapshot.schema}`);
   }
 

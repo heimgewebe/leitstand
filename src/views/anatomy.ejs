@@ -616,6 +616,7 @@
 
     // --- Force Simulation (vanilla) ---
     var alpha = 1;
+    var rafId = null;
     var alphaDecay = 0.02;
     var alphaMin = 0.001;
     var REPULSION = 12000;
@@ -625,7 +626,10 @@
     var DAMPING = 0.6;
 
     function simulate() {
-      if (alpha < alphaMin) return;
+      if (alpha < alphaMin) {
+        rafId = null;
+        return;
+      }
 
       // Repulsion (all pairs)
       for (var i = 0; i < nodes.length; i++) {
@@ -677,7 +681,15 @@
       alpha -= alphaDecay;
 
       render();
-      requestAnimationFrame(simulate);
+      rafId = requestAnimationFrame(simulate);
+    }
+
+    // Starts the simulation loop if it is not already running.
+    // Reheat callers only need to set alpha; this guard prevents
+    // multiple concurrent requestAnimationFrame loops.
+    function startSimulation() {
+      if (rafId !== null) return;
+      simulate();
     }
 
     function render() {
@@ -694,7 +706,7 @@
     }
 
     // Start simulation
-    simulate();
+    startSimulation();
 
     // --- Pan & Zoom (vanilla) ---
     var transform = { x: 0, y: 0, k: 1 };
@@ -754,7 +766,7 @@
         n.fy = n.y;
         // Reheat simulation
         alpha = 0.3;
-        simulate();
+        startSimulation();
       });
     });
 
@@ -935,7 +947,7 @@
       cy = h / 2;
       // Gentle reheat
       alpha = 0.15;
-      simulate();
+      startSimulation();
     });
   </script>
 

@@ -181,4 +181,42 @@ describe('getTimelineData controller', () => {
       vi.useRealTimers();
     }
   });
+
+  it('should return source_kind chronik with empty events when chronik dir exists but window is empty', async () => {
+    // readdir succeeds but returns no .jsonl files (empty chronik dir)
+    vi.mocked(readdir).mockResolvedValueOnce([] as Awaited<ReturnType<typeof readdir>>);
+
+    const result = await getTimelineData(48);
+
+    expect(result.view_meta.source_kind).toBe('chronik');
+    expect(result.events).toHaveLength(0);
+    expect(result.view_meta.missing_reason).toBe('ok');
+  });
+
+  it('should skip invalid timestamps in JSON fixture array without throwing', async () => {
+    const now = new Date();
+    const validTs = new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString();
+
+    const fixtureEvents = [
+      { timestamp: 'not-a-date', kind: 'bad.event', repo: 'x' },
+      { timestamp: validTs, kind: 'good.event', repo: 'y' },
+    ];
+
+    vi.mocked(readdir).mockRejectedValue(
+      Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+    );
+
+    vi.mocked(readFile).mockImplementation(async (path) => {
+      if (typeof path === 'string' && path.includes('events.json')) {
+        return JSON.stringify(fixtureEvents) as unknown as Buffer;
+      }
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    });
+
+    const result = await getTimelineData(48);
+
+    // The bad timestamp is skipped; only the valid one is returned
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].kind).toBe('good.event');
+  });
 });
