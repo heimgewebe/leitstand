@@ -190,6 +190,7 @@ describe('getTimelineData controller', () => {
 
     expect(result.view_meta.source_kind).toBe('chronik');
     expect(result.events).toHaveLength(0);
+    expect(result.view_meta.window_state).toBe('empty_window');
     expect(result.view_meta.missing_reason).toBe('ok');
   });
 

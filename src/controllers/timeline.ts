@@ -16,6 +16,9 @@ export interface TimelineViewData {
   events: TimelineEvent[];
   view_meta: {
     source_kind: 'chronik' | 'fixture' | 'missing';
+    /** Machine state of the time window — used by the UI to choose display text. */
+    window_state: 'has_events' | 'empty_window';
+    /** Error / fallback reason — machine token, not for direct UI rendering. */
     missing_reason: string;
     is_strict: boolean;
     since: string;
@@ -51,7 +54,7 @@ export async function getTimelineData(
   const chronikDir = join(envConfig.paths.artifacts, 'chronik');
 
   try {
-    const events = await loadEventsFromDir(chronikDir, sinceIso, untilIso, maxEvents);
+    const events = await __loadEventsFromDir(chronikDir, sinceIso, untilIso, maxEvents);
     // Chronik directory is accessible — return chronik result even if no events
     // are in the current window (avoids masking a valid-but-empty chronik as
     // "fixture" or "missing").
@@ -59,6 +62,7 @@ export async function getTimelineData(
       events,
       view_meta: {
         source_kind: 'chronik',
+        window_state: events.length === 0 ? 'empty_window' : 'has_events',
         missing_reason: 'ok',
         is_strict: isStrict,
         since: sinceIso,
@@ -77,12 +81,13 @@ export async function getTimelineData(
   if (!isStrict) {
     try {
       const fixtureDir = join(envConfig.paths.fixtures, 'chronik');
-      const events = await loadEventsFromDir(fixtureDir, sinceIso, untilIso, maxEvents);
+      const events = await __loadEventsFromDir(fixtureDir, sinceIso, untilIso, maxEvents);
       if (events.length > 0) {
         return {
           events,
           view_meta: {
             source_kind: 'fixture',
+            window_state: 'has_events',
             missing_reason: 'chronik_enoent',
             is_strict: isStrict,
             since: sinceIso,
@@ -118,6 +123,7 @@ export async function getTimelineData(
         events,
         view_meta: {
           source_kind: 'fixture',
+          window_state: 'has_events',
           missing_reason: 'chronik_enoent',
           is_strict: isStrict,
           since: sinceIso,
@@ -135,6 +141,7 @@ export async function getTimelineData(
     events: [],
     view_meta: {
       source_kind: 'missing',
+      window_state: 'empty_window',
       missing_reason: isStrict ? 'strict_mode' : 'no_events_found',
       is_strict: isStrict,
       since: sinceIso,
@@ -150,8 +157,10 @@ export async function getTimelineData(
  * Uses readline streaming to avoid loading entire files into memory —
  * important for large append-only chronik logs. Files are processed in
  * batches of 8 to limit concurrent file descriptor usage.
+ *
+ * Exported for unit testing only — not part of the controller's public API.
  */
-async function loadEventsFromDir(
+export async function __loadEventsFromDir(
   dir: string,
   sinceIso: string,
   untilIso: string,
