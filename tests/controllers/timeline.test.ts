@@ -53,6 +53,8 @@ describe('getTimelineData controller', () => {
     const result = await getTimelineData(6);
 
     expect(result.view_meta.source_kind).toBe('fixture');
+    expect(result.view_meta.hours_back).toBe(6);
+    expect(result.view_meta.max_events).toBe(200);
     expect(result.events).toHaveLength(2);
     // Should be newest first
     expect(result.events[0].kind).toBe('ci.pass');
@@ -83,6 +85,9 @@ describe('getTimelineData controller', () => {
     // JSON fixture path always returns (even with 0 filtered events),
     // so source_kind is 'fixture' with an empty events array.
     expect(result.events).toHaveLength(0);
+    expect(result.view_meta.source_kind).toBe('fixture');
+    expect(result.view_meta.window_state).toBe('empty_window');
+    expect(result.view_meta.missing_reason).toBe('chronik_enoent');
   });
 
   it('should respect maxEvents limit after filtering', async () => {
@@ -110,6 +115,7 @@ describe('getTimelineData controller', () => {
 
     expect(result.events.length).toBeLessThanOrEqual(3);
     expect(result.view_meta.total_loaded).toBe(3);
+    expect(result.view_meta.max_events).toBe(3);
     // Newest first
     expect(result.events[0].kind).toBe('event.0');
   });
@@ -219,5 +225,32 @@ describe('getTimelineData controller', () => {
     // The bad timestamp is skipped; only the valid one is returned
     expect(result.events).toHaveLength(1);
     expect(result.events[0].kind).toBe('good.event');
+  });
+
+  it('should support replay mode with until override', async () => {
+    const fixtureEvents = [
+      { timestamp: '2026-01-01T12:00:00.000Z', kind: 'excluded.upper.boundary', repo: 'x' },
+      { timestamp: '2026-01-01T11:00:00.000Z', kind: 'included.recent', repo: 'x' },
+      { timestamp: '2026-01-01T10:00:00.000Z', kind: 'included.older', repo: 'x' },
+      { timestamp: '2026-01-01T09:00:00.000Z', kind: 'excluded.before.window', repo: 'x' },
+    ];
+
+    vi.mocked(readdir).mockRejectedValue(
+      Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+    );
+
+    vi.mocked(readFile).mockImplementation(async (path) => {
+      if (typeof path === 'string' && path.includes('events.json')) {
+        return JSON.stringify(fixtureEvents) as unknown as Buffer;
+      }
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    });
+
+    const replayUntil = new Date('2026-01-01T12:00:00.000Z');
+    const result = await getTimelineData(2, 200, replayUntil);
+
+    expect(result.view_meta.replay_mode).toBe(true);
+    expect(result.view_meta.replay_until).toBe('2026-01-01T12:00:00.000Z');
+    expect(result.events.map((e) => e.kind)).toEqual(['included.recent', 'included.older']);
   });
 });

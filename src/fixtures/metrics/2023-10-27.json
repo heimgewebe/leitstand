@@ -3,15 +3,15 @@
   "repoCount": 6,
   "status": {
     "ok": 3,
-    "warn": 0,
+    "warn": 2,
     "fail": 1
   },
   "repos": [
-    { "name": "heimgewebe/metarepo" },
-    { "name": "heimgewebe/wgx" },
-    { "name": "heimgewebe/semantAH" },
-    { "name": "heimgewebe/plexer" },
-    { "name": "heimgewebe/leitstand" },
-    { "name": "heimgewebe/chronik" }
+    { "name": "heimgewebe/metarepo", "status": "ok" },
+    { "name": "heimgewebe/wgx", "status": "fail", "issues": ["ci pipeline unstable"] },
+    { "name": "heimgewebe/semantAH", "status": "ok" },
+    { "name": "heimgewebe/plexer", "status": "ok" },
+    { "name": "heimgewebe/leitstand", "status": "warn", "issues": ["stale observatory input"] },
+    { "name": "heimgewebe/chronik", "status": "warn", "issues": ["ingest lag detected"] }
   ]
 }

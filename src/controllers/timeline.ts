@@ -24,6 +24,10 @@ export interface TimelineViewData {
     since: string;
     until: string;
     total_loaded: number;
+    hours_back: number;
+    max_events: number;
+    replay_mode: boolean;
+    replay_until: string | null;
   };
 }
 
@@ -38,11 +42,13 @@ export interface TimelineViewData {
  */
 export async function getTimelineData(
   hoursBack: number = 48,
-  maxEvents: number = 200
+  maxEvents: number = 200,
+  untilOverride?: Date
 ): Promise<TimelineViewData> {
   const { isStrict } = envConfig;
 
-  const until = new Date();
+  const hasValidOverride = !!untilOverride && !Number.isNaN(untilOverride.getTime());
+  const until = hasValidOverride ? untilOverride : new Date();
   const since = new Date(until.getTime() - hoursBack * 60 * 60 * 1000);
 
   const sinceIso = since.toISOString();
@@ -68,6 +74,10 @@ export async function getTimelineData(
         since: sinceIso,
         until: untilIso,
         total_loaded: events.length,
+        hours_back: hoursBack,
+        max_events: maxEvents,
+        replay_mode: hasValidOverride,
+        replay_until: hasValidOverride ? untilIso : null,
       },
     };
   } catch (e) {
@@ -93,6 +103,10 @@ export async function getTimelineData(
             since: sinceIso,
             until: untilIso,
             total_loaded: events.length,
+            hours_back: hoursBack,
+            max_events: maxEvents,
+            replay_mode: hasValidOverride,
+            replay_until: hasValidOverride ? untilIso : null,
           },
         };
       }
@@ -123,12 +137,16 @@ export async function getTimelineData(
         events,
         view_meta: {
           source_kind: 'fixture',
-          window_state: 'has_events',
+          window_state: events.length === 0 ? 'empty_window' : 'has_events',
           missing_reason: 'chronik_enoent',
           is_strict: isStrict,
           since: sinceIso,
           until: untilIso,
           total_loaded: events.length,
+          hours_back: hoursBack,
+          max_events: maxEvents,
+          replay_mode: hasValidOverride,
+          replay_until: hasValidOverride ? untilIso : null,
         },
       };
     } catch {
@@ -147,6 +165,10 @@ export async function getTimelineData(
       since: sinceIso,
       until: untilIso,
       total_loaded: 0,
+      hours_back: hoursBack,
+      max_events: maxEvents,
+      replay_mode: hasValidOverride,
+      replay_until: hasValidOverride ? untilIso : null,
     },
   };
 }

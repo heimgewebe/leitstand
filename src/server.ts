@@ -342,7 +342,20 @@ app.get('/timeline', async (req, res) => {
     const hoursBack = Number.isFinite(parsedHours) && parsedHours > 0
       ? Math.min(parsedHours, 168)
       : 48; // Default 48 h; max 7 days
-    const data = await getTimelineData(hoursBack);
+
+    const parsedMax = Number(req.query.max);
+    const maxEvents = Number.isFinite(parsedMax) && parsedMax > 0
+      ? Math.min(parsedMax, 1000)
+      : 200;
+
+    const rawUntil = typeof req.query.until === 'string' ? req.query.until : '';
+    // Only accept ISO strings with an explicit TZ indicator (Z or ±HH:MM) to prevent
+    // silent server-timezone drift when datetime-local values are submitted without TZ.
+    const hasExplicitTz = rawUntil ? /Z$|[+-]\d{2}:\d{2}$/.test(rawUntil) : false;
+    const parsedUntil = (rawUntil && hasExplicitTz) ? new Date(rawUntil) : null;
+    const untilOverride = parsedUntil && !Number.isNaN(parsedUntil.getTime()) ? parsedUntil : undefined;
+
+    const data = await getTimelineData(hoursBack, maxEvents, untilOverride);
     res.render('timeline', data);
   } catch (error) {
     if (!res.headersSent) {

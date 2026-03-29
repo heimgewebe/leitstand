@@ -10,6 +10,114 @@ summary: >
 
 # Blaupause: Visualisierung des Heimgewebes im Leitstand
 
+## Abhakbare Umsetzungsroadmap
+
+Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
+
+### 0) Governance, Scope und Voraussetzungen
+
+- [ ] Scope finalisieren: Leitstand bleibt Observer/UI, keine SSOT- oder Steuerungslogik in der Visualisierung.
+- [ ] Begriffsrahmen aus `leitstand_manifest.md` harmonisieren (artifact-flow, contract-ref, runtime-coupling, code-import, ops-dependency).
+- [ ] Quelleninventar fixieren: je Visualmodul genau eine primäre Quelle und Fallback-Regel dokumentieren.
+- [ ] Artefakt-Versionierung vereinheitlichen (Timestamp + Quelle + Contract-Version pro Payload sichtbar).
+- [ ] DoD definieren und als Checkliste in Teamablauf übernehmen (Phase 1-5).
+
+### 1) Datenfundament und Ingestion-Pipeline
+
+- [ ] Loader für alle Kernartefakte stabilisieren: `fleet.health`, `metrics.snapshot`, `event.line`, `insights.daily`, heimgeist-Insights.
+- [ ] Zeitstempel-Priorisierung sicherstellen (Dateiname/Domain-Timestamp vor mtime) und als Invariant dokumentieren.
+- [ ] Schema-Validierung hart schalten: Eingaben nur bei validem Contract akzeptieren, sonst klar markierter Fehlerzustand.
+- [ ] Integritätslayer einbauen: Quelle, Schema-ID, Version, Erzeugungszeit und letzte erfolgreiche Aktualisierung je Datensatz.
+- [ ] Fallback-Verhalten definieren: leere/fehlende Artefakte zeigen, ohne stille Datenverluste zu kaschieren.
+
+### 2) Phase 1 umsetzen: Anatomie (statisches Strukturmodell)
+
+- [ ] Organismus-Graph als eigene Sicht aufbauen (Repos als Knoten, Beziehungen als Kanten, Rollen sichtbar).
+- [ ] Datenmapping von Fleet/Contract-Quellen in ein internes, UI-freundliches Graph-Modell abschließen.
+- [ ] Basisinteraktion bauen: zoomen, pannen, Knotenfokus, Legende fur Rollen/Achsen.
+- [ ] Strukturzustand versioniert anzeigen ("Stand: ..."), keine Live-Illusion fur statische Daten.
+- [ ] Akzeptanztest: Jede dargestellte Kante ist auf einen nachvollziehbaren Contract- oder Artefaktbezug zuruckfuhrbar.
+
+### 3) Phase 2 umsetzen: Physiologie (Health-Layer)
+
+- [x] Health-Layer uber Anatomie legen (Ampelstatus auf denselben Knoten, ohne Doppelmodell).
+- [ ] Key-Metriken als knappe Zustandsindikatoren integrieren, Rohmetriken bewusst ausblenden.
+- [ ] Warn-/Fehlerzustande mit Evidenzlink auf Quellartefakt versehen (warum ist ein Knoten gelb/rot?).
+- [ ] Aktualisierungsstrategie definieren (Polling/Refresh) und "Data Freshness" sichtbar machen.
+- [ ] Akzeptanztest: Statuswechsel im Artefakt wird reproduzierbar im UI sichtbar, ohne manuelle Sonderlogik.
+
+### 4) Phase 3 umsetzen: Zeitachse (chronologische Rekonstruktion)
+
+- [x] Timeline-Ansicht mit Filterung nach Organ, Typ und Zeitraum implementieren.
+- [ ] Event-Typisierung und visuelle Kodierung vereinheitlichen (Farben/Badges/Icons konsistent).
+- [x] Zeitpunktbasierten Replay-Snapshot fur definierte Zeitfenster einfuhren (historische Zustande fur Phasen 1+2 nachvollziehbar).
+- [x] Kontextpanel fur Event-Details und referenzierte Artefakte bereitstellen.
+- [ ] Akzeptanztest: Ursache-Wirkungsketten uber mindestens einen realen Incident nachvollziehen.
+
+### 5) Phase 4 umsetzen: Erkenntnisschichten (Raw vs. Insight)
+
+- [ ] Zwei-Schichten-Sicht implementieren: Beobachtungsebene (Raw) klar getrennt von Interpretation (Insights).
+- [ ] Unsicherheits- und Confidence-Darstellung fur Insight-Elemente einbauen.
+- [ ] Insight-Evidenzpfad anzeigen (welche Events/Metriken stutzen diese Aussage?).
+- [ ] Tagesverdichtung (`insights.daily`) plus Delta zum Vortag visualisieren.
+- [ ] Akzeptanztest: Jede Insight-Kachel ist bis auf Rohdatenebene zuruckverfolgbar.
+
+### 6) Phase 5 umsetzen: Reflexion (Meta-Analyse)
+
+- [ ] Heimgeist-Kommentar-Layer mit expliziter Hypothesen-Markierung integrieren.
+- [ ] Drift-Marker mit Zeitbezug und Evidenzverweisen aufbauen.
+- [ ] Wissenslucken sichtbar machen ("fehlende Daten", "niedrige Abdeckung", "niedrige Sicherheit").
+- [ ] Klare Trennung von Diagnose und Handlungsempfehlung im UI durchsetzen.
+- [ ] Akzeptanztest: Reflexionsaussagen bleiben als Hypothesen erkennbar und wirken nicht wie harte Fakten.
+
+### 7) UX, Zugang und Betriebsreife
+
+- [ ] Cross-View-Navigation bauen (Graph <-> Timeline <-> Insight-Layer ohne Kontextverlust).
+- [ ] Responsives Verhalten fur Leitstand-Kernansichten auf Desktop und Mobile absichern.
+- [ ] Performance-Budget festlegen (Initial Load, Interaktion, Daten-Refresh) und messen.
+- [ ] Leermengen-/Fehlerzustande UX-seitig definieren (kein Datenfriedhof, klare Operator-Hinweise).
+- [ ] Accessibility-Basics absichern (Kontrast, Tastaturfokus, Labels).
+
+### 8) Qualitat, Guards und Rollout
+
+- [ ] Tests entlang der Phasen erweitern (Parser/Mapping, Visualmodell, Zeitachsen-Logik, Insight-Trennung).
+- [ ] Bestehende Guards grun halten: `repo-structure-guard`, `docs-relations-guard`, `generated-files-guard`, `check-drift-gates`.
+- [ ] Dokumentationsabgleich: Manifest, Runbooks und Visualisierungs-Blueprint synchronisieren.
+- [ ] Pilotbetrieb mit echten Artefakten fahren und bekannte Lucken als Backlog-Items erfassen.
+- [ ] Go-Live-Kriterium: Alle Phase-DoD erfullt oder explizit mit Risikoentscheidung akzeptiert.
+
+### Empfohlene Umsetzungsreihenfolge (inkrementell)
+
+- [ ] Sprint A: Roadmap 0-2 (Scope + Datenfundament + Anatomie)
+- [ ] Sprint B: Roadmap 3-4 (Physiologie + Zeitachse)
+- [ ] Sprint C: Roadmap 5-6 (Erkenntnis + Reflexion)
+- [ ] Sprint D: Roadmap 7-8 (UX-Hartung + Qualitat + Rollout)
+
+### Implementierungsstand (2026-03-29)
+
+- [x] Timeline-Zeitfenster im UI steuerbar (`hours`: 6/24/48/72/168).
+- [x] Event-Limit im UI steuerbar (`max`: 100/200/500/1000).
+- [x] Timeline-Replayzeitpunkt im UI steuerbar (`until`) und als historischer Snapshot nutzbar.
+- [x] Server-seitige Begrenzung eingefuhrt (`hours <= 168`, `max <= 1000`).
+- [x] View-Metadaten erweitert (`hours_back`, `max_events`) und in der Source-Badge sichtbar gemacht.
+- [x] Replay-Metadaten erweitert (`replay_mode`, `replay_until`) und in der Source-Badge sichtbar gemacht.
+- [x] Event-Details bleiben per Klick auf Event expandierbar (Kontext-/Payload-Einsicht).
+- [x] Anatomy-Quelle zeigt Data-Freshness (`fresh/stale/unknown`) auf Basis von `generated_at`.
+- [x] Stale-Schwelle fur Anatomy eingefuhrt (`72h`) und im Controller als Metadatum hinterlegt.
+- [x] Anatomy-Graph zeigt Health-Status pro Node (OK/Warn/Fail/Unknown) als Layer inkl. Legende.
+- [x] Health-Quelle und Health-Freshness werden in der Source-Badge transparent ausgewiesen.
+
+Technische Referenzen:
+
+- `src/server.ts` (robustes Query-Parsing fur Timeline-Parameter)
+- `src/controllers/timeline.ts` (View-Meta um Fenster/Limit erweitert)
+- `src/views/timeline.ejs` (UI-Steuerung und Anzeige der aktiven Konfiguration)
+- `tests/controllers/timeline.test.ts` (Replay-/Zeitfenster-Verhalten abgesichert)
+- `src/controllers/anatomy.ts` (Freshness-Berechnung und Metadaten)
+- `src/views/anatomy.ejs` (Freshness- und Stale-Hinweise in Source-Badge)
+- `src/fixtures/metrics/2023-10-27.json` (Repo-Statusdaten fur lokalen Health-Layer)
+- `tests/controllers/anatomy.test.ts` (Health-Overlay-Mapping und Fallback abgesichert)
+
 ## Phase 1: Anatomie (Strukturelle Übersicht)
 
 **Zielsetzung:** Darstellung der statischen Struktur des Heimgewebe-Organismus. In dieser Phase wird sichtbar, welche Organe (Repos/Services) existieren und wie sie konzeptionell miteinander verbunden sind. Ziel ist ein Gesamtüberblick über alle Komponenten und ihre Beziehungen, um das „Wer ist wer“ im System zu verstehen – das Organigramm des Heimgewebes. Dies schafft gemeinsame Referenz für alle weiteren Phasen (Wozu? → Orientierungswissen über den Systemaufbau).

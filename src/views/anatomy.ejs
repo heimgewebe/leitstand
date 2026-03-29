@@ -376,6 +376,14 @@
         <span>Governance</span>
       </div>
     </div>
+
+    <div class="legend-section">
+      <h4>Health-Layer</h4>
+      <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div><span>OK</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div><span>Warnung</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><span>Fehler</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div><span>Unbekannt</span></div>
+    </div>
   </div>
 
   <!-- Detail Panel -->
@@ -383,6 +391,7 @@
     <button class="close-btn" id="close-detail-btn" title="Schließen">&times;</button>
     <div class="node-label" id="dp-label"></div>
     <div class="node-role" id="dp-role"></div>
+    <div class="node-role" id="dp-health"></div>
     <div class="node-achse" id="dp-achse"></div>
     <div class="node-desc" id="dp-desc"></div>
     <div class="connections-title">Eingehend</div>
@@ -399,9 +408,27 @@
       Quelle: Artefakt
       <% if (anatomy.generated_at) { %> · <%= anatomy.generated_at %><% } %>
     <% } %>
+    <% if (view_meta.freshness_state === 'stale') { %>
+      · <span class="warn">Stale</span>
+      <% if (view_meta.data_age_minutes !== null) { %>
+        · <%= Math.floor(view_meta.data_age_minutes / 60) %>h alt
+      <% } %>
+    <% } else if (view_meta.freshness_state === 'fresh' && view_meta.data_age_minutes !== null) { %>
+      · Frische: <%= Math.floor(view_meta.data_age_minutes / 60) %>h
+    <% } else { %>
+      · Frische: unbekannt
+    <% } %>
     <% if (!view_meta.schema_valid) { %>
        · <span class="warn">Schema-Mismatch</span>
     <% } %>
+    · Health: <%= health.source_kind %>
+    <% if (health.timestamp) { %>
+      · <%= health.timestamp %>
+    <% } %>
+    <% if (health.freshness_state === 'stale') { %>
+      · <span class="warn">Health stale</span>
+    <% } %>
+    · OK <%= health.totals.ok %> / Warn <%= health.totals.warn %> / Fail <%= health.totals.fail %>
   </div>
 
   <!--
@@ -413,7 +440,7 @@
 
   <!-- Safe JSON data embed: <script type="application/json"> is never executed by the browser.
        Using <%- %> for raw JSON output; only </script> sequences are neutralized. -->
-  <script type="application/json" id="anatomy-data"><%- JSON.stringify({ nodes: anatomy.nodes, edges: anatomy.edges, achsen: anatomy.achsen }).replace(/<\//g, '<\\/') %></script>
+  <script type="application/json" id="anatomy-data"><%- JSON.stringify({ nodes: anatomy.nodes, edges: anatomy.edges, achsen: anatomy.achsen, healthByRepo: health.by_repo }).replace(/<\//g, '<\\/') %></script>
 
   <script>
     // --- Hardened data injection ---
@@ -428,6 +455,7 @@
       return { source: e.source, target: e.target, contract: e.contract, label: e.label, type: e.type };
     });
     var achsen = graphData.achsen;
+    var healthByRepo = graphData.healthByRepo || {};
 
     // Build index for fast lookup
     var nodeIndex = {};
@@ -536,6 +564,13 @@
       return (achsen[achse] || { color: '#64748b' }).color;
     }
 
+    function healthColor(status) {
+      if (status === 'ok') return '#22c55e';
+      if (status === 'warn') return '#f59e0b';
+      if (status === 'fail') return '#ef4444';
+      return '#64748b';
+    }
+
     // --- Create SVG elements ---
     // Edges
     var edgeEls = edges.map(function(e) {
@@ -573,6 +608,17 @@
       circle.setAttribute('filter', 'url(#glow)');
       g.appendChild(circle);
       n._circle = circle;
+
+      // Health status marker (top-right)
+      n.health = healthByRepo[n.id] || 'unknown';
+      var statusDot = document.createElementNS(svgNS, 'circle');
+      statusDot.setAttribute('cx', NODE_R - 2);
+      statusDot.setAttribute('cy', -(NODE_R - 2));
+      statusDot.setAttribute('r', '4.5');
+      statusDot.setAttribute('fill', healthColor(n.health));
+      statusDot.setAttribute('stroke', '#0a0e1a');
+      statusDot.setAttribute('stroke-width', '1.2');
+      g.appendChild(statusDot);
 
       // Initials inside
       var initials = document.createElementNS(svgNS, 'text');
@@ -796,7 +842,7 @@
         var color = nodeColor(n.achse);
         ttLabel.textContent = n.label;
         ttLabel.style.color = color;
-        ttRole.textContent = n.role;
+        ttRole.textContent = n.role + ' · Health: ' + n.health;
         tooltip.classList.add('visible');
 
         // Highlight: find connected IDs
@@ -865,6 +911,7 @@
       document.getElementById('dp-label').textContent = d.label;
       document.getElementById('dp-label').style.color = color;
       document.getElementById('dp-role').textContent = d.role;
+      document.getElementById('dp-health').textContent = 'Health: ' + (d.health || 'unknown');
 
       var achseEl = document.getElementById('dp-achse');
       achseEl.textContent = achseLabel;
