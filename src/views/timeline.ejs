@@ -605,7 +605,7 @@
         if (replayUntil && replayUntil.value) {
           params.set('until', replayUntil.value);
         } else {
-          params.delete('until');
+          params.delete('until'); // observer-invariant-guard: allow-known-exception
         }
         window.location.search = params.toString();
       });
@@ -614,7 +614,7 @@
     if (clearReplay) {
       clearReplay.addEventListener('click', function() {
         var params = new URLSearchParams(window.location.search);
-        params.delete('until');
+        params.delete('until'); // observer-invariant-guard: allow-known-exception
         window.location.search = params.toString();
       });
     }
