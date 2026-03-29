@@ -331,4 +331,50 @@ describe('getAnatomyData controller', () => {
     expect(result.health.totals.unknown).toBe(0);
     expect(Object.keys(result.health.by_repo)).toHaveLength(0);
   });
+
+  it('should still try fixture fallback in non-strict mode when artifact metrics loader throws', async () => {
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: null,
+      source: 'missing',
+      reason: 'enoent',
+    });
+    // First call (artifact dir) → throws (e.g. corrupted JSON inside the dir)
+    // Second call (fixture dir) → resolves with real data
+    vi.mocked(loadLatestMetrics)
+      .mockRejectedValueOnce(new Error('Failed to load metrics snapshot from /artifact/metrics/2026-03-29.json: Unexpected token'))
+      .mockResolvedValueOnce({
+        timestamp: '2026-03-29T10:00:00.000Z',
+        repoCount: 1,
+        status: { ok: 1, warn: 0, fail: 0 },
+        repos: [{ name: 'leitstand', status: 'ok' }],
+      });
+
+    const result = await getAnatomyData();
+
+    // Fixture fallback must have been used despite artifact throw
+    expect(result.health.source_kind).toBe('fixture');
+    expect(result.health.totals.ok).toBe(1);
+    expect(vi.mocked(loadLatestMetrics)).toHaveBeenCalledTimes(2);
+  });
+
+  it('should return classified error and not try fixture when artifact throws in strict mode', async () => {
+    vi.stubEnv('LEITSTAND_STRICT', '1');
+    resetEnvConfig();
+
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: null,
+      source: 'missing',
+      reason: 'enoent',
+    });
+    vi.mocked(loadLatestMetrics).mockRejectedValueOnce(
+      new Error('Failed to load metrics snapshot from /artifact/metrics/2026-03-29.json: Unexpected token')
+    );
+
+    const result = await getAnatomyData();
+
+    expect(result.health.source_kind).toBe('missing');
+    expect(result.health.missing_reason).toBe('health_metrics_invalid');
+    // Only artifact call — no fixture attempt in strict mode
+    expect(vi.mocked(loadLatestMetrics)).toHaveBeenCalledTimes(1);
+  });
 });

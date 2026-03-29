@@ -129,24 +129,43 @@ async function loadHealthOverlay(): Promise<HealthOverlay> {
   const artifactMetricsDir = join(paths.artifacts, 'metrics');
   const fixtureMetricsDir = join(paths.fixtures, 'metrics');
 
+  // Step 1: Try artifact metrics.  Isolate errors so a corrupt/parse-failing artifact
+  // file does not short-circuit the fixture fallback in non-strict mode.
+  // loadLatestMetrics() only returns null for ENOENT on the directory itself; other
+  // errors (e.g. broken JSON inside a found file) are re-thrown.
+  let metricsFromArtifact: Awaited<ReturnType<typeof loadLatestMetrics>> = null;
+  let artifactErr: unknown = null;
   try {
-    const metricsFromArtifact = await loadLatestMetrics(artifactMetricsDir);
-    if (metricsFromArtifact) {
-      return buildHealthOverlay(metricsFromArtifact, 'artifact', 'ok');
-    }
+    metricsFromArtifact = await loadLatestMetrics(artifactMetricsDir);
+  } catch (err) {
+    artifactErr = err;
+    console.warn('[Anatomy] Failed to load artifact health metrics:', err instanceof Error ? err.message : String(err));
+  }
 
-    if (!isStrict) {
+  if (metricsFromArtifact) {
+    return buildHealthOverlay(metricsFromArtifact, 'artifact', 'ok');
+  }
+
+  // Step 2: Fixture fallback — only in non-strict mode.
+  if (!isStrict) {
+    try {
       const metricsFromFixture = await loadLatestMetrics(fixtureMetricsDir);
       if (metricsFromFixture) {
         return buildHealthOverlay(metricsFromFixture, 'fixture', 'artifact_missing');
       }
+    } catch (err) {
+      console.warn('[Anatomy] Failed to load fixture health metrics:', err instanceof Error ? err.message : String(err));
+      return emptyHealthOverlay(classifyHealthLoadError(err));
     }
-
-    return emptyHealthOverlay(isStrict ? 'health_metrics_missing_strict' : 'health_metrics_missing');
-  } catch (err) {
-    console.warn('[Anatomy] Failed to load health overlay:', err instanceof Error ? err.message : String(err));
-    return emptyHealthOverlay(classifyHealthLoadError(err));
   }
+
+  // Step 3: Nothing worked — classify the most informative error available.
+  const relevantErr = artifactErr ?? null;
+  return emptyHealthOverlay(
+    relevantErr
+      ? classifyHealthLoadError(relevantErr)
+      : (isStrict ? 'health_metrics_missing_strict' : 'health_metrics_missing')
+  );
 }
 
 function buildHealthOverlay(
