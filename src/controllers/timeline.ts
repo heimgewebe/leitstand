@@ -102,7 +102,7 @@ export async function getTimelineData(
       const filtered = allEvents.filter((e) => {
         if (!e.timestamp) return false;
         const ts = new Date(e.timestamp).toISOString();
-        return ts >= sinceIso && ts < untilIso;
+        return ts >= sinceIso && ts <= untilIso;
       });
 
       // Sort newest first (same as JSONL path)
@@ -168,7 +168,7 @@ async function loadEventsFromDir(
         if (!data.timestamp || !data.kind) continue;
 
         const ts = new Date(data.timestamp).toISOString();
-        if (ts >= sinceIso && ts < untilIso) {
+        if (ts >= sinceIso && ts <= untilIso) {
           events.push({
             timestamp: ts,
             kind: data.kind,
