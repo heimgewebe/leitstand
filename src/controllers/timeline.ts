@@ -24,6 +24,8 @@ export interface TimelineViewData {
     since: string;
     until: string;
     total_loaded: number;
+    hours_back: number;
+    max_events: number;
   };
 }
 
@@ -68,6 +70,8 @@ export async function getTimelineData(
         since: sinceIso,
         until: untilIso,
         total_loaded: events.length,
+        hours_back: hoursBack,
+        max_events: maxEvents,
       },
     };
   } catch (e) {
@@ -93,6 +97,8 @@ export async function getTimelineData(
             since: sinceIso,
             until: untilIso,
             total_loaded: events.length,
+            hours_back: hoursBack,
+            max_events: maxEvents,
           },
         };
       }
@@ -129,6 +135,8 @@ export async function getTimelineData(
           since: sinceIso,
           until: untilIso,
           total_loaded: events.length,
+          hours_back: hoursBack,
+          max_events: maxEvents,
         },
       };
     } catch {
@@ -147,6 +155,8 @@ export async function getTimelineData(
       since: sinceIso,
       until: untilIso,
       total_loaded: 0,
+      hours_back: hoursBack,
+      max_events: maxEvents,
     },
   };
 }

@@ -53,6 +53,8 @@ describe('getTimelineData controller', () => {
     const result = await getTimelineData(6);
 
     expect(result.view_meta.source_kind).toBe('fixture');
+    expect(result.view_meta.hours_back).toBe(6);
+    expect(result.view_meta.max_events).toBe(200);
     expect(result.events).toHaveLength(2);
     // Should be newest first
     expect(result.events[0].kind).toBe('ci.pass');
@@ -110,6 +112,7 @@ describe('getTimelineData controller', () => {
 
     expect(result.events.length).toBeLessThanOrEqual(3);
     expect(result.view_meta.total_loaded).toBe(3);
+    expect(result.view_meta.max_events).toBe(3);
     // Newest first
     expect(result.events[0].kind).toBe('event.0');
   });

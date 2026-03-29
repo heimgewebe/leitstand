@@ -342,7 +342,13 @@ app.get('/timeline', async (req, res) => {
     const hoursBack = Number.isFinite(parsedHours) && parsedHours > 0
       ? Math.min(parsedHours, 168)
       : 48; // Default 48 h; max 7 days
-    const data = await getTimelineData(hoursBack);
+
+    const parsedMax = Number(req.query.max);
+    const maxEvents = Number.isFinite(parsedMax) && parsedMax > 0
+      ? Math.min(parsedMax, 1000)
+      : 200;
+
+    const data = await getTimelineData(hoursBack, maxEvents);
     res.render('timeline', data);
   } catch (error) {
     if (!res.headersSent) {
