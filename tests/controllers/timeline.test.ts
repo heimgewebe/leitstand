@@ -87,8 +87,10 @@ describe('getTimelineData controller', () => {
 
   it('should respect maxEvents limit after filtering', async () => {
     const now = Date.now();
+    // Offset by (i + 1) minutes so the newest event (event.0) is 1 min in the
+    // past and never touches the exclusive upper boundary (untilIso = new Date()).
     const fixtureEvents = Array.from({ length: 10 }, (_, i) => ({
-      timestamp: new Date(now - i * 60 * 1000).toISOString(),
+      timestamp: new Date(now - (i + 1) * 60 * 1000).toISOString(),
       kind: 'event.' + i,
       repo: 'test',
     }));
@@ -141,5 +143,42 @@ describe('getTimelineData controller', () => {
     expect(result.events[0].kind).toBe('newest');
     expect(result.events[1].kind).toBe('middle');
     expect(result.events[2].kind).toBe('oldest');
+  });
+
+  it('should exclude events at exactly the upper boundary (untilIso)', async () => {
+    // Fix system time so we know the exact value of untilIso inside the controller.
+    const fixedNow = new Date('2026-01-01T12:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(fixedNow);
+
+    try {
+      const atBoundary = fixedNow.toISOString(); // === untilIso
+      const justBefore = new Date(fixedNow.getTime() - 1).toISOString(); // 1 ms before
+
+      const fixtureEvents = [
+        { timestamp: atBoundary, kind: 'at.boundary', repo: 'test' },
+        { timestamp: justBefore, kind: 'just.before', repo: 'test' },
+      ];
+
+      vi.mocked(readdir).mockRejectedValue(
+        Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+      );
+
+      vi.mocked(readFile).mockImplementation(async (path) => {
+        if (typeof path === 'string' && path.includes('events.json')) {
+          return JSON.stringify(fixtureEvents) as unknown as Buffer;
+        }
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+
+      const result = await getTimelineData(48);
+
+      // Window is [since, until) — the upper boundary is exclusive.
+      expect(result.events.find((e) => e.kind === 'at.boundary')).toBeUndefined();
+      // 1 ms before the boundary must be included.
+      expect(result.events.find((e) => e.kind === 'just.before')).toBeDefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
