@@ -2,9 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getAnatomyData } from '../../src/controllers/anatomy.js';
 import { resetEnvConfig } from '../../src/config.js';
 import { loadWithFallback } from '../../src/utils/loader.js';
+import { loadLatestMetrics } from '../../src/metrics.js';
 
 vi.mock('../../src/utils/loader.js', () => ({
   loadWithFallback: vi.fn(),
+}));
+
+vi.mock('../../src/metrics.js', () => ({
+  loadLatestMetrics: vi.fn(),
 }));
 
 describe('getAnatomyData controller', () => {
@@ -32,6 +37,7 @@ describe('getAnatomyData controller', () => {
       source: 'fixture',
       reason: 'enoent',
     });
+    vi.mocked(loadLatestMetrics).mockResolvedValue(null);
 
     const result = await getAnatomyData();
 
@@ -40,6 +46,7 @@ describe('getAnatomyData controller', () => {
     expect(result.anatomy!.nodes[0].id).toBe('leitstand');
     expect(result.view_meta.source_kind).toBe('fixture');
     expect(result.view_meta.schema_valid).toBe(true);
+    expect(result.health.source_kind).toBe('missing');
   });
 
   it('should mark schema_valid=false on schema mismatch without throwing', async () => {
@@ -55,6 +62,7 @@ describe('getAnatomyData controller', () => {
       source: 'artifact',
       reason: 'ok',
     });
+    vi.mocked(loadLatestMetrics).mockResolvedValue(null);
 
     const result = await getAnatomyData();
 
@@ -73,6 +81,7 @@ describe('getAnatomyData controller', () => {
       source: 'missing',
       reason: 'enoent',
     });
+    vi.mocked(loadLatestMetrics).mockResolvedValue(null);
 
     const result = await getAnatomyData();
 
@@ -100,6 +109,7 @@ describe('getAnatomyData controller', () => {
         source: 'artifact',
         reason: 'ok',
       });
+      vi.mocked(loadLatestMetrics).mockResolvedValue(null);
 
       const result = await getAnatomyData();
 
@@ -117,6 +127,7 @@ describe('getAnatomyData controller', () => {
       source: 'missing',
       reason: 'enoent',
     });
+    vi.mocked(loadLatestMetrics).mockResolvedValue(null);
 
     await getAnatomyData();
 
@@ -141,6 +152,7 @@ describe('getAnatomyData controller', () => {
       source: 'fixture',
       reason: 'enoent',
     });
+    vi.mocked(loadLatestMetrics).mockResolvedValue(null);
 
     const result = await getAnatomyData();
 
@@ -148,5 +160,38 @@ describe('getAnatomyData controller', () => {
     expect(result.view_meta.schema_valid).toBe(false);
     expect(result.view_meta.missing_reason).toContain('invalid_structure');
     expect(console.warn).toHaveBeenCalled();
+  });
+
+  it('should expose health overlay from metrics artifact', async () => {
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: {
+        schema: 'anatomy.snapshot.v1',
+        generated_at: '2026-03-28T00:00:00Z',
+        source: 'artifact',
+        nodes: [{ id: 'metarepo', label: 'Metarepo', role: 'Gov', achse: 'governance', description: 'test' }],
+        edges: [],
+        achsen: { governance: { label: 'Governance', color: '#3B82F6', description: 'Gov' } },
+      },
+      source: 'artifact',
+      reason: 'ok',
+    });
+
+    vi.mocked(loadLatestMetrics).mockResolvedValueOnce({
+      timestamp: '2026-03-29T08:00:00.000Z',
+      repoCount: 2,
+      status: { ok: 1, warn: 1, fail: 0 },
+      repos: [
+        { name: 'heimgewebe/metarepo', status: 'ok' },
+        { name: 'heimgewebe/wgx', status: 'warn' },
+      ],
+    });
+
+    const result = await getAnatomyData();
+
+    expect(result.health.source_kind).toBe('artifact');
+    expect(result.health.totals.ok).toBe(1);
+    expect(result.health.totals.warn).toBe(1);
+    expect(result.health.by_repo.metarepo).toBe('ok');
+    expect(result.health.by_repo.wgx).toBe('warn');
   });
 });

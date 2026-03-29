@@ -3,9 +3,29 @@ import { loadWithFallback } from '../utils/loader.js';
 import { envConfig } from '../config.js';
 import type { AnatomySnapshot } from '../anatomy.js';
 import { validateAnatomySnapshot } from '../anatomy.js';
+import { loadLatestMetrics } from '../metrics.js';
+
+type RepoHealth = 'ok' | 'warn' | 'fail' | 'unknown';
+
+interface HealthOverlay {
+  source_kind: 'artifact' | 'fixture' | 'missing';
+  missing_reason: string;
+  timestamp: string | null;
+  by_repo: Record<string, RepoHealth>;
+  totals: {
+    ok: number;
+    warn: number;
+    fail: number;
+    unknown: number;
+  };
+  freshness_state: 'fresh' | 'stale' | 'unknown';
+  data_age_minutes: number | null;
+  stale_after_hours: number;
+}
 
 export interface AnatomyViewData {
   anatomy: AnatomySnapshot | null;
+  health: HealthOverlay;
   view_meta: {
     source_kind: 'artifact' | 'fixture' | 'missing';
     missing_reason: string;
@@ -19,6 +39,25 @@ export interface AnatomyViewData {
 }
 
 const STALE_AFTER_HOURS = 72;
+const HEALTH_STALE_AFTER_HOURS = 24;
+
+function normalizeRepoId(input: string | undefined): string {
+  if (!input) return '';
+  const trimmed = input.trim();
+  if (!trimmed) return '';
+
+  const withoutOwner = trimmed.includes('/') ? trimmed.split('/').pop() || '' : trimmed;
+  return withoutOwner.toLowerCase();
+}
+
+function normalizeRepoStatus(status: unknown): RepoHealth {
+  if (typeof status !== 'string') return 'unknown';
+  const normalized = status.toLowerCase();
+  if (normalized === 'ok' || normalized === 'warn' || normalized === 'fail') {
+    return normalized;
+  }
+  return 'unknown';
+}
 
 function computeFreshness(generatedAt?: string): {
   data_timestamp: string | null;
@@ -52,6 +91,94 @@ function computeFreshness(generatedAt?: string): {
   };
 }
 
+function emptyHealthOverlay(reason: string): HealthOverlay {
+  return {
+    source_kind: 'missing',
+    missing_reason: reason,
+    timestamp: null,
+    by_repo: {},
+    totals: {
+      ok: 0,
+      warn: 0,
+      fail: 0,
+      unknown: 0,
+    },
+    freshness_state: 'unknown',
+    data_age_minutes: null,
+    stale_after_hours: HEALTH_STALE_AFTER_HOURS,
+  };
+}
+
+async function loadHealthOverlay(): Promise<HealthOverlay> {
+  const { isStrict, paths } = envConfig;
+
+  const artifactMetricsDir = join(paths.artifacts, 'metrics');
+  const fixtureMetricsDir = join(paths.fixtures, 'metrics');
+
+  try {
+    const metricsFromArtifact = await loadLatestMetrics(artifactMetricsDir);
+    if (metricsFromArtifact) {
+      return buildHealthOverlay(metricsFromArtifact, 'artifact', 'ok');
+    }
+
+    if (!isStrict) {
+      const metricsFromFixture = await loadLatestMetrics(fixtureMetricsDir);
+      if (metricsFromFixture) {
+        return buildHealthOverlay(metricsFromFixture, 'fixture', 'artifact_missing');
+      }
+    }
+
+    return emptyHealthOverlay(isStrict ? 'strict_mode' : 'no_metrics_found');
+  } catch (err) {
+    console.warn('[Anatomy] Failed to load health overlay:', err instanceof Error ? err.message : String(err));
+    return emptyHealthOverlay('health_load_failed');
+  }
+}
+
+function buildHealthOverlay(
+  metrics: {
+    timestamp?: string;
+    repos?: Array<{ name?: string; status?: string }>;
+    status?: { ok?: number; warn?: number; fail?: number };
+  },
+  sourceKind: 'artifact' | 'fixture',
+  reason: string
+): HealthOverlay {
+  const byRepo: Record<string, RepoHealth> = {};
+
+  for (const repo of metrics.repos || []) {
+    const id = normalizeRepoId(repo.name);
+    if (!id) continue;
+    byRepo[id] = normalizeRepoStatus(repo.status);
+  }
+
+  const freshness = computeFreshness(metrics.timestamp);
+  const healthFreshness: 'fresh' | 'stale' | 'unknown' =
+    freshness.freshness_state === 'unknown'
+      ? 'unknown'
+      : (freshness.data_age_minutes || 0) > HEALTH_STALE_AFTER_HOURS * 60
+        ? 'stale'
+        : 'fresh';
+
+  const totals = {
+    ok: Number(metrics.status?.ok || 0),
+    warn: Number(metrics.status?.warn || 0),
+    fail: Number(metrics.status?.fail || 0),
+    unknown: 0,
+  };
+
+  return {
+    source_kind: sourceKind,
+    missing_reason: reason,
+    timestamp: freshness.data_timestamp,
+    by_repo: byRepo,
+    totals,
+    freshness_state: healthFreshness,
+    data_age_minutes: freshness.data_age_minutes,
+    stale_after_hours: HEALTH_STALE_AFTER_HOURS,
+  };
+}
+
 /**
  * Controller for loading Anatomy view data.
  *
@@ -75,6 +202,8 @@ export async function getAnatomyData(): Promise<AnatomyViewData> {
     name: 'Anatomy',
   });
 
+  const health = await loadHealthOverlay();
+
   const raw = loaded.data;
 
   // Structural validation via the dedicated anatomy validator
@@ -86,6 +215,7 @@ export async function getAnatomyData(): Promise<AnatomyViewData> {
       console.warn(`[Anatomy] Structural validation failed: ${validation.error}`);
       return {
         anatomy: null,
+        health,
         view_meta: {
           source_kind: loaded.source,
           missing_reason: `invalid_structure: ${validation.error}`,
@@ -101,6 +231,7 @@ export async function getAnatomyData(): Promise<AnatomyViewData> {
 
     return {
       anatomy: raw,
+      health,
       view_meta: {
         source_kind: loaded.source,
         missing_reason: loaded.reason,
@@ -116,6 +247,7 @@ export async function getAnatomyData(): Promise<AnatomyViewData> {
 
   return {
     anatomy: null,
+    health,
     view_meta: {
       source_kind: loaded.source,
       missing_reason: loaded.reason,

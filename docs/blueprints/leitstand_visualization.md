@@ -40,7 +40,7 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 
 ### 3) Phase 2 umsetzen: Physiologie (Health-Layer)
 
-- [ ] Health-Layer uber Anatomie legen (Ampelstatus auf denselben Knoten, ohne Doppelmodell).
+- [x] Health-Layer uber Anatomie legen (Ampelstatus auf denselben Knoten, ohne Doppelmodell).
 - [ ] Key-Metriken als knappe Zustandsindikatoren integrieren, Rohmetriken bewusst ausblenden.
 - [ ] Warn-/Fehlerzustande mit Evidenzlink auf Quellartefakt versehen (warum ist ein Knoten gelb/rot?).
 - [ ] Aktualisierungsstrategie definieren (Polling/Refresh) und "Data Freshness" sichtbar machen.
@@ -104,6 +104,8 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [x] Event-Detailpanel bleibt per Klick auf Event expandierbar (Kontext-/Payload-Einsicht).
 - [x] Anatomy-Quelle zeigt Data-Freshness (`fresh/stale/unknown`) auf Basis von `generated_at`.
 - [x] Stale-Schwelle fur Anatomy eingefuhrt (`72h`) und im Controller als Metadatum hinterlegt.
+- [x] Anatomy-Graph zeigt Health-Status pro Node (OK/Warn/Fail/Unknown) als Layer inkl. Legende.
+- [x] Health-Quelle und Health-Freshness werden in der Source-Badge transparent ausgewiesen.
 
 Technische Referenzen:
 
@@ -113,6 +115,8 @@ Technische Referenzen:
 - `tests/controllers/timeline.test.ts` (Replay-/Zeitfenster-Verhalten abgesichert)
 - `src/controllers/anatomy.ts` (Freshness-Berechnung und Metadaten)
 - `src/views/anatomy.ejs` (Freshness- und Stale-Hinweise in Source-Badge)
+- `src/fixtures/metrics/2023-10-27.json` (Repo-Statusdaten fur lokalen Health-Layer)
+- `tests/controllers/anatomy.test.ts` (Health-Overlay-Mapping und Fallback abgesichert)
 
 ## Phase 1: Anatomie (Strukturelle Übersicht)
 
