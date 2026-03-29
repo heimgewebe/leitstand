@@ -1,0 +1,271 @@
+{
+  "schema": "anatomy.snapshot.v1",
+  "generated_at": "2026-03-28T06:00:00Z",
+  "source": "fixture",
+  "nodes": [
+    {
+      "id": "metarepo",
+      "label": "Metarepo",
+      "role": "Governance & Contracts",
+      "achse": "governance",
+      "description": "Zentrale Architektur-Dokumente, Contract-Definitionen, Cross-Repo-Richtlinien."
+    },
+    {
+      "id": "chronik",
+      "label": "Chronik",
+      "role": "Ereignis-Organ (Gedächtnis)",
+      "achse": "speicherung",
+      "description": "Zentraler Event-Store (event.line Append-only Log). Repräsentiert die Vergangenheit des Organismus."
+    },
+    {
+      "id": "semantah",
+      "label": "SemantAH",
+      "role": "Wissens-Organ",
+      "achse": "semantik",
+      "description": "Analysiert und rekonstruiert Wissen aus Events und anderen Quellen – Insights, Einbettungen, Graph-Strukturen."
+    },
+    {
+      "id": "hauski",
+      "label": "HausKI",
+      "role": "Entscheidungszentrum",
+      "achse": "entscheidung",
+      "description": "Trifft als KI-Agent Entscheidungen auf Basis von Events, Insights und Metriken."
+    },
+    {
+      "id": "wgx",
+      "label": "WGX",
+      "role": "Fleet-Motorik",
+      "achse": "motorik",
+      "description": "Orchestriert als Nervensystem die Fleet in CI/CD: Standard-Checks, Metriken, Fleet-Zustandsbilder."
+    },
+    {
+      "id": "leitstand",
+      "label": "Leitstand",
+      "role": "User-Interface (Observer)",
+      "achse": "interface",
+      "description": "Dashboard und Auge des Organismus. Visualisierung von Events, Insights und Fleet-Status."
+    },
+    {
+      "id": "heimgeist",
+      "label": "Heimgeist",
+      "role": "Meta-Agent (Reflexion)",
+      "achse": "reflexion",
+      "description": "Beobachtet Systemzustände, erkennt Muster, Lücken, Drift. Reflexionszentrum des Organismus."
+    },
+    {
+      "id": "aussensensor",
+      "label": "Aussensensor",
+      "role": "Externe Sensorik",
+      "achse": "sensorik",
+      "description": "Erfasst externe Umweltdaten und sendet sie als Events in den Organismus."
+    },
+    {
+      "id": "heimlern",
+      "label": "Heimlern",
+      "role": "Mustererkennung & Lernen",
+      "achse": "reflexion",
+      "description": "Erkennt wiederkehrende Muster und gibt Policy-Feedback. Lernende Adaption."
+    },
+    {
+      "id": "plexer",
+      "label": "Plexer",
+      "role": "Event-Router",
+      "achse": "motorik",
+      "description": "Vermittelt Events in Echtzeit zwischen Komponenten. Schnelles Routing."
+    },
+    {
+      "id": "mitschreiber",
+      "label": "Mitschreiber",
+      "role": "OS-Kontext-Sensor",
+      "achse": "sensorik",
+      "description": "Erzeugt OS-Kontext-Events (Fenster, Aktivität, Umgebungsdaten)."
+    },
+    {
+      "id": "lenskit",
+      "label": "Lenskit",
+      "role": "Struktur-Analyse-Tooling",
+      "achse": "semantik",
+      "description": "Sammelt Strukturdaten aus Repos, erzeugt mehrstufige Repräsentationen und Snapshots."
+    },
+    {
+      "id": "sichter",
+      "label": "Sichter",
+      "role": "Code-Review-Agent",
+      "achse": "motorik",
+      "description": "Automatisierte Code-Reviews und Qualitätsprüfungen."
+    },
+    {
+      "id": "vault-gewebe",
+      "label": "Vault-Gewebe",
+      "role": "Statisches Wissen (Obsidian)",
+      "achse": "speicherung",
+      "description": "Obsidian Vault mit statischem Wissen, das in den semantischen Graphen einfließt."
+    }
+  ],
+  "edges": [
+    {
+      "source": "aussensensor",
+      "target": "chronik",
+      "contract": "aussen.event.*",
+      "label": "Sensor-Events",
+      "type": "data"
+    },
+    {
+      "source": "mitschreiber",
+      "target": "chronik",
+      "contract": "os.context.*",
+      "label": "OS-Kontext-Events",
+      "type": "data"
+    },
+    {
+      "source": "hauski",
+      "target": "chronik",
+      "contract": "event.line",
+      "label": "Entscheidungs-Events",
+      "type": "data"
+    },
+    {
+      "source": "wgx",
+      "target": "chronik",
+      "contract": "event.line",
+      "label": "CI/Fleet-Events",
+      "type": "data"
+    },
+    {
+      "source": "chronik",
+      "target": "semantah",
+      "contract": "event.line",
+      "label": "Event-Stream",
+      "type": "data"
+    },
+    {
+      "source": "chronik",
+      "target": "leitstand",
+      "contract": "event.line",
+      "label": "Event-Stream",
+      "type": "data"
+    },
+    {
+      "source": "chronik",
+      "target": "heimgeist",
+      "contract": "event.line",
+      "label": "Event-Stream",
+      "type": "data"
+    },
+    {
+      "source": "semantah",
+      "target": "leitstand",
+      "contract": "insights.daily",
+      "label": "Tages-Insights",
+      "type": "data"
+    },
+    {
+      "source": "semantah",
+      "target": "leitstand",
+      "contract": "knowledge.observatory",
+      "label": "Observatory-Daten",
+      "type": "data"
+    },
+    {
+      "source": "wgx",
+      "target": "leitstand",
+      "contract": "metrics.snapshot",
+      "label": "Fleet-Metriken",
+      "type": "data"
+    },
+    {
+      "source": "heimgeist",
+      "target": "leitstand",
+      "contract": "heimgeist.self_state",
+      "label": "Self-State",
+      "type": "data"
+    },
+    {
+      "source": "plexer",
+      "target": "leitstand",
+      "contract": "plexer.delivery.report",
+      "label": "Delivery-Report",
+      "type": "data"
+    },
+    {
+      "source": "lenskit",
+      "target": "leitstand",
+      "contract": "anatomy.snapshot",
+      "label": "Struktur-Snapshot",
+      "type": "data"
+    },
+    {
+      "source": "vault-gewebe",
+      "target": "semantah",
+      "contract": "vault.content",
+      "label": "Statisches Wissen",
+      "type": "data"
+    },
+    {
+      "source": "heimgeist",
+      "target": "hauski",
+      "contract": "policy.feedback",
+      "label": "Policy-Feedback",
+      "type": "control"
+    },
+    {
+      "source": "heimlern",
+      "target": "heimgeist",
+      "contract": "pattern.signal",
+      "label": "Muster-Signale",
+      "type": "data"
+    },
+    {
+      "source": "plexer",
+      "target": "heimgeist",
+      "contract": "event.line",
+      "label": "Echtzeit-Events",
+      "type": "data"
+    },
+    {
+      "source": "metarepo",
+      "target": "wgx",
+      "contract": "fleet.config",
+      "label": "Fleet-Konfiguration",
+      "type": "governance"
+    },
+    {
+      "source": "metarepo",
+      "target": "chronik",
+      "contract": "event.line.schema",
+      "label": "Event-Schema",
+      "type": "governance"
+    },
+    {
+      "source": "metarepo",
+      "target": "semantah",
+      "contract": "insights.daily.schema",
+      "label": "Insights-Schema",
+      "type": "governance"
+    },
+    {
+      "source": "lenskit",
+      "target": "semantah",
+      "contract": "lens.snapshot",
+      "label": "Strukturdaten",
+      "type": "data"
+    },
+    {
+      "source": "wgx",
+      "target": "sichter",
+      "contract": "fleet.review.trigger",
+      "label": "Review-Aufträge",
+      "type": "control"
+    }
+  ],
+  "achsen": {
+    "governance": { "label": "Governance", "color": "#8B5CF6", "description": "Richtlinien, Contracts, Architektur" },
+    "sensorik": { "label": "Sensorik", "color": "#06B6D4", "description": "Externe und OS-Datenerfassung" },
+    "speicherung": { "label": "Speicherung", "color": "#F59E0B", "description": "Event-Store, Knowledge-Vault" },
+    "semantik": { "label": "Semantik", "color": "#10B981", "description": "Wissensbildung, Analyse, Lens" },
+    "entscheidung": { "label": "Entscheidung", "color": "#EF4444", "description": "KI-gesteuerte Aktionsplanung" },
+    "motorik": { "label": "Motorik / Fleet", "color": "#F97316", "description": "CI/CD-Orchestrierung, Routing, Reviews" },
+    "interface": { "label": "Interface", "color": "#3B82F6", "description": "User-facing Dashboard" },
+    "reflexion": { "label": "Reflexion", "color": "#EC4899", "description": "Meta-Analyse, Mustererkennung, Drift" }
+  }
+}

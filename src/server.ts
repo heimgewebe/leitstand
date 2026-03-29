@@ -8,6 +8,8 @@ import { readJsonFile } from './utils/fs.js';
 import { isLoopbackAddress } from './utils/network.js';
 import { envConfig } from './config.js';
 import { getObservatoryData } from './controllers/observatory.js';
+import { getAnatomyData } from './controllers/anatomy.js';
+import { getTimelineData } from './controllers/timeline.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
 import { randomBytes } from 'crypto';
@@ -312,6 +314,41 @@ app.get('/intent', async (_req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).send('Error loading intent data');
+  }
+});
+
+// Anatomy View – Phase 1: Structural overview of the Heimgewebe organism
+app.get('/anatomy', async (_req, res) => {
+  try {
+    const data = await getAnatomyData();
+    res.render('anatomy', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[Anatomy] Error:', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('Strict')) {
+        res.status(503).send('Service Unavailable');
+      } else {
+        res.status(500).send('Error loading anatomy data');
+      }
+    }
+  }
+});
+
+// Timeline View – Phase 3: Temporal event chronology
+app.get('/timeline', async (req, res) => {
+  try {
+    const parsedHours = Number(req.query.hours);
+    const hoursBack = Number.isFinite(parsedHours) && parsedHours > 0
+      ? Math.min(parsedHours, 168)
+      : 48; // Default 48 h; max 7 days
+    const data = await getTimelineData(hoursBack);
+    res.render('timeline', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[Timeline] Error:', error);
+      res.status(500).send('Error loading timeline data');
+    }
   }
 });
 

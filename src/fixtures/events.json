@@ -1,0 +1,146 @@
+[
+  {
+    "timestamp": "2026-03-28T05:30:00Z",
+    "kind": "ci.guard.pass",
+    "repo": "leitstand",
+    "severity": "info",
+    "payload": { "guard": "observer-invariant-guard", "result": "pass" }
+  },
+  {
+    "timestamp": "2026-03-28T04:45:00Z",
+    "kind": "knowledge.observatory.published.v1",
+    "repo": "semantah",
+    "severity": "info",
+    "payload": { "topics_count": 7, "observatory_id": "obs-2026-03-28" }
+  },
+  {
+    "timestamp": "2026-03-28T03:12:00Z",
+    "kind": "insights.daily.generated",
+    "repo": "semantah",
+    "severity": "info",
+    "payload": { "topics": 5, "questions": 3, "deltas": 2 }
+  },
+  {
+    "timestamp": "2026-03-28T02:00:00Z",
+    "kind": "fleet.health.snapshot",
+    "repo": "wgx",
+    "severity": "info",
+    "payload": { "ok": 10, "warn": 2, "fail": 0, "total": 12 }
+  },
+  {
+    "timestamp": "2026-03-28T01:30:00Z",
+    "kind": "ci.test.fail",
+    "repo": "heimlern",
+    "severity": "error",
+    "job": "smoke-test",
+    "payload": { "failed_tests": 2, "total_tests": 47, "exit_code": 1 }
+  },
+  {
+    "timestamp": "2026-03-28T01:00:00Z",
+    "kind": "heimgeist.self_state.update",
+    "repo": "heimgeist",
+    "severity": "info",
+    "payload": { "autonomy_level": "aware", "confidence": 0.72, "fatigue": 0.15 }
+  },
+  {
+    "timestamp": "2026-03-27T23:45:00Z",
+    "kind": "plexer.delivery.complete",
+    "repo": "plexer",
+    "severity": "info",
+    "payload": { "delivered": 14, "failed": 0, "pending": 1 }
+  },
+  {
+    "timestamp": "2026-03-27T22:30:00Z",
+    "kind": "ci.guard.pass",
+    "repo": "metarepo",
+    "severity": "info",
+    "payload": { "guard": "contract-schema-guard", "result": "pass" }
+  },
+  {
+    "timestamp": "2026-03-27T21:15:00Z",
+    "kind": "aussen.event.weather",
+    "repo": "aussensensor",
+    "severity": "info",
+    "payload": { "temperature": 12.4, "humidity": 67, "condition": "cloudy" }
+  },
+  {
+    "timestamp": "2026-03-27T20:00:00Z",
+    "kind": "os.context.session.start",
+    "repo": "mitschreiber",
+    "severity": "info",
+    "payload": { "user": "alex", "workspace": "leitstand" }
+  },
+  {
+    "timestamp": "2026-03-27T19:30:00Z",
+    "kind": "ci.deploy.success",
+    "repo": "leitstand",
+    "severity": "info",
+    "job": "deploy-preview",
+    "payload": { "env": "preview", "duration_ms": 12450 }
+  },
+  {
+    "timestamp": "2026-03-27T18:00:00Z",
+    "kind": "hauski.decision.v1",
+    "repo": "hauski",
+    "severity": "warn",
+    "payload": { "decision": "defer_action", "reason": "insufficient_confidence", "confidence": 0.42 }
+  },
+  {
+    "timestamp": "2026-03-27T16:45:00Z",
+    "kind": "integrity.summary.published.v1",
+    "repo": "wgx",
+    "severity": "info",
+    "payload": { "repos_checked": 12, "status": "WARN", "gaps": 1 }
+  },
+  {
+    "timestamp": "2026-03-27T15:30:00Z",
+    "kind": "ci.lint.warn",
+    "repo": "chronik",
+    "severity": "warn",
+    "job": "eslint",
+    "payload": { "warnings": 3, "errors": 0 }
+  },
+  {
+    "timestamp": "2026-03-27T14:00:00Z",
+    "kind": "vault.sync.complete",
+    "repo": "vault-gewebe",
+    "severity": "info",
+    "payload": { "notes_synced": 42, "new_notes": 2 }
+  },
+  {
+    "timestamp": "2026-03-27T12:30:00Z",
+    "kind": "lenskit.snapshot.generated",
+    "repo": "lenskit",
+    "severity": "info",
+    "payload": { "repos_analyzed": 14, "relations_found": 22, "detail_level": "dev" }
+  },
+  {
+    "timestamp": "2026-03-27T11:00:00Z",
+    "kind": "ci.test.pass",
+    "repo": "wgx",
+    "severity": "info",
+    "job": "vitest",
+    "payload": { "passed": 89, "failed": 0, "duration_ms": 4520 }
+  },
+  {
+    "timestamp": "2026-03-27T09:30:00Z",
+    "kind": "heimlern.pattern.detected",
+    "repo": "heimlern",
+    "severity": "info",
+    "payload": { "pattern": "monday_failure_spike", "confidence": 0.78, "occurrences": 4 }
+  },
+  {
+    "timestamp": "2026-03-27T08:00:00Z",
+    "kind": "fleet.health.snapshot",
+    "repo": "wgx",
+    "severity": "warn",
+    "payload": { "ok": 9, "warn": 2, "fail": 1, "total": 12, "degraded": "sichter" }
+  },
+  {
+    "timestamp": "2026-03-27T06:00:00Z",
+    "kind": "sichter.review.error",
+    "repo": "sichter",
+    "severity": "error",
+    "payload": { "error": "GitHub API rate limit exceeded", "retry_at": "2026-03-27T07:00:00Z" }
+  }
+]
