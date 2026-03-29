@@ -59,7 +59,7 @@ export async function getTimelineData(
       events,
       view_meta: {
         source_kind: 'chronik',
-        missing_reason: 'ok',
+        missing_reason: events.length === 0 ? 'empty_window' : 'ok',
         is_strict: isStrict,
         since: sinceIso,
         until: untilIso,
@@ -150,8 +150,10 @@ export async function getTimelineData(
  * Uses readline streaming to avoid loading entire files into memory —
  * important for large append-only chronik logs. Files are processed in
  * batches of 8 to limit concurrent file descriptor usage.
+ *
+ * Exported for unit testing.
  */
-async function loadEventsFromDir(
+export async function loadEventsFromDir(
   dir: string,
   sinceIso: string,
   untilIso: string,
