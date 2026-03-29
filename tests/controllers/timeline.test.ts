@@ -223,4 +223,31 @@ describe('getTimelineData controller', () => {
     expect(result.events).toHaveLength(1);
     expect(result.events[0].kind).toBe('good.event');
   });
+
+  it('should support replay mode with until override', async () => {
+    const fixtureEvents = [
+      { timestamp: '2026-01-01T12:00:00.000Z', kind: 'excluded.upper.boundary', repo: 'x' },
+      { timestamp: '2026-01-01T11:00:00.000Z', kind: 'included.recent', repo: 'x' },
+      { timestamp: '2026-01-01T10:00:00.000Z', kind: 'included.older', repo: 'x' },
+      { timestamp: '2026-01-01T09:00:00.000Z', kind: 'excluded.before.window', repo: 'x' },
+    ];
+
+    vi.mocked(readdir).mockRejectedValue(
+      Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+    );
+
+    vi.mocked(readFile).mockImplementation(async (path) => {
+      if (typeof path === 'string' && path.includes('events.json')) {
+        return JSON.stringify(fixtureEvents) as unknown as Buffer;
+      }
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    });
+
+    const replayUntil = new Date('2026-01-01T12:00:00.000Z');
+    const result = await getTimelineData(2, 200, replayUntil);
+
+    expect(result.view_meta.replay_mode).toBe(true);
+    expect(result.view_meta.replay_until).toBe('2026-01-01T12:00:00.000Z');
+    expect(result.events.map((e) => e.kind)).toEqual(['included.recent', 'included.older']);
+  });
 });

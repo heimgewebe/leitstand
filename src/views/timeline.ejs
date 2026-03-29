@@ -103,7 +103,8 @@
     }
 
     .filter-bar select,
-    .filter-bar input[type="number"] {
+    .filter-bar input[type="number"],
+    .filter-bar input[type="datetime-local"] {
       background: var(--bg-secondary);
       border: 1px solid var(--border-glass);
       color: var(--text-primary);
@@ -414,7 +415,15 @@
           <option value="1000" <%= view_meta.max_events === 1000 ? 'selected' : '' %>>1000</option>
         </select>
 
+        <label for="replayUntil">Replay bis</label>
+        <input
+          id="replayUntil"
+          type="datetime-local"
+          value="<%= view_meta.replay_until ? view_meta.replay_until.slice(0, 16) : '' %>"
+        >
+
         <button type="button" id="applyWindow">Aktualisieren</button>
+        <button type="button" id="clearReplay">Live</button>
 
         <div class="spacer"></div>
 
@@ -503,6 +512,10 @@
         <% } %>
         · Zeitfenster: <%= view_meta.since %> – <%= view_meta.until %>
         · Konfiguration: <%= view_meta.hours_back %>h / max <%= view_meta.max_events %>
+        <% if (view_meta.replay_mode) { %>
+          · <span class="warn">Replay</span>
+          <% if (view_meta.replay_until) { %> bis <%= view_meta.replay_until %><% } %>
+        <% } %>
       </div>
 
     <% } else { %>
@@ -528,7 +541,9 @@
     const filterSeverity = document.getElementById('filterSeverity');
     const windowHours = document.getElementById('windowHours');
     const windowMax = document.getElementById('windowMax');
+    const replayUntil = document.getElementById('replayUntil');
     const applyWindow = document.getElementById('applyWindow');
+    const clearReplay = document.getElementById('clearReplay');
     const visibleCount = document.getElementById('visibleCount');
     const timeline = document.getElementById('timeline');
 
@@ -587,6 +602,19 @@
         if (windowMax && windowMax.value) {
           params.set('max', windowMax.value);
         }
+        if (replayUntil && replayUntil.value) {
+          params.set('until', replayUntil.value);
+        } else {
+          params.delete('until');
+        }
+        window.location.search = params.toString();
+      });
+    }
+
+    if (clearReplay) {
+      clearReplay.addEventListener('click', function() {
+        var params = new URLSearchParams(window.location.search);
+        params.delete('until');
         window.location.search = params.toString();
       });
     }

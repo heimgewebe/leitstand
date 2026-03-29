@@ -348,7 +348,11 @@ app.get('/timeline', async (req, res) => {
       ? Math.min(parsedMax, 1000)
       : 200;
 
-    const data = await getTimelineData(hoursBack, maxEvents);
+    const rawUntil = typeof req.query.until === 'string' ? req.query.until : '';
+    const parsedUntil = rawUntil ? new Date(rawUntil) : null;
+    const untilOverride = parsedUntil && !Number.isNaN(parsedUntil.getTime()) ? parsedUntil : undefined;
+
+    const data = await getTimelineData(hoursBack, maxEvents, untilOverride);
     res.render('timeline', data);
   } catch (error) {
     if (!res.headersSent) {
