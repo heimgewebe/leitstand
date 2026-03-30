@@ -285,7 +285,7 @@ describe('getInsightsData controller', () => {
   });
 
   it('should expose is_strict flag from config', async () => {
-    vi.stubEnv('LEITSTAND_STRICT', 'true');
+    vi.stubEnv('LEITSTAND_STRICT', '1');
     resetEnvConfig();
 
     vi.mocked(loadWithFallback).mockResolvedValue({
