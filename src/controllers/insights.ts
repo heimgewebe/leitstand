@@ -46,7 +46,7 @@ function buildFreshness(
   const ms = new Date(timestamp).getTime();
   if (Number.isNaN(ms)) {
     return {
-      data_timestamp: timestamp,
+      data_timestamp: null,
       data_age_minutes: null,
       freshness_state: 'unknown' as const,
       freshness_source: source,

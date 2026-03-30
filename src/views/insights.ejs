@@ -339,7 +339,9 @@
     <% } else { %>
       · Frische: unbekannt
     <% } %>
-    <% if (view_meta.freshness_source !== 'unknown') { %>
+    <% if (view_meta.freshness_source === 'mtime') { %>
+      · via mtime (Transportzeit)
+    <% } else if (view_meta.freshness_source !== 'unknown') { %>
       · via <%= view_meta.freshness_source %>
     <% } %>
     <% if (view_meta.freshness_degraded) { %>

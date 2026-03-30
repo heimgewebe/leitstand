@@ -205,7 +205,28 @@ describe('getInsightsData controller', () => {
     const result = await getInsightsData();
 
     expect(result.view_meta.freshness_state).toBe('unknown');
+    expect(result.view_meta.data_timestamp).toBeNull();
     expect(result.view_meta.data_age_minutes).toBeNull();
+    expect(stat).toHaveBeenCalledTimes(1);
+  });
+
+  it('should keep data_timestamp null when generated_at is invalid and no fallback resolves', async () => {
+    vi.mocked(stat).mockRejectedValueOnce(new Error('ENOENT'));
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: {
+        ...fixtureInsights,
+        ts: '',
+        metadata: { generated_at: 'invalid-date' },
+      },
+      source: 'artifact',
+      reason: 'ok',
+    });
+
+    const result = await getInsightsData();
+
+    expect(result.view_meta.freshness_state).toBe('unknown');
+    expect(result.view_meta.freshness_source).toBe('unknown');
+    expect(result.view_meta.data_timestamp).toBeNull();
     expect(stat).toHaveBeenCalledTimes(1);
   });
 
@@ -231,6 +252,7 @@ describe('getInsightsData controller', () => {
       expect(result.view_meta.freshness_state).toBe('fresh');
       expect(result.view_meta.freshness_source).toBe('mtime');
       expect(result.view_meta.freshness_degraded).toBe(true);
+      expect(result.view_meta.data_timestamp).toBe('2026-03-30T06:00:00.000Z');
       expect(result.view_meta.data_age_minutes).toBe(6 * 60);
       expect(stat).toHaveBeenCalledTimes(1);
     } finally {
