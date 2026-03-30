@@ -13,6 +13,14 @@ const STALE_AFTER_HOURS = 30;
 
 type FreshnessSource = 'metadata.generated_at' | 'ts' | 'mtime' | 'unknown';
 
+interface FreshnessResult {
+  data_timestamp: string | null;
+  data_age_minutes: number | null;
+  freshness_state: 'fresh' | 'stale' | 'unknown';
+  freshness_source: FreshnessSource;
+  freshness_degraded: boolean;
+}
+
 export interface InsightsViewData {
   insights: DailyInsights | null;
   view_meta: {
@@ -30,7 +38,11 @@ export interface InsightsViewData {
   };
 }
 
-function buildFreshness(timestamp: string, source: Exclude<FreshnessSource, 'unknown'>, degraded: boolean) {
+function buildFreshness(
+  timestamp: string,
+  source: Exclude<FreshnessSource, 'unknown'>,
+  degraded: boolean
+): FreshnessResult & { timestamp_valid: boolean } {
   const ms = new Date(timestamp).getTime();
   if (Number.isNaN(ms)) {
     return {
@@ -39,6 +51,7 @@ function buildFreshness(timestamp: string, source: Exclude<FreshnessSource, 'unk
       freshness_state: 'unknown' as const,
       freshness_source: source,
       freshness_degraded: degraded,
+      timestamp_valid: false,
     };
   }
 
@@ -49,14 +62,15 @@ function buildFreshness(timestamp: string, source: Exclude<FreshnessSource, 'unk
     freshness_state: ageMinutes > STALE_AFTER_HOURS * 60 ? 'stale' as const : 'fresh' as const,
     freshness_source: source,
     freshness_degraded: degraded,
+    timestamp_valid: true,
   };
 }
 
-function computeFreshness(raw: DailyInsights) {
+function computeFreshness(raw: DailyInsights): FreshnessResult {
   const generatedAt = typeof raw.metadata?.generated_at === 'string' ? raw.metadata.generated_at : null;
   if (generatedAt) {
     const freshness = buildFreshness(generatedAt, 'metadata.generated_at', false);
-    if (freshness.data_age_minutes !== null || freshness.data_timestamp === generatedAt) {
+    if (freshness.timestamp_valid) {
       return freshness;
     }
   }
@@ -64,7 +78,7 @@ function computeFreshness(raw: DailyInsights) {
   const coarseDate = typeof raw.ts === 'string' && raw.ts.trim() !== '' ? `${raw.ts}T00:00:00Z` : null;
   if (coarseDate) {
     const freshness = buildFreshness(coarseDate, 'ts', false);
-    if (freshness.data_age_minutes !== null || freshness.data_timestamp === coarseDate) {
+    if (freshness.timestamp_valid) {
       return freshness;
     }
   }
@@ -103,14 +117,7 @@ export async function getInsightsData(): Promise<InsightsViewData> {
     name: 'Insights',
   });
 
-  const resolvedPath = loaded.source === 'artifact'
-    ? artifactPath
-    : loaded.source === 'fixture'
-      ? fixturePath
-      : null;
-  const transportTimestamp = await getTransportTimestamp(resolvedPath);
-
-  if (!loaded.data) {
+  if (loaded.data === null) {
     return {
       insights: null,
       view_meta: {
@@ -151,9 +158,18 @@ export async function getInsightsData(): Promise<InsightsViewData> {
   }
 
   let freshness = computeFreshness(insights);
-  if (freshness.freshness_source === 'unknown' && transportTimestamp) {
-    console.warn('[Insights] Falling back to transport timestamp (mtime) because generated_at/ts are missing or invalid.');
-    freshness = buildFreshness(transportTimestamp, 'mtime', true);
+  if (freshness.freshness_source === 'unknown') {
+    const resolvedPath = loaded.source === 'artifact'
+      ? artifactPath
+      : loaded.source === 'fixture'
+        ? fixturePath
+        : null;
+    const transportTimestamp = await getTransportTimestamp(resolvedPath);
+
+    if (transportTimestamp) {
+      console.warn('[Insights] Falling back to transport timestamp (mtime) because generated_at/ts are missing or invalid.');
+      freshness = buildFreshness(transportTimestamp, 'mtime', true);
+    }
   }
 
   return {

@@ -53,6 +53,7 @@ describe('getInsightsData controller', () => {
     expect(result.view_meta.source_kind).toBe('fixture');
     expect(result.view_meta.missing_reason).toBe('enoent');
     expect(result.view_meta.freshness_source).toBe('ts');
+    expect(stat).not.toHaveBeenCalled();
   });
 
   it('should return insights from artifact path', async () => {
@@ -106,6 +107,7 @@ describe('getInsightsData controller', () => {
       expect(result.view_meta.data_age_minutes).toBe(44 * 60);
       expect(result.view_meta.stale_after_hours).toBe(30);
       expect(result.view_meta.freshness_source).toBe('metadata.generated_at');
+      expect(stat).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }
@@ -130,6 +132,7 @@ describe('getInsightsData controller', () => {
       expect(result.view_meta.freshness_state).toBe('fresh');
       expect(result.view_meta.data_age_minutes).toBe(8 * 60);
       expect(result.view_meta.freshness_source).toBe('metadata.generated_at');
+      expect(stat).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }
@@ -155,16 +158,43 @@ describe('getInsightsData controller', () => {
       expect(result.view_meta.freshness_state).toBe('fresh');
       expect(result.view_meta.data_age_minutes).toBe(12 * 60);
       expect(result.view_meta.freshness_source).toBe('ts');
+      expect(stat).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('should fall back to ts when metadata.generated_at is invalid', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-30T12:00:00.000Z'));
+
+    try {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: {
+          ...fixtureInsights,
+          ts: '2026-03-30',
+          metadata: { generated_at: 'not-a-date', uncertainty: 0.12 },
+        },
+        source: 'artifact',
+        reason: 'ok',
+      });
+
+      const result = await getInsightsData();
+
+      expect(result.view_meta.freshness_source).toBe('ts');
+      expect(result.view_meta.freshness_degraded).toBe(false);
+      expect(stat).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }
   });
 
   it('should return freshness_state=unknown when no time reference is available', async () => {
+    vi.mocked(stat).mockRejectedValueOnce(new Error('ENOENT'));
     vi.mocked(loadWithFallback).mockResolvedValue({
       data: {
         ts: '',
-        topics: [],
+        topics: [['observatory', 0.6]],
         questions: [],
         deltas: [],
       },
@@ -176,6 +206,7 @@ describe('getInsightsData controller', () => {
 
     expect(result.view_meta.freshness_state).toBe('unknown');
     expect(result.view_meta.data_age_minutes).toBeNull();
+    expect(stat).toHaveBeenCalledTimes(1);
   });
 
   it('should fall back to transport timestamp when semantic timestamps are unavailable', async () => {
@@ -188,7 +219,7 @@ describe('getInsightsData controller', () => {
         data: {
           ...fixtureInsights,
           ts: '',
-          metadata: { observatory_ref: 'obs-001' },
+          metadata: { generated_at: 'invalid-date', observatory_ref: 'obs-001' },
         },
         source: 'artifact',
         reason: 'ok',
@@ -201,6 +232,7 @@ describe('getInsightsData controller', () => {
       expect(result.view_meta.freshness_source).toBe('mtime');
       expect(result.view_meta.freshness_degraded).toBe(true);
       expect(result.view_meta.data_age_minutes).toBe(6 * 60);
+      expect(stat).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }
@@ -266,6 +298,22 @@ describe('getInsightsData controller', () => {
     expect(result.insights).toBeNull();
     expect(result.view_meta.source_kind).toBe('artifact');
     expect(result.view_meta.missing_reason).toBe('invalid-shape');
+    expect(stat).not.toHaveBeenCalled();
+  });
+
+  it('should classify non-null falsy payload as invalid-shape and not as missing', async () => {
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: false,
+      source: 'artifact',
+      reason: 'ok',
+    });
+
+    const result = await getInsightsData();
+
+    expect(result.insights).toBeNull();
+    expect(result.view_meta.source_kind).toBe('artifact');
+    expect(result.view_meta.missing_reason).toBe('invalid-shape');
+    expect(stat).not.toHaveBeenCalled();
   });
 
   it('should call loadWithFallback with correct paths and name', async () => {
