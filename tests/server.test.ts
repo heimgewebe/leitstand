@@ -347,6 +347,60 @@ describe('GET /observatory', () => {
   });
 });
 
+describe('GET /insights', () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    resetEnvConfig();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should render the insights view when the controller succeeds', async () => {
+    const insightsController = await import('../src/controllers/insights.js');
+    vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({
+      insights: {
+        ts: '2026-03-30',
+        topics: [['leitstand', 0.8]],
+        questions: ['What changed?'],
+        deltas: ['New insights route wired'],
+        metadata: { observatory_ref: 'obs-001', uncertainty: 0.2 },
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: '2026-03-30T10:00:00.000Z',
+        data_age_minutes: 120,
+        freshness_state: 'fresh',
+        freshness_source: 'metadata.generated_at',
+        freshness_degraded: false,
+        stale_after_hours: 30,
+        uncertainty: 0.2,
+        observatory_ref: 'obs-001',
+      },
+    });
+
+    const res = await request(app).get('/insights');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Erkenntnisse');
+    expect(res.text).toContain('New insights route wired');
+  });
+
+  it('should return generic 503 Service Unavailable on strict mode failure', async () => {
+    const insightsController = await import('../src/controllers/insights.js');
+    vi.spyOn(insightsController, 'getInsightsData').mockRejectedValueOnce(new Error('Strict Fail: SENSITIVE_PATH_LEAK'));
+
+    const res = await request(app).get('/insights');
+
+    expect(res.status).toBe(503);
+    expect(res.text).toBe('Service Unavailable');
+    expect(res.text).not.toContain('SENSITIVE_PATH');
+  });
+});
+
 describe('GET /timeline – until UTC contract', () => {
   const minimalTimelineData = () => ({
     events: [],

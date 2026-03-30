@@ -9,6 +9,7 @@ import { isLoopbackAddress } from './utils/network.js';
 import { envConfig } from './config.js';
 import { getObservatoryData } from './controllers/observatory.js';
 import { getAnatomyData } from './controllers/anatomy.js';
+import { getInsightsData } from './controllers/insights.js';
 import { getTimelineData } from './controllers/timeline.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
@@ -330,6 +331,23 @@ app.get('/anatomy', async (_req, res) => {
         res.status(503).send('Service Unavailable');
       } else {
         res.status(500).send('Error loading anatomy data');
+      }
+    }
+  }
+});
+
+app.get('/insights', async (_req, res) => {
+  try {
+    const data = await getInsightsData();
+    res.render('insights', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[Insights] Error:', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('Strict')) {
+        res.status(503).send('Service Unavailable');
+      } else {
+        res.status(500).send('Error loading insights data');
       }
     }
   }

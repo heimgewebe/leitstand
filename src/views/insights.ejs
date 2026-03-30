@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Erkenntnisse – Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Semantische Tageserkenntnisse der Heimgewebe-Analyse – Topics, Fragen und Deltas aus dem semantAH-Digest.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-glass: rgba(255, 255, 255, 0.04);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --border-active: rgba(255, 255, 255, 0.15);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #3b82f6;
+      --warn: #f59e0b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 20px;
+      background: rgba(10, 14, 26, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 0.82em;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    nav a:hover { color: var(--text-primary); background: var(--bg-glass); }
+    nav a.active { color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+
+    nav .title {
+      font-weight: 700;
+      font-size: 0.9em;
+      color: var(--text-primary);
+      margin-right: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 96px;
+    }
+
+    .page-header {
+      margin-bottom: 28px;
+    }
+
+    .page-header h1 {
+      font-size: 1.6em;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .page-header .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.88em;
+    }
+
+    .interpretation-badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 10px;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 20px;
+      font-size: 0.72em;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
+
+    .section {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 0.72em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .topic-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .topic-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topic-name {
+      font-size: 0.82em;
+      color: var(--text-primary);
+      min-width: 160px;
+      flex-shrink: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .topic-bar-track {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .topic-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      opacity: 0.75;
+      transition: width 0.4s ease;
+    }
+
+    .topic-score {
+      font-size: 0.72em;
+      color: var(--text-muted);
+      min-width: 42px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .item-list li {
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .item-list li::before {
+      position: absolute;
+      left: 0;
+      color: var(--text-muted);
+      font-size: 0.9em;
+    }
+
+    .questions-list li::before { content: '?'; }
+    .deltas-list li::before { content: '△'; }
+
+    .empty-state {
+      text-align: center;
+      padding: 56px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
+    }
+
+    .empty-state .icon {
+      font-size: 2.4em;
+      margin-bottom: 16px;
+      opacity: 0.4;
+    }
+
+    .empty-state h2 {
+      font-size: 1.1em;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state p {
+      font-size: 0.84em;
+      color: var(--text-muted);
+      max-width: 420px;
+      margin: 8px auto 0;
+    }
+
+    #source-badge {
+      position: fixed;
+      bottom: 16px;
+      right: 20px;
+      z-index: 50;
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 0.72em;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    #source-badge .warn {
+      color: var(--warn);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="title">Leitstand</span>
+    <a href="/">Home</a>
+    <a href="/observatory">Observatorium</a>
+    <a href="/anatomy">Anatomie</a>
+    <a href="/timeline">Zeitachse</a>
+    <a href="/insights" class="active">Erkenntnisse</a>
+    <a href="/ops">Ops</a>
+  </nav>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>Erkenntnisse</h1>
+      <div class="subtitle">Semantische Tagesanalyse – Topics, offene Fragen und erkannte Deltas</div>
+      <span class="interpretation-badge">Semantische Interpretation – kein Rohdaten-Ersatz</span>
+    </div>
+
+    <% if (!insights) { %>
+      <div class="empty-state">
+        <div class="icon">◎</div>
+        <h2>Keine Erkenntnisse verfügbar</h2>
+        <% if (view_meta.is_strict) { %>
+          <p>Strict-Mode aktiv – kein Fallback auf Fixture-Daten. Bitte Artefakt bereitstellen.</p>
+        <% } else { %>
+          <p>Noch keine semantische Analyse für heute vorhanden. Sobald das insights.daily-Artefakt generiert wurde, erscheinen hier die Erkenntnisse.</p>
+        <% } %>
+        <% if (view_meta.missing_reason && view_meta.missing_reason !== 'ok') { %>
+          <p>Grund: <%= view_meta.missing_reason %></p>
+        <% } %>
+      </div>
+    <% } else { %>
+      <% if (insights.topics.length > 0) { %>
+      <div class="section">
+        <div class="section-title">Topics</div>
+        <div class="topic-list">
+          <% for (const [name, score] of insights.topics) { %>
+          <% const scorePercent = Math.round(Math.min(Math.max(Number(score), 0), 1) * 100); %>
+          <% const scoreWidth = `${scorePercent}%`; %>
+          <div class="topic-row">
+            <span class="topic-name" title="<%= name %>"><%= name %></span>
+            <div class="topic-bar-track">
+              <div class="topic-bar-fill" style="width: <%= scoreWidth %>;"></div>
+            </div>
+            <span class="topic-score"><%= scorePercent %>%</span>
+          </div>
+          <% } %>
+        </div>
+      </div>
+      <% } %>
+
+      <% if (insights.questions.length > 0) { %>
+      <div class="section">
+        <div class="section-title">Offene Fragen</div>
+        <ul class="item-list questions-list">
+          <% for (const question of insights.questions) { %>
+          <li><%= question %></li>
+          <% } %>
+        </ul>
+      </div>
+      <% } %>
+
+      <% if (insights.deltas.length > 0) { %>
+      <div class="section">
+        <div class="section-title">Deltas</div>
+        <ul class="item-list deltas-list">
+          <% for (const delta of insights.deltas) { %>
+          <li><%= delta %></li>
+          <% } %>
+        </ul>
+      </div>
+      <% } %>
+
+      <% if (insights.topics.length === 0 && insights.questions.length === 0 && insights.deltas.length === 0) { %>
+      <div class="empty-state">
+        <div class="icon">◎</div>
+        <h2>Erkenntnisdaten leer</h2>
+        <p>Die Analyse enthält noch keine Topics, Fragen oder Deltas.</p>
+      </div>
+      <% } %>
+    <% } %>
+  </div>
+
+  <div id="source-badge">
+    <% if (view_meta.source_kind === 'fixture') { %>
+      <span class="warn">Fixture-Daten</span> · Kein Artefakt vorhanden
+    <% } else if (view_meta.source_kind === 'missing') { %>
+      <span class="warn">Keine Daten</span> · <%= view_meta.missing_reason %>
+    <% } else { %>
+      Quelle: Artefakt
+    <% } %>
+    <% if (view_meta.data_timestamp) { %> · <%= view_meta.data_timestamp.slice(0, 16).replace('T', ' ') %> UTC<% } %>
+    <% if (view_meta.freshness_state === 'stale') { %>
+      · <span class="warn">Stale</span>
+      <% if (view_meta.data_age_minutes !== null) { %> · <%= Math.floor(view_meta.data_age_minutes / 60) %>h alt<% } %>
+    <% } else if (view_meta.freshness_state === 'fresh' && view_meta.data_age_minutes !== null) { %>
+      · <%= Math.floor(view_meta.data_age_minutes / 60) %>h alt
+    <% } else { %>
+      · Frische: unbekannt
+    <% } %>
+    <% if (view_meta.freshness_source === 'mtime') { %>
+      · via mtime (Transportzeit)
+    <% } else if (view_meta.freshness_source !== 'unknown') { %>
+      · via <%= view_meta.freshness_source %>
+    <% } %>
+    <% if (view_meta.freshness_degraded) { %>
+      · <span class="warn">degradierter Fallback</span>
+    <% } %>
+    <% if (view_meta.uncertainty !== null) { %>
+      · Unsicherheit: <%= (view_meta.uncertainty * 100).toFixed(0) %>%
+    <% } %>
+    <% if (view_meta.observatory_ref) { %>
+      · Ref: <%= view_meta.observatory_ref %>
+    <% } %>
+  </div>
+</body>
+</html>
