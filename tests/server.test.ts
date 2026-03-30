@@ -389,6 +389,38 @@ describe('GET /insights', () => {
     expect(res.text).toContain('New insights route wired');
   });
 
+  it('should show transport-time wording when freshness falls back to mtime', async () => {
+    const insightsController = await import('../src/controllers/insights.js');
+    vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({
+      insights: {
+        ts: '',
+        topics: [['leitstand', 0.6]],
+        questions: [],
+        deltas: [],
+        metadata: { observatory_ref: 'obs-transport' },
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: '2026-03-30T06:00:00.000Z',
+        data_age_minutes: 360,
+        freshness_state: 'fresh',
+        freshness_source: 'mtime',
+        freshness_degraded: true,
+        stale_after_hours: 30,
+        uncertainty: null,
+        observatory_ref: 'obs-transport',
+      },
+    });
+
+    const res = await request(app).get('/insights');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('via mtime (Transportzeit)');
+    expect(res.text).toContain('degradierter Fallback');
+  });
+
   it('should return generic 503 Service Unavailable on strict mode failure', async () => {
     const insightsController = await import('../src/controllers/insights.js');
     vi.spyOn(insightsController, 'getInsightsData').mockRejectedValueOnce(new Error('Strict Fail: SENSITIVE_PATH_LEAK'));
