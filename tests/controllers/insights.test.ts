@@ -1,10 +1,15 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getInsightsData } from '../../src/controllers/insights.js';
+import { stat } from 'fs/promises';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetEnvConfig } from '../../src/config.js';
+import { getInsightsData } from '../../src/controllers/insights.js';
 import { loadWithFallback } from '../../src/utils/loader.js';
 
 vi.mock('../../src/utils/loader.js', () => ({
   loadWithFallback: vi.fn(),
+}));
+
+vi.mock('fs/promises', () => ({
+  stat: vi.fn(),
 }));
 
 const fixtureInsights = {
@@ -26,6 +31,7 @@ describe('getInsightsData controller', () => {
     vi.unstubAllEnvs();
     resetEnvConfig();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.mocked(stat).mockResolvedValue({ mtime: new Date('2026-03-30T00:00:00.000Z') } as Awaited<ReturnType<typeof stat>>);
   });
 
   afterEach(() => {
@@ -42,10 +48,11 @@ describe('getInsightsData controller', () => {
     const result = await getInsightsData();
 
     expect(result.insights).not.toBeNull();
-    expect(result.insights!.ts).toBe('2025-12-28');
-    expect(result.insights!.topics).toHaveLength(3);
+    expect(result.insights?.ts).toBe('2025-12-28');
+    expect(result.insights?.topics).toHaveLength(3);
     expect(result.view_meta.source_kind).toBe('fixture');
     expect(result.view_meta.missing_reason).toBe('enoent');
+    expect(result.view_meta.freshness_source).toBe('ts');
   });
 
   it('should return insights from artifact path', async () => {
@@ -76,6 +83,7 @@ describe('getInsightsData controller', () => {
     expect(result.view_meta.freshness_state).toBe('unknown');
     expect(result.view_meta.data_age_minutes).toBeNull();
     expect(result.view_meta.uncertainty).toBeNull();
+    expect(result.view_meta.observatory_ref).toBeNull();
   });
 
   it('should mark freshness as stale when metadata.generated_at is older than 30 h', async () => {
@@ -95,8 +103,9 @@ describe('getInsightsData controller', () => {
       const result = await getInsightsData();
 
       expect(result.view_meta.freshness_state).toBe('stale');
-      expect(result.view_meta.data_age_minutes).toBe(44 * 60); // 44 h
+      expect(result.view_meta.data_age_minutes).toBe(44 * 60);
       expect(result.view_meta.stale_after_hours).toBe(30);
+      expect(result.view_meta.freshness_source).toBe('metadata.generated_at');
     } finally {
       vi.useRealTimers();
     }
@@ -119,7 +128,8 @@ describe('getInsightsData controller', () => {
       const result = await getInsightsData();
 
       expect(result.view_meta.freshness_state).toBe('fresh');
-      expect(result.view_meta.data_age_minutes).toBe(8 * 60); // 8 h
+      expect(result.view_meta.data_age_minutes).toBe(8 * 60);
+      expect(result.view_meta.freshness_source).toBe('metadata.generated_at');
     } finally {
       vi.useRealTimers();
     }
@@ -133,7 +143,7 @@ describe('getInsightsData controller', () => {
       vi.mocked(loadWithFallback).mockResolvedValue({
         data: {
           ...fixtureInsights,
-          metadata: { uncertainty: 0.1 }, // no generated_at
+          metadata: { uncertainty: 0.1 },
           ts: '2026-03-30',
         },
         source: 'fixture',
@@ -142,9 +152,9 @@ describe('getInsightsData controller', () => {
 
       const result = await getInsightsData();
 
-      // ts "2026-03-30" → midnight UTC → 12 h ago
       expect(result.view_meta.freshness_state).toBe('fresh');
       expect(result.view_meta.data_age_minutes).toBe(12 * 60);
+      expect(result.view_meta.freshness_source).toBe('ts');
     } finally {
       vi.useRealTimers();
     }
@@ -168,7 +178,35 @@ describe('getInsightsData controller', () => {
     expect(result.view_meta.data_age_minutes).toBeNull();
   });
 
-  it('should pass through uncertainty from metadata', async () => {
+  it('should fall back to transport timestamp when semantic timestamps are unavailable', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-30T12:00:00.000Z'));
+
+    try {
+      vi.mocked(stat).mockResolvedValue({ mtime: new Date('2026-03-30T06:00:00.000Z') } as Awaited<ReturnType<typeof stat>>);
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: {
+          ...fixtureInsights,
+          ts: '',
+          metadata: { observatory_ref: 'obs-001' },
+        },
+        source: 'artifact',
+        reason: 'ok',
+      });
+
+      const result = await getInsightsData();
+
+      expect(result.insights).not.toBeNull();
+      expect(result.view_meta.freshness_state).toBe('fresh');
+      expect(result.view_meta.freshness_source).toBe('mtime');
+      expect(result.view_meta.freshness_degraded).toBe(true);
+      expect(result.view_meta.data_age_minutes).toBe(6 * 60);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('should pass through valid uncertainty from metadata', async () => {
     vi.mocked(loadWithFallback).mockResolvedValue({
       data: {
         ...fixtureInsights,
@@ -183,6 +221,22 @@ describe('getInsightsData controller', () => {
     expect(result.view_meta.uncertainty).toBeCloseTo(0.35);
   });
 
+  it('should clamp invalid uncertainty to null', async () => {
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: {
+        ...fixtureInsights,
+        metadata: { uncertainty: 1.5, observatory_ref: 'obs-002' },
+      },
+      source: 'artifact',
+      reason: 'ok',
+    });
+
+    const result = await getInsightsData();
+
+    expect(result.view_meta.uncertainty).toBeNull();
+    expect(result.view_meta.observatory_ref).toBe('obs-002');
+  });
+
   it('should return null uncertainty when metadata has no uncertainty field', async () => {
     vi.mocked(loadWithFallback).mockResolvedValue({
       data: { ...fixtureInsights, metadata: {} },
@@ -193,6 +247,25 @@ describe('getInsightsData controller', () => {
     const result = await getInsightsData();
 
     expect(result.view_meta.uncertainty).toBeNull();
+  });
+
+  it('should suppress invalid payloads instead of rendering broken structures', async () => {
+    vi.mocked(loadWithFallback).mockResolvedValue({
+      data: {
+        ts: 123,
+        topics: 'invalid',
+        questions: {},
+        deltas: null,
+      },
+      source: 'artifact',
+      reason: 'ok',
+    });
+
+    const result = await getInsightsData();
+
+    expect(result.insights).toBeNull();
+    expect(result.view_meta.source_kind).toBe('artifact');
+    expect(result.view_meta.missing_reason).toBe('invalid-shape');
   });
 
   it('should call loadWithFallback with correct paths and name', async () => {

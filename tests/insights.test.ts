@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFile, rm, mkdtemp } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadDailyInsights } from '../src/insights.js';
+import { loadDailyInsights, sanitizeDailyInsights } from '../src/insights.js';
 
 describe('insights', () => {
   let testDir: string;
@@ -68,5 +68,26 @@ describe('insights', () => {
     await writeFile(path, '{ invalid json }', 'utf-8');
     
     await expect(loadDailyInsights(path)).rejects.toThrow('Invalid JSON');
+  });
+
+  it('should sanitize malformed optional fields and clamp uncertainty', () => {
+    const insights = sanitizeDailyInsights({
+      ts: '2025-12-05',
+      topics: [['TypeScript', 0.7], ['Broken'], ['NaN', Number.NaN]],
+      questions: ['How to test?', 42],
+      deltas: ['Added new feature', { text: 'broken' }],
+      metadata: {
+        generated_at: '2025-12-05T10:00:00.000Z',
+        uncertainty: 1.4,
+        observatory_ref: 'obs-123',
+      },
+    });
+
+    expect(insights).not.toBeNull();
+    expect(insights?.topics).toEqual([['TypeScript', 0.7]]);
+    expect(insights?.questions).toEqual(['How to test?']);
+    expect(insights?.deltas).toEqual(['Added new feature']);
+    expect(insights?.metadata?.uncertainty).toBeUndefined();
+    expect(insights?.metadata?.observatory_ref).toBe('obs-123');
   });
 });

@@ -21,9 +21,90 @@ export interface DailyInsights {
   source?: string;
   /** Optional metadata */
   metadata?: {
+    generated_at?: string;
     observatory_ref?: string;
     uncertainty?: number;
     [key: string]: unknown;
+  };
+}
+
+interface RawInsights {
+  ts?: unknown;
+  topics?: unknown;
+  questions?: unknown;
+  deltas?: unknown;
+  source?: unknown;
+  metadata?: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function sanitizeMetadata(rawMetadata: unknown): DailyInsights['metadata'] | undefined {
+  if (!isRecord(rawMetadata)) {
+    return undefined;
+  }
+
+  const metadata: Record<string, unknown> = { ...rawMetadata };
+
+  if (typeof metadata.generated_at !== 'string') {
+    delete metadata.generated_at;
+  }
+
+  if (typeof metadata.observatory_ref !== 'string') {
+    delete metadata.observatory_ref;
+  }
+
+  if (typeof metadata.uncertainty === 'number' && Number.isFinite(metadata.uncertainty)) {
+    if (metadata.uncertainty < 0 || metadata.uncertainty > 1) {
+      delete metadata.uncertainty;
+    }
+  } else {
+    delete metadata.uncertainty;
+  }
+
+  return Object.keys(metadata).length > 0 ? (metadata as DailyInsights['metadata']) : undefined;
+}
+
+export function sanitizeDailyInsights(rawData: unknown, options?: { requireTs?: boolean }): DailyInsights | null {
+  if (!isRecord(rawData)) {
+    return null;
+  }
+
+  const data = rawData as RawInsights;
+  const normalizedTs = typeof data.ts === 'string' ? data.ts.trim() : '';
+  if (options?.requireTs && normalizedTs === '') {
+    return null;
+  }
+
+  const topics: Topic[] = (Array.isArray(data.topics) ? data.topics : [])
+    .filter((topic: unknown): topic is Topic =>
+      Array.isArray(topic) &&
+      topic.length === 2 &&
+      typeof topic[0] === 'string' &&
+      typeof topic[1] === 'number' &&
+      Number.isFinite(topic[1])
+    );
+
+  const questions = Array.isArray(data.questions)
+    ? data.questions.filter((question: unknown): question is string => typeof question === 'string')
+    : [];
+  const deltas = Array.isArray(data.deltas)
+    ? data.deltas.filter((delta: unknown): delta is string => typeof delta === 'string')
+    : [];
+
+  if (normalizedTs === '' && topics.length === 0 && questions.length === 0 && deltas.length === 0) {
+    return null;
+  }
+
+  return {
+    ts: normalizedTs,
+    topics,
+    questions,
+    deltas,
+    source: typeof data.source === 'string' ? data.source : undefined,
+    metadata: sanitizeMetadata(data.metadata),
   };
 }
 
@@ -35,43 +116,12 @@ export interface DailyInsights {
  * @throws Error if file cannot be read or parsed
  */
 export async function loadDailyInsights(path: string): Promise<DailyInsights> {
-  interface RawInsights {
-    ts?: string;
-    topics?: unknown[];
-    questions?: unknown[];
-    deltas?: unknown[];
-    source?: string;
-    metadata?: Record<string, unknown>;
-    [key: string]: unknown;
-  }
   const rawData = await readJsonFile<unknown>(path);
+  const insights = sanitizeDailyInsights(rawData, { requireTs: true });
 
-  if (typeof rawData !== 'object' || rawData === null || Array.isArray(rawData)) {
-    throw new Error('Invalid insights payload: expected a JSON object');
+  if (!insights) {
+    throw new Error('Invalid insights payload: missing or invalid required fields');
   }
 
-  const data = rawData as RawInsights;
-
-  // Basic validation
-  if (!data.ts || typeof data.ts !== 'string') {
-    throw new Error('Missing or invalid "ts" field');
-  }
-
-  // Validate topics structure
-  const topics: Topic[] = (Array.isArray(data.topics) ? data.topics : [])
-    .filter((t: unknown): t is Topic =>
-      Array.isArray(t) &&
-      t.length === 2 &&
-      typeof t[0] === 'string' &&
-      typeof t[1] === 'number'
-    );
-
-  return {
-    ts: data.ts,
-    topics,
-    questions: Array.isArray(data.questions) ? data.questions.filter((q: unknown): q is string => typeof q === 'string') : [],
-    deltas: Array.isArray(data.deltas) ? data.deltas.filter((d: unknown): d is string => typeof d === 'string') : [],
-    source: typeof data.source === 'string' ? data.source : undefined,
-    metadata: typeof data.metadata === 'object' && data.metadata !== null ? data.metadata : undefined,
-  };
+  return insights;
 }

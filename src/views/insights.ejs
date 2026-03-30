@@ -19,6 +19,7 @@
       --text-secondary: #94a3b8;
       --text-muted: #64748b;
       --accent: #3b82f6;
+      --warn: #f59e0b;
     }
 
     body {
@@ -28,7 +29,6 @@
       min-height: 100vh;
     }
 
-    /* Navigation */
     nav {
       position: sticky;
       top: 0;
@@ -64,14 +64,12 @@
       letter-spacing: -0.01em;
     }
 
-    /* Main Layout */
     .main {
-      max-width: 800px;
+      max-width: 860px;
       margin: 0 auto;
-      padding: 32px 24px 80px;
+      padding: 32px 24px 96px;
     }
 
-    /* Page Header */
     .page-header {
       margin-bottom: 28px;
     }
@@ -88,7 +86,6 @@
       font-size: 0.88em;
     }
 
-    /* Interpretation Badge */
     .interpretation-badge {
       display: inline-block;
       margin-top: 10px;
@@ -101,7 +98,6 @@
       letter-spacing: 0.02em;
     }
 
-    /* Section Cards */
     .section {
       background: var(--bg-card);
       backdrop-filter: blur(16px);
@@ -121,7 +117,6 @@
       margin-bottom: 16px;
     }
 
-    /* Topics */
     .topic-list {
       display: flex;
       flex-direction: column;
@@ -164,12 +159,11 @@
     .topic-score {
       font-size: 0.72em;
       color: var(--text-muted);
-      min-width: 36px;
+      min-width: 42px;
       text-align: right;
       flex-shrink: 0;
     }
 
-    /* Questions & Deltas */
     .item-list {
       display: flex;
       flex-direction: column;
@@ -196,16 +190,12 @@
     .questions-list li::before { content: '?'; }
     .deltas-list li::before { content: '△'; }
 
-    .empty-list {
-      font-size: 0.82em;
-      color: var(--text-muted);
-      font-style: italic;
-    }
-
-    /* Empty State */
     .empty-state {
       text-align: center;
       padding: 56px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
     }
 
     .empty-state .icon {
@@ -224,11 +214,10 @@
     .empty-state p {
       font-size: 0.84em;
       color: var(--text-muted);
-      max-width: 380px;
-      margin: 0 auto;
+      max-width: 420px;
+      margin: 8px auto 0;
     }
 
-    /* Source Badge */
     #source-badge {
       position: fixed;
       bottom: 16px;
@@ -246,12 +235,11 @@
     }
 
     #source-badge .warn {
-      color: #f59e0b;
+      color: var(--warn);
     }
   </style>
 </head>
 <body>
-
   <nav>
     <span class="title">Leitstand</span>
     <a href="/">Home</a>
@@ -263,7 +251,6 @@
   </nav>
 
   <div class="main">
-
     <div class="page-header">
       <h1>Erkenntnisse</h1>
       <div class="subtitle">Semantische Tagesanalyse – Topics, offene Fragen und erkannte Deltas</div>
@@ -271,7 +258,6 @@
     </div>
 
     <% if (!insights) { %>
-
       <div class="empty-state">
         <div class="icon">◎</div>
         <h2>Keine Erkenntnisse verfügbar</h2>
@@ -280,67 +266,67 @@
         <% } else { %>
           <p>Noch keine semantische Analyse für heute vorhanden. Sobald das insights.daily-Artefakt generiert wurde, erscheinen hier die Erkenntnisse.</p>
         <% } %>
+        <% if (view_meta.missing_reason && view_meta.missing_reason !== 'ok') { %>
+          <p>Grund: <%= view_meta.missing_reason %></p>
+        <% } %>
       </div>
-
     <% } else { %>
-
-      <% if (insights.topics && insights.topics.length > 0) { %>
+      <% if (insights.topics.length > 0) { %>
       <div class="section">
         <div class="section-title">Topics</div>
         <div class="topic-list">
           <% for (const [name, score] of insights.topics) { %>
+          <% const scorePercent = Math.round(Math.min(Math.max(Number(score), 0), 1) * 100); %>
+          <% const scoreWidth = `${scorePercent}%`; %>
           <div class="topic-row">
             <span class="topic-name" title="<%= name %>"><%= name %></span>
             <div class="topic-bar-track">
-              <div class="topic-bar-fill" style="width: <%= Math.round(Math.min(Math.max(Number(score), 0), 1) * 100) %>%"></div>
+              <div class="topic-bar-fill" style="width: <%= scoreWidth %>;"></div>
             </div>
-            <span class="topic-score"><%= (Number(score) * 100).toFixed(0) %>%</span>
+            <span class="topic-score"><%= scorePercent %>%</span>
           </div>
           <% } %>
         </div>
       </div>
       <% } %>
 
-      <% if (insights.questions && insights.questions.length > 0) { %>
+      <% if (insights.questions.length > 0) { %>
       <div class="section">
         <div class="section-title">Offene Fragen</div>
         <ul class="item-list questions-list">
-          <% for (const q of insights.questions) { %>
-          <li><%= q %></li>
+          <% for (const question of insights.questions) { %>
+          <li><%= question %></li>
           <% } %>
         </ul>
       </div>
       <% } %>
 
-      <% if (insights.deltas && insights.deltas.length > 0) { %>
+      <% if (insights.deltas.length > 0) { %>
       <div class="section">
         <div class="section-title">Deltas</div>
         <ul class="item-list deltas-list">
-          <% for (const d of insights.deltas) { %>
-          <li><%= d %></li>
+          <% for (const delta of insights.deltas) { %>
+          <li><%= delta %></li>
           <% } %>
         </ul>
       </div>
       <% } %>
 
-      <% if ((!insights.topics || insights.topics.length === 0) && (!insights.questions || insights.questions.length === 0) && (!insights.deltas || insights.deltas.length === 0)) { %>
+      <% if (insights.topics.length === 0 && insights.questions.length === 0 && insights.deltas.length === 0) { %>
       <div class="empty-state">
         <div class="icon">◎</div>
         <h2>Erkenntnisdaten leer</h2>
         <p>Die Analyse enthält noch keine Topics, Fragen oder Deltas.</p>
       </div>
       <% } %>
-
     <% } %>
-
   </div>
 
-  <!-- Source Badge -->
   <div id="source-badge">
     <% if (view_meta.source_kind === 'fixture') { %>
-      <span class="warn">⚠ Fixture-Daten</span> · Kein Artefakt vorhanden
+      <span class="warn">Fixture-Daten</span> · Kein Artefakt vorhanden
     <% } else if (view_meta.source_kind === 'missing') { %>
-      <span class="warn">⚠ Keine Daten</span> · <%= view_meta.missing_reason %>
+      <span class="warn">Keine Daten</span> · <%= view_meta.missing_reason %>
     <% } else { %>
       Quelle: Artefakt
     <% } %>
@@ -353,10 +339,18 @@
     <% } else { %>
       · Frische: unbekannt
     <% } %>
+    <% if (view_meta.freshness_source !== 'unknown') { %>
+      · via <%= view_meta.freshness_source %>
+    <% } %>
+    <% if (view_meta.freshness_degraded) { %>
+      · <span class="warn">degradierter Fallback</span>
+    <% } %>
     <% if (view_meta.uncertainty !== null) { %>
       · Unsicherheit: <%= (view_meta.uncertainty * 100).toFixed(0) %>%
     <% } %>
+    <% if (view_meta.observatory_ref) { %>
+      · Ref: <%= view_meta.observatory_ref %>
+    <% } %>
   </div>
-
 </body>
 </html>
