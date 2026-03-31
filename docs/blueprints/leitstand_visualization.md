@@ -56,11 +56,11 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 
 ### 5) Phase 4 umsetzen: Erkenntnisschichten (Raw vs. Insight)
 
-- [ ] Zwei-Schichten-Sicht implementieren: Beobachtungsebene (Raw) klar getrennt von Interpretation (Insights).
-- [ ] Unsicherheits- und Confidence-Darstellung fur Insight-Elemente einbauen.
-- [ ] Insight-Evidenzpfad anzeigen (welche Events/Metriken stutzen diese Aussage?).
-- [ ] Tagesverdichtung (`insights.daily`) plus Delta zum Vortag visualisieren.
-- [ ] Akzeptanztest: Jede Insight-Kachel ist bis auf Rohdatenebene zuruckverfolgbar.
+- [x] Zwei-Schichten-Sicht implementieren: Beobachtungsebene (Raw) klar getrennt von Interpretation (Insights).
+- [x] Unsicherheits- und Confidence-Darstellung fur Insight-Elemente einbauen.
+- [x] Insight-Evidenzpfad anzeigen (welche Events/Metriken stutzen diese Aussage?).
+- [x] Tagesverdichtung (`insights.daily`) plus Delta zum Vortag visualisieren.
+- [x] Akzeptanztest: Jede Insight-Kachel ist bis auf Rohdatenebene zuruckverfolgbar.
 
 ### 6) Phase 5 umsetzen: Reflexion (Meta-Analyse)
 
@@ -94,6 +94,13 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [ ] Sprint D: Roadmap 7-8 (UX-Hartung + Qualitat + Rollout)
 
 ### Implementierungsstand (2026-03-29)
+
+- [x] Insights-Ansicht zeigt Zwei-Schichten-Sicht: Beobachtungsebene (Digest-Datum, Analyse-Quelle, Observatory-Referenz, Link zur Zeitachse) klar getrennt von der Interpretationsebene (Topics, Fragen, Deltas).
+- [x] Konfidenzbalken in der Beobachtungsebene berechnet aus globalem Unsicherheitswert (`1 - uncertainty`).
+- [x] Evidenzpfad sichtbar: Kette Observatorium → Analyse-Quelle → insights.daily → Erkenntnisse-Ansicht mit klickbarem Observatory-Link.
+- [x] Deltas-Sektion explizit als Tagesverdichtung mit Datum gekennzeichnet ("Veränderungen zum Vortag · Stand: …").
+- [x] Unsicherheits- und Konfidenzwert in Evidenzpfad-Karte als globale Aussage ausgewiesen.
+- [x] Tests fur Zwei-Schichten-Rendering, Evidenzpfad, Konfidenz und Tagesverdichtung in `tests/server.test.ts` erganzt.
 
 - [x] Timeline-Zeitfenster im UI steuerbar (`hours`: 6/24/48/72/168).
 - [x] Event-Limit im UI steuerbar (`max`: 100/200/500/1000).
