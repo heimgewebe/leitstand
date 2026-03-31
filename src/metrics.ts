@@ -115,13 +115,13 @@ export async function loadMetricsSnapshot(filePath: string): Promise<MetricsSnap
     const data = await readJsonFile<RawMetrics>(filePath);
     
     // Extract basic metrics with fallback defaults
-    const repoCount = data.repoCount || data.repos?.length || 0;
+    const repoCount = data.repoCount ?? data.repos?.length ?? 0;
 
     // We will recalculate status if repos array is present
-    let status = data.status || {
-      ok: data.ok || 0,
-      warn: data.warn || 0,
-      fail: data.fail || 0,
+    let status = data.status ?? {
+      ok: data.ok ?? 0,
+      warn: data.warn ?? 0,
+      fail: data.fail ?? 0,
     };
 
     let processedRepos: RepoData[] | undefined = undefined;

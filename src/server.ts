@@ -259,7 +259,7 @@ app.post('/events', async (req, res) => {
            meta.plexer_report = {
              fetched_at: new Date().toISOString(),
              source_kind: 'event',
-             bytes: Buffer.byteLength(JSON.stringify(payload))
+             bytes: Buffer.byteLength(serializedPayload)
            };
            return meta;
        });

@@ -193,7 +193,7 @@ function buildHealthOverlay(
   const healthFreshness: 'fresh' | 'stale' | 'unknown' =
     freshness.freshness_state === 'unknown'
       ? 'unknown'
-      : (freshness.data_age_minutes || 0) > HEALTH_STALE_AFTER_HOURS * 60
+      : (freshness.data_age_minutes ?? 0) > HEALTH_STALE_AFTER_HOURS * 60
         ? 'stale'
         : 'fresh';
 
