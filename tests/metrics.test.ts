@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFile, rm, mkdtemp, utimes } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadLatestMetrics } from '../src/metrics.js';
+import { loadLatestMetrics, loadMetricsSnapshot } from '../src/metrics.js';
 
 describe('metrics', () => {
   let testDir: string;
@@ -180,5 +180,21 @@ describe('metrics', () => {
     expect(metrics).toBeDefined();
     expect(metrics?.repoCount).toBe(3); // Should derive from repos array
     expect(metrics?.status.ok).toBe(2);
+  });
+
+  it('preserves explicit repoCount: 0 even when repos array has entries', async () => {
+    // Regression: repoCount was computed with || so an explicit 0 would silently fall
+    // through to repos.length. With ?? the explicit 0 is kept as-is.
+    const metricsData = {
+      timestamp: '2025-12-05T12:00:00Z',
+      repoCount: 0,
+      repos: [{ name: 'repo1', status: 'ok' }],
+    };
+    const filePath = join(testDir, 'metrics-zero-repocount.json');
+    await writeFile(filePath, JSON.stringify(metricsData), 'utf-8');
+
+    const metrics = await loadMetricsSnapshot(filePath);
+
+    expect(metrics.repoCount).toBe(0);
   });
 });

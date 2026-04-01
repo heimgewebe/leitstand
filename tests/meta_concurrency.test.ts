@@ -35,6 +35,30 @@ describe('POST /events concurrency', () => {
         resetValidators();
     });
 
+    it('plexer_report.bytes in _meta.json equals Buffer.byteLength of the actual artifact file', async () => {
+        // Regression: bytes was previously computed from compact JSON.stringify(payload) while
+        // the artifact is written with JSON.stringify(payload, null, 2). This test ensures both
+        // match — i.e. the metadata describes what is actually on disk.
+        const payload = {
+            counts: { pending: 3, failed: 1 },
+            last_error: 'timeout',
+            last_retry_at: new Date().toISOString(),
+        };
+
+        const res = await request(app)
+            .post('/events')
+            .send({ type: 'plexer.delivery.report.v1', payload });
+
+        expect(res.status).toBe(200);
+
+        await __wait_for_meta_queue();
+
+        const fileContent = await fs.readFile(artifactPath, 'utf8');
+        const meta = JSON.parse(await fs.readFile(metaPath, 'utf8'));
+
+        expect(meta.plexer_report.bytes).toBe(Buffer.byteLength(fileContent));
+    });
+
     it('should correctly handle concurrent plexer reports and maintain valid _meta.json', async () => {
         const iterations = 10;
         const promises = [];
