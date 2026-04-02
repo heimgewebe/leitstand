@@ -57,6 +57,10 @@ describe('POST /events concurrency', () => {
         const meta = JSON.parse(await fs.readFile(metaPath, 'utf8'));
 
         expect(meta.plexer_report.bytes).toBe(Buffer.byteLength(fileContent));
+        // Pin the storage format invariant: the handler deliberately writes pretty-printed JSON.
+        // If someone switches to compact serialization and also updates the bytes accordingly,
+        // the line above would still pass — this assertion catches that format regression.
+        expect(fileContent).toBe(JSON.stringify(payload, null, 2));
     });
 
     it('should correctly handle concurrent plexer reports and maintain valid _meta.json', async () => {
