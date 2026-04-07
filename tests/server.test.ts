@@ -395,9 +395,20 @@ describe('GET /insights', () => {
       insights: {
         ts: '2026-03-30',
         topics: [['leitstand', 0.8]],
-        questions: [],
+        questions: ['Welche Quelle stützt den Shift?'],
         deltas: ['Something shifted'],
         source: 'semantAH.daily',
+        data_refs: {
+          topics: {
+            '0': { refs: ['event:evt-123', 'obs:obs-999'], drilldown_url: '/timeline?focus=evt-123' },
+          },
+          questions: {
+            '0': { refs: ['metric:cpu:95'] },
+          },
+          deltas: {
+            '0': { refs: ['event:evt-200'], drilldown_url: '/timeline?focus=evt-200' },
+          },
+        },
         metadata: { observatory_ref: 'obs-999', uncertainty: 0.1 },
       },
       view_meta: {
@@ -431,6 +442,13 @@ describe('GET /insights', () => {
     expect(res.text).toContain('Evidenzpfad');
     expect(res.text).toContain('obs-999');
     expect(res.text).toContain('insights.daily');
+    // Per-insight traceability refs
+    expect(res.text).toContain('data_refs');
+    expect(res.text).toContain('event:evt-123');
+    expect(res.text).toContain('metric:cpu:95');
+    expect(res.text).toContain('event:evt-200');
+    expect(res.text).toContain('/timeline?focus=evt-123');
+    expect(res.text).toContain('/timeline?focus=evt-200');
   });
 
   it('should render delta section with Tagesverdichtung label and date', async () => {

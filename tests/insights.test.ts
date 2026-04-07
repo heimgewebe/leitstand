@@ -76,6 +76,15 @@ describe('insights', () => {
       topics: [['TypeScript', 0.7], ['Broken'], ['NaN', Number.NaN]],
       questions: ['How to test?', 42],
       deltas: ['Added new feature', { text: 'broken' }],
+      data_refs: {
+        topics: {
+          '0': { refs: ['event:123', 'obs:alpha'], drilldown_url: '/timeline?focus=123' },
+          bad: { refs: ['ignored'] },
+        },
+        questions: {
+          '0': { refs: ['metric:cpu'], drilldown_url: 'javascript:alert(1)' },
+        },
+      },
       metadata: {
         generated_at: '2025-12-05T10:00:00.000Z',
         uncertainty: 1.4,
@@ -87,7 +96,35 @@ describe('insights', () => {
     expect(insights?.topics).toEqual([['TypeScript', 0.7]]);
     expect(insights?.questions).toEqual(['How to test?']);
     expect(insights?.deltas).toEqual(['Added new feature']);
+    expect(insights?.data_refs?.topics).toEqual({
+      '0': { refs: ['event:123', 'obs:alpha'], drilldown_url: '/timeline?focus=123' },
+    });
+    expect(insights?.data_refs?.questions).toEqual({
+      '0': { refs: ['metric:cpu'], drilldown_url: undefined },
+    });
     expect(insights?.metadata?.uncertainty).toBeUndefined();
     expect(insights?.metadata?.observatory_ref).toBe('obs-123');
+  });
+
+  it('should ignore invalid data_refs sections and entries', () => {
+    const insights = sanitizeDailyInsights({
+      ts: '2025-12-05',
+      topics: [['Topic', 0.5]],
+      questions: ['Q1'],
+      deltas: ['D1'],
+      data_refs: {
+        topics: {
+          '0': { refs: [] },
+          '1': { refs: ['ok'] },
+        },
+        deltas: 'invalid',
+      },
+    });
+
+    expect(insights).not.toBeNull();
+    expect(insights?.data_refs?.topics).toEqual({
+      '1': { refs: ['ok'], drilldown_url: undefined },
+    });
+    expect(insights?.data_refs?.deltas).toBeUndefined();
   });
 });

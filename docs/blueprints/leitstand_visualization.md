@@ -60,7 +60,7 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [x] Unsicherheits- und Confidence-Darstellung fur Insight-Elemente einbauen.
 - [x] Sichtbaren Herkunftspfad anzeigen (Observatorium -> Analyse-Quelle -> insights.daily -> UI).
 - [~] Tagesverdichtung (`insights.daily`) plus Delta zum Vortag visualisieren (UI-Label vorhanden; belastbarer Vortagsvergleich als Datenbindung noch offen).
-- [~] Akzeptanztest: Jede Insight-Kachel ist bis auf Rohdatenebene zuruckverfolgbar (globaler Herkunftspfad umgesetzt, per-Insight-Raw-Refs noch offen).
+- [~] Akzeptanztest: Jede Insight-Kachel ist bis auf Rohdatenebene zuruckverfolgbar (UI/Payload unterstutzen per-Insight-`data_refs`; flachendeckende Producer-Befullung noch offen).
 
 ### 6) Phase 5 umsetzen: Reflexion (Meta-Analyse)
 
@@ -101,7 +101,8 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [~] Deltas-Sektion als Tagesverdichtung mit Datum gekennzeichnet ("Veränderungen zum Vortag · Stand: …"); ein belastbarer Vergleich auf konkretes Vortags-Artefakt ist noch nicht separat ausgewiesen.
 - [x] Unsicherheits- und Konfidenzwert in Evidenzpfad-Karte als globale Aussage ausgewiesen.
 - [x] Tests fur Zwei-Schichten-Rendering, Evidenzpfad, Konfidenz und Tagesverdichtung in `tests/server.test.ts` erganzt.
-- [ ] Per-Insight-Rohdatenreferenzen (`data_refs`/Drilldown-Ziele) fur harte Ende-zu-Ende-Ruckverfolgbarkeit sind noch nicht umgesetzt.
+- [x] Per-Insight-Rohdatenreferenzen (`data_refs`/Drilldown-Ziele) werden im Insights-Payload akzeptiert und pro Topic/Frage/Delta im UI dargestellt.
+- [~] Flachendeckende Ende-zu-Ende-Ruckverfolgbarkeit hangt noch von konsistenter `data_refs`-Befullung in den Producer-Artefakten ab.
 
 - [x] Timeline-Zeitfenster im UI steuerbar (`hours`: 6/24/48/72/168).
 - [x] Event-Limit im UI steuerbar (`max`: 100/200/500/1000).
