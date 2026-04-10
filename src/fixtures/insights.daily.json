@@ -14,6 +14,28 @@
     "UI trennt Raw Observatory und Published Daily klarer."
   ],
   "source": "semantAH.daily",
+  "data_refs": {
+    "topics": {
+      "0": {
+        "refs": ["event:chronik:evt-2025-12-28-17", "obs:obs-example-001:topic/observatory"],
+        "drilldown_url": "/timeline?focus=evt-2025-12-28-17"
+      },
+      "1": {
+        "refs": ["event:chronik:evt-2025-12-28-22"]
+      }
+    },
+    "questions": {
+      "0": {
+        "refs": ["metric:fleet.health:wgx.warn_rate"],
+        "drilldown_url": "/anatomy"
+      }
+    },
+    "deltas": {
+      "0": {
+        "refs": ["event:insights.daily.generated", "obs:obs-example-001:source"]
+      }
+    }
+  },
   "metadata": {
     "observatory_ref": "obs-example-001",
     "uncertainty": 0.12

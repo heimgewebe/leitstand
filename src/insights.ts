@@ -5,6 +5,17 @@ import { readJsonFile } from './utils/fs.js';
  */
 export type Topic = [string, number];
 
+export interface InsightDataRefEntry {
+  refs: string[];
+  drilldown_url?: string;
+}
+
+export interface InsightDataRefs {
+  topics?: Record<string, InsightDataRefEntry>;
+  questions?: Record<string, InsightDataRefEntry>;
+  deltas?: Record<string, InsightDataRefEntry>;
+}
+
 /**
  * Daily insights from semantAH
  */
@@ -19,6 +30,8 @@ export interface DailyInsights {
   deltas: string[];
   /** Optional source identifier */
   source?: string;
+  /** Optional per-insight data references for traceability */
+  data_refs?: InsightDataRefs;
   /** Optional metadata */
   metadata?: {
     generated_at?: string;
@@ -34,6 +47,7 @@ interface RawInsights {
   questions?: unknown;
   deltas?: unknown;
   source?: unknown;
+  data_refs?: unknown;
   metadata?: unknown;
 }
 
@@ -67,6 +81,116 @@ function sanitizeMetadata(rawMetadata: unknown): DailyInsights['metadata'] | und
   return Object.keys(metadata).length > 0 ? (metadata as DailyInsights['metadata']) : undefined;
 }
 
+function isSafeDrilldownUrl(value: string): boolean {
+  // Allow only internal absolute paths (single leading slash).
+  return /^\/(?!\/)/.test(value);
+}
+
+function sanitizeDataRefEntry(rawEntry: unknown): InsightDataRefEntry | undefined {
+  if (!isRecord(rawEntry)) {
+    return undefined;
+  }
+
+  const refs = Array.isArray(rawEntry.refs)
+    ? rawEntry.refs
+      .filter((ref: unknown): ref is string => typeof ref === 'string')
+      .map((ref) => ref.trim())
+      .filter((ref) => ref.length > 0)
+    : [];
+
+  if (refs.length === 0) {
+    return undefined;
+  }
+
+  const drilldown = typeof rawEntry.drilldown_url === 'string' ? rawEntry.drilldown_url.trim() : '';
+
+  return {
+    refs,
+    drilldown_url: drilldown && isSafeDrilldownUrl(drilldown) ? drilldown : undefined,
+  };
+}
+
+function sanitizeDataRefSection(rawSection: unknown): Record<string, InsightDataRefEntry> | undefined {
+  if (!isRecord(rawSection)) {
+    return undefined;
+  }
+
+  const section: Record<string, InsightDataRefEntry> = {};
+  for (const [key, value] of Object.entries(rawSection)) {
+    if (!/^\d+$/.test(key)) {
+      continue;
+    }
+    const entry = sanitizeDataRefEntry(value);
+    if (entry) {
+      section[key] = entry;
+    }
+  }
+
+  return Object.keys(section).length > 0 ? section : undefined;
+}
+
+function sanitizeDataRefs(rawDataRefs: unknown): InsightDataRefs | undefined {
+  if (!isRecord(rawDataRefs)) {
+    return undefined;
+  }
+
+  const topics = sanitizeDataRefSection(rawDataRefs.topics);
+  const questions = sanitizeDataRefSection(rawDataRefs.questions);
+  const deltas = sanitizeDataRefSection(rawDataRefs.deltas);
+
+  if (!topics && !questions && !deltas) {
+    return undefined;
+  }
+
+  return {
+    topics,
+    questions,
+    deltas,
+  };
+}
+
+function pruneDataRefSectionToLength(
+  section: Record<string, InsightDataRefEntry> | undefined,
+  length: number,
+): Record<string, InsightDataRefEntry> | undefined {
+  if (!section || length <= 0) {
+    return undefined;
+  }
+
+  const pruned: Record<string, InsightDataRefEntry> = {};
+  for (const [key, value] of Object.entries(section)) {
+    const index = Number(key);
+    if (Number.isInteger(index) && index >= 0 && index < length) {
+      pruned[key] = value;
+    }
+  }
+
+  return Object.keys(pruned).length > 0 ? pruned : undefined;
+}
+
+function pruneDataRefsToContentLengths(
+  dataRefs: InsightDataRefs | undefined,
+  counts: { topics: number; questions: number; deltas: number },
+): InsightDataRefs | undefined {
+  if (!dataRefs) {
+    return undefined;
+  }
+
+  const topics = pruneDataRefSectionToLength(dataRefs.topics, counts.topics);
+  const questions = pruneDataRefSectionToLength(dataRefs.questions, counts.questions);
+  const deltas = pruneDataRefSectionToLength(dataRefs.deltas, counts.deltas);
+
+  if (!topics && !questions && !deltas) {
+    return undefined;
+  }
+
+  return {
+    topics,
+    questions,
+    deltas,
+  };
+}
+
 export function sanitizeDailyInsights(rawData: unknown, options?: { requireTs?: boolean }): DailyInsights | null {
   if (!isRecord(rawData)) {
     return null;
@@ -98,12 +222,19 @@ export function sanitizeDailyInsights(rawData: unknown, options?: { requireTs?: 
     return null;
   }
 
+  const dataRefs = pruneDataRefsToContentLengths(sanitizeDataRefs(data.data_refs), {
+    topics: topics.length,
+    questions: questions.length,
+    deltas: deltas.length,
+  });
+
   return {
     ts: normalizedTs,
     topics,
     questions,
     deltas,
     source: typeof data.source === 'string' ? data.source : undefined,
+    data_refs: dataRefs,
     metadata: sanitizeMetadata(data.metadata),
   };
 }
