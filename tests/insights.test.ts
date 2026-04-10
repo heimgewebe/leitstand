@@ -102,7 +102,6 @@ describe('insights', () => {
     });
     expect(insights?.data_refs?.questions).toEqual({
       '0': { refs: ['metric:cpu'], drilldown_url: undefined },
-      '1': { refs: ['metric:ram'], drilldown_url: undefined },
     });
     expect(insights?.metadata?.uncertainty).toBeUndefined();
     expect(insights?.metadata?.observatory_ref).toBe('obs-123');
@@ -111,7 +110,7 @@ describe('insights', () => {
   it('should only allow internal absolute-path drilldown URLs', () => {
     const insights = sanitizeDailyInsights({
       ts: '2025-12-05',
-      topics: [['Topic', 0.5]],
+      topics: [['Topic', 0.5], ['Topic 2', 0.4], ['Topic 3', 0.3]],
       questions: ['Q1'],
       deltas: ['D1'],
       data_refs: {
@@ -131,6 +130,46 @@ describe('insights', () => {
     });
   });
 
+  it('should prune data_refs that point to removed sanitized items', () => {
+    const insights = sanitizeDailyInsights({
+      ts: '2025-12-05',
+      topics: [['T1', 0.5], ['Broken'], ['T3', Number.NaN]],
+      questions: ['Q1', 123],
+      deltas: ['D1', { text: 'broken' }],
+      data_refs: {
+        topics: {
+          '0': { refs: ['topic:0'] },
+          '1': { refs: ['topic:1'] },
+          '2': { refs: ['topic:2'] },
+        },
+        questions: {
+          '0': { refs: ['question:0'] },
+          '1': { refs: ['question:1'] },
+        },
+        deltas: {
+          '0': { refs: ['delta:0'] },
+          '1': { refs: ['delta:1'] },
+        },
+      },
+    });
+
+    expect(insights).not.toBeNull();
+    expect(insights?.topics).toEqual([['T1', 0.5]]);
+    expect(insights?.questions).toEqual(['Q1']);
+    expect(insights?.deltas).toEqual(['D1']);
+    expect(insights?.data_refs).toEqual({
+      topics: {
+        '0': { refs: ['topic:0'], drilldown_url: undefined },
+      },
+      questions: {
+        '0': { refs: ['question:0'], drilldown_url: undefined },
+      },
+      deltas: {
+        '0': { refs: ['delta:0'], drilldown_url: undefined },
+      },
+    });
+  });
+
   it('should ignore invalid data_refs sections and entries', () => {
     const insights = sanitizeDailyInsights({
       ts: '2025-12-05',
@@ -147,9 +186,6 @@ describe('insights', () => {
     });
 
     expect(insights).not.toBeNull();
-    expect(insights?.data_refs?.topics).toEqual({
-      '1': { refs: ['ok'], drilldown_url: undefined },
-    });
-    expect(insights?.data_refs?.deltas).toBeUndefined();
+    expect(insights?.data_refs).toBeUndefined();
   });
 });

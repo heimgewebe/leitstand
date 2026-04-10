@@ -149,6 +149,48 @@ function sanitizeDataRefs(rawDataRefs: unknown): InsightDataRefs | undefined {
   };
 }
 
+function pruneDataRefSectionToLength(
+  section: Record<string, InsightDataRefEntry> | undefined,
+  length: number,
+): Record<string, InsightDataRefEntry> | undefined {
+  if (!section || length <= 0) {
+    return undefined;
+  }
+
+  const pruned: Record<string, InsightDataRefEntry> = {};
+  for (const [key, value] of Object.entries(section)) {
+    const index = Number(key);
+    if (Number.isInteger(index) && index >= 0 && index < length) {
+      pruned[key] = value;
+    }
+  }
+
+  return Object.keys(pruned).length > 0 ? pruned : undefined;
+}
+
+function pruneDataRefsToContentLengths(
+  dataRefs: InsightDataRefs | undefined,
+  counts: { topics: number; questions: number; deltas: number },
+): InsightDataRefs | undefined {
+  if (!dataRefs) {
+    return undefined;
+  }
+
+  const topics = pruneDataRefSectionToLength(dataRefs.topics, counts.topics);
+  const questions = pruneDataRefSectionToLength(dataRefs.questions, counts.questions);
+  const deltas = pruneDataRefSectionToLength(dataRefs.deltas, counts.deltas);
+
+  if (!topics && !questions && !deltas) {
+    return undefined;
+  }
+
+  return {
+    topics,
+    questions,
+    deltas,
+  };
+}
+
 export function sanitizeDailyInsights(rawData: unknown, options?: { requireTs?: boolean }): DailyInsights | null {
   if (!isRecord(rawData)) {
     return null;
@@ -180,13 +222,19 @@ export function sanitizeDailyInsights(rawData: unknown, options?: { requireTs?: 
     return null;
   }
 
+  const dataRefs = pruneDataRefsToContentLengths(sanitizeDataRefs(data.data_refs), {
+    topics: topics.length,
+    questions: questions.length,
+    deltas: deltas.length,
+  });
+
   return {
     ts: normalizedTs,
     topics,
     questions,
     deltas,
     source: typeof data.source === 'string' ? data.source : undefined,
-    data_refs: sanitizeDataRefs(data.data_refs),
+    data_refs: dataRefs,
     metadata: sanitizeMetadata(data.metadata),
   };
 }
