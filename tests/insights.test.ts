@@ -83,6 +83,7 @@ describe('insights', () => {
         },
         questions: {
           '0': { refs: ['metric:cpu'], drilldown_url: 'javascript:alert(1)' },
+          '1': { refs: ['metric:ram'], drilldown_url: '//evil.example/phish' },
         },
       },
       metadata: {
@@ -101,9 +102,33 @@ describe('insights', () => {
     });
     expect(insights?.data_refs?.questions).toEqual({
       '0': { refs: ['metric:cpu'], drilldown_url: undefined },
+      '1': { refs: ['metric:ram'], drilldown_url: undefined },
     });
     expect(insights?.metadata?.uncertainty).toBeUndefined();
     expect(insights?.metadata?.observatory_ref).toBe('obs-123');
+  });
+
+  it('should only allow internal absolute-path drilldown URLs', () => {
+    const insights = sanitizeDailyInsights({
+      ts: '2025-12-05',
+      topics: [['Topic', 0.5]],
+      questions: ['Q1'],
+      deltas: ['D1'],
+      data_refs: {
+        topics: {
+          '0': { refs: ['topic:ok'], drilldown_url: '/timeline?focus=123' },
+          '1': { refs: ['topic:blocked'], drilldown_url: 'https://evil.example' },
+          '2': { refs: ['topic:protocol-relative'], drilldown_url: '//evil.example/path' },
+        },
+      },
+    });
+
+    expect(insights).not.toBeNull();
+    expect(insights?.data_refs?.topics).toEqual({
+      '0': { refs: ['topic:ok'], drilldown_url: '/timeline?focus=123' },
+      '1': { refs: ['topic:blocked'], drilldown_url: undefined },
+      '2': { refs: ['topic:protocol-relative'], drilldown_url: undefined },
+    });
   });
 
   it('should ignore invalid data_refs sections and entries', () => {

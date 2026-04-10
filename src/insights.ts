@@ -82,7 +82,8 @@ function sanitizeMetadata(rawMetadata: unknown): DailyInsights['metadata'] | und
 }
 
 function isSafeDrilldownUrl(value: string): boolean {
-  return /^(https?:\/\/|\/)/.test(value);
+  // Allow only internal absolute paths (single leading slash).
+  return /^\/(?!\/)/.test(value);
 }
 
 function sanitizeDataRefEntry(rawEntry: unknown): InsightDataRefEntry | undefined {
