@@ -190,6 +190,11 @@
       line-height: 1.2;
     }
 
+    .topic-data-refs {
+      margin-left: 172px;
+      margin-bottom: 6px;
+    }
+
     .data-refs-label {
       text-transform: uppercase;
       letter-spacing: 0.07em;
@@ -243,6 +248,12 @@
       color: var(--text-muted);
       max-width: 420px;
       margin: 8px auto 0;
+    }
+
+    @media (max-width: 640px) {
+      .topic-data-refs {
+        margin-left: 0;
+      }
     }
 
     #source-badge {
@@ -582,7 +593,7 @@
             <span class="topic-score"><%= scorePercent %>%</span>
           </div>
           <% if (topicRefEntry) { %>
-          <div class="data-refs" style="margin-left:172px; margin-bottom:6px;">
+          <div class="data-refs topic-data-refs">
             <span class="data-refs-label">data_refs</span>
             <% for (const ref of topicRefEntry.refs) { %>
             <span class="data-ref-chip"><%= ref %></span>

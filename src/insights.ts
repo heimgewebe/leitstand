@@ -51,6 +51,11 @@ interface RawInsights {
   metadata?: unknown;
 }
 
+interface SanitizedIndexedItems<T> {
+  items: T[];
+  indexMap: Map<number, number>;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -86,6 +91,42 @@ function isSafeDrilldownUrl(value: string): boolean {
   return /^\/(?!\/)/.test(value);
 }
 
+function isTopic(value: unknown): value is Topic {
+  return Array.isArray(value) &&
+    value.length === 2 &&
+    typeof value[0] === 'string' &&
+    typeof value[1] === 'number' &&
+    Number.isFinite(value[1]);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function sanitizeIndexedItems<T>(
+  rawItems: unknown,
+  isValidItem: (value: unknown) => value is T,
+): SanitizedIndexedItems<T> {
+  const items: T[] = [];
+  const indexMap = new Map<number, number>();
+
+  if (!Array.isArray(rawItems)) {
+    return { items, indexMap };
+  }
+
+  for (let index = 0; index < rawItems.length; index++) {
+    const item = rawItems[index];
+    if (!isValidItem(item)) {
+      continue;
+    }
+
+    indexMap.set(index, items.length);
+    items.push(item);
+  }
+
+  return { items, indexMap };
+}
+
 function sanitizeDataRefEntry(rawEntry: unknown): InsightDataRefEntry | undefined {
   if (!isRecord(rawEntry)) {
     return undefined;
@@ -116,13 +157,23 @@ function sanitizeDataRefSection(rawSection: unknown): Record<string, InsightData
   }
 
   const section: Record<string, InsightDataRefEntry> = {};
+  const canonicalSources = new Map<string, boolean>();
   for (const [key, value] of Object.entries(rawSection)) {
     if (!/^\d+$/.test(key)) {
       continue;
     }
+
+    const canonicalKey = String(Number(key));
+    const isCanonicalKey = key === canonicalKey;
     const entry = sanitizeDataRefEntry(value);
-    if (entry) {
-      section[key] = entry;
+    if (!entry) {
+      continue;
+    }
+
+    const currentIsCanonical = canonicalSources.get(canonicalKey) ?? false;
+    if (!Object.prototype.hasOwnProperty.call(section, canonicalKey) || (!currentIsCanonical && isCanonicalKey)) {
+      section[canonicalKey] = entry;
+      canonicalSources.set(canonicalKey, isCanonicalKey);
     }
   }
 
@@ -149,36 +200,40 @@ function sanitizeDataRefs(rawDataRefs: unknown): InsightDataRefs | undefined {
   };
 }
 
-function pruneDataRefSectionToLength(
+function remapDataRefSection(
   section: Record<string, InsightDataRefEntry> | undefined,
-  length: number,
+  indexMap: Map<number, number>,
 ): Record<string, InsightDataRefEntry> | undefined {
-  if (!section || length <= 0) {
+  if (!section || indexMap.size === 0) {
     return undefined;
   }
 
-  const pruned: Record<string, InsightDataRefEntry> = {};
+  const remapped: Record<string, InsightDataRefEntry> = {};
   for (const [key, value] of Object.entries(section)) {
-    const index = Number(key);
-    if (Number.isInteger(index) && index >= 0 && index < length) {
-      pruned[key] = value;
+    const nextIndex = indexMap.get(Number(key));
+    if (nextIndex !== undefined) {
+      remapped[String(nextIndex)] = value;
     }
   }
 
-  return Object.keys(pruned).length > 0 ? pruned : undefined;
+  return Object.keys(remapped).length > 0 ? remapped : undefined;
 }
 
-function pruneDataRefsToContentLengths(
+function remapDataRefsToSanitizedContent(
   dataRefs: InsightDataRefs | undefined,
-  counts: { topics: number; questions: number; deltas: number },
+  indexMaps: {
+    topics: Map<number, number>;
+    questions: Map<number, number>;
+    deltas: Map<number, number>;
+  },
 ): InsightDataRefs | undefined {
   if (!dataRefs) {
     return undefined;
   }
 
-  const topics = pruneDataRefSectionToLength(dataRefs.topics, counts.topics);
-  const questions = pruneDataRefSectionToLength(dataRefs.questions, counts.questions);
-  const deltas = pruneDataRefSectionToLength(dataRefs.deltas, counts.deltas);
+  const topics = remapDataRefSection(dataRefs.topics, indexMaps.topics);
+  const questions = remapDataRefSection(dataRefs.questions, indexMaps.questions);
+  const deltas = remapDataRefSection(dataRefs.deltas, indexMaps.deltas);
 
   if (!topics && !questions && !deltas) {
     return undefined;
@@ -202,30 +257,22 @@ export function sanitizeDailyInsights(rawData: unknown, options?: { requireTs?: 
     return null;
   }
 
-  const topics: Topic[] = (Array.isArray(data.topics) ? data.topics : [])
-    .filter((topic: unknown): topic is Topic =>
-      Array.isArray(topic) &&
-      topic.length === 2 &&
-      typeof topic[0] === 'string' &&
-      typeof topic[1] === 'number' &&
-      Number.isFinite(topic[1])
-    );
+  const sanitizedTopics = sanitizeIndexedItems(data.topics, isTopic);
+  const sanitizedQuestions = sanitizeIndexedItems(data.questions, isString);
+  const sanitizedDeltas = sanitizeIndexedItems(data.deltas, isString);
 
-  const questions = Array.isArray(data.questions)
-    ? data.questions.filter((question: unknown): question is string => typeof question === 'string')
-    : [];
-  const deltas = Array.isArray(data.deltas)
-    ? data.deltas.filter((delta: unknown): delta is string => typeof delta === 'string')
-    : [];
+  const topics = sanitizedTopics.items;
+  const questions = sanitizedQuestions.items;
+  const deltas = sanitizedDeltas.items;
 
   if (normalizedTs === '' && topics.length === 0 && questions.length === 0 && deltas.length === 0) {
     return null;
   }
 
-  const dataRefs = pruneDataRefsToContentLengths(sanitizeDataRefs(data.data_refs), {
-    topics: topics.length,
-    questions: questions.length,
-    deltas: deltas.length,
+  const dataRefs = remapDataRefsToSanitizedContent(sanitizeDataRefs(data.data_refs), {
+    topics: sanitizedTopics.indexMap,
+    questions: sanitizedQuestions.indexMap,
+    deltas: sanitizedDeltas.indexMap,
   });
 
   return {
