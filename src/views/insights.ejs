@@ -111,16 +111,22 @@
       gap: 10px;
     }
 
+    :root {
+      --topic-label-width: 160px;
+      --topic-gap: 12px;
+      --topic-refs-offset: calc(var(--topic-label-width) + var(--topic-gap));
+    }
+
     .topic-row {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--topic-gap);
     }
 
     .topic-name {
       font-size: 0.82em;
       color: var(--text-primary);
-      min-width: 160px;
+      min-width: var(--topic-label-width);
       flex-shrink: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -191,7 +197,7 @@
     }
 
     .topic-data-refs {
-      margin-left: 172px;
+      margin-left: var(--topic-refs-offset);
       margin-bottom: 6px;
     }
 
