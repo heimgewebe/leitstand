@@ -3,26 +3,20 @@ id: docs.runbooks.ops.runbook.leitstand-gateway
 title: ops.runbook.leitstand-gateway
 doc_type: runbook
 status: active
-canonicality: derived
-source: heimgewebe/heimserver/runbooks/ops.runbook.leitstand-gateway.md
+canonicality: canonical
 summary: >
   ops.runbook.leitstand-gateway
 ---
 
 # ops.runbook.leitstand-gateway
 
-Canonical Source: Heimserver Ops Repository (runbooks/ops.runbook.leitstand-gateway.md)
-
-Dieses Dokument beschreibt den Vertragszustand. Operative Details werden ausschließlich im Heimserver-Repo gepflegt.
-
-
-Stand: 2026-02-03
-Dokumentklasse: VERTRAG · ABGELEITET
+Stand: 2026-02-03 (abgeleitet aus heimserver.context.md)
+Dokumentklasse: OPERATIV · KANONISCH
 Scope: Heimserver-only
-Owner: ops / Heimserver; Operative Änderungen erfolgen ausschließlich im Heimserver-Repo. Dieses Dokument wird davon abgeleitet (manuell synchronisiert).
+Owner: ops / Heimserver; Änderungen an Proxy/Firewall/DNS müssen dieses Runbook im selben PR updaten.
 
 ## 0) Zweck
-Dieses Runbook beschreibt den vertraglich fixierten Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers:
+Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers:
 - Gateway handles UI (canonical) and API (optional/external config)
 - kein Public
 - WireGuard = Transport
@@ -37,7 +31,7 @@ Dieses Runbook beschreibt den vertraglich fixierten Betrieb eines dauerhaft erre
 - Zugriff ausschließlich aus LAN (<LAN_SUBNET>) und WireGuard (<WG_SUBNET>)
 - Reverse Proxy ist die einzige Eintrittsstelle
 - Docker-Netze sind keine Vertrauenszone
-- Docker-Caddy ist die vertragliche Eintrittsstelle; Host-Caddy (systemd) ist verboten
+- Docker-Caddy ist kanonisch; Host-Caddy (systemd) ist verboten
 - TLS via Caddy internal CA
 - Leitstand: Viewer-first, READ-ONLY default
 - Aktionen ausschließlich über ACS; keine Leitstand-Fallback-Writes
@@ -66,29 +60,77 @@ Not trusted:
 - Docker 172.16.0.0/12 (bridge/networks)
 - WAN
 
-## 4) DNS (Vertrag)
+## 4) DNS (Komfort ist Funktion)
 SOLL:
 - leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (Gateway DNS)
 - api.heimgewebe.home.arpa -> <GATEWAY_IP> (optional)
+- WireGuard-Clients verwenden DNS = <DNS_SERVER_IP> (Local Resolver / Pi-hole)
 
-## 5) Orchestrierungsregel (Vertrag)
+VALIDIERUNG:
+- getent hosts leitstand.heimgewebe.home.arpa
+- getent hosts api.heimgewebe.home.arpa
+- ping leitstand.heimgewebe.home.arpa
+- (optional) dig leitstand.heimgewebe.home.arpa @<DNS_SERVER_IP>
+
+## 5) Orchestrierungsregel (KANON)
 - systemd: Host-nahe Dienste (z. B. docker.service, netfilter-persistent)
 - Docker/Compose: HTTP-/HTTPS-Dienste, UIs, APIs, Proxies
 - Mischbetrieb (Host-Caddy) ist verboten, außer explizit dokumentierte Ausnahme
 
-## 6) Caddy Site (Vertragsinvariante)
+## 6) Caddy Site (KANONISCH)
 Caddy läuft in Docker und ist die einzige Eintrittsstelle.
+Ingress ist ausschließlich für LAN/WireGuard erlaubt (Firewall/DOCKER-USER). Ob 80/443 an 127.0.0.1 oder 0.0.0.0 gebunden sind, ist deployment-spezifisch und wird im Heimserver-Runbook durchgesetzt.
 
-Gateway-Invariante:
-- leitstand.heimgewebe.home.arpa
-- HTTPS only
-- Reverse proxy zu leitstand:3000
+```caddy
+# Kanonische Caddy-Konfiguration liegt im Ops/Heimserver-Repo; dieses Snippet dient als Referenz und muss damit übereinstimmen.
 
-## 7) Firewall (Vertrag)
-Firewall-Details werden im Heimserver-Repo gepflegt.
+http://leitstand.heimgewebe.home.arpa {
+  redir https://leitstand.heimgewebe.home.arpa{uri} 308
+}
 
-## 8) DOCKER-USER cage (Vertrag)
-Netzwerk- und iptables-Details werden im Heimserver-Repo gepflegt.
+leitstand.heimgewebe.home.arpa {
+  encode zstd gzip
+  reverse_proxy leitstand:3000
+  tls internal
+}
+
+# API/ACS configuration is managed in Ops/Heimserver-Repo (optional)
+# http://api.heimgewebe.home.arpa {
+#   redir https://api.heimgewebe.home.arpa{uri} 308
+# }
+# api.heimgewebe.home.arpa {
+#   tls internal
+#   reverse_proxy acs:8099
+# }
+```
+
+## 7) Firewall (KANON)
+
+Stack:
+- iptables
+- netfilter-persistent
+UFW: entfernt (keine Doppelsteuerung)
+
+Inbound-Policy (minimales Set):
+- 22/tcp aus LAN+WG
+- 51820/udp von WAN (WireGuard)
+- 443/tcp aus LAN+WG (Entry-Gateway)
+
+## 8) DOCKER-USER cage (KANON)
+
+Ziel: 80/443 nur für LAN+WG zulassen; alles andere drop.
+
+Regeln:
+- ACCEPT TCP 80/443 aus <LAN_SUBNET>
+- ACCEPT TCP 80/443 aus <WG_SUBNET>
+- DROP sonst für 80/443
+- RETURN für nicht relevante Pakete
+
+VALIDIERUNG:
+- sudo iptables -S DOCKER-USER
+
+Hinweis:
+DOCKER-USER wirkt nur, wenn Docker Traffic durch FORWARD/DOCKER-Ketten führt (Sonder-Setups verifizieren).
 
 ## 9) Deploy-Runbook (Schritte)
 
