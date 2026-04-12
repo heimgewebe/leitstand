@@ -20,6 +20,8 @@
       --text-muted: #64748b;
       --accent: #3b82f6;
       --warn: #f59e0b;
+      --topic-name-width: 160px;
+      --topic-row-gap: 12px;
     }
 
     body {
@@ -114,13 +116,13 @@
     .topic-row {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--topic-row-gap);
     }
 
     .topic-name {
       font-size: 0.82em;
       color: var(--text-primary);
-      min-width: 160px;
+      min-width: var(--topic-name-width);
       flex-shrink: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -191,7 +193,7 @@
     }
 
     .topic-data-refs {
-      margin-left: 172px;
+      margin-left: calc(var(--topic-name-width) + var(--topic-row-gap));
       margin-bottom: 6px;
     }
 
