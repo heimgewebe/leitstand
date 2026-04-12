@@ -68,7 +68,7 @@ For details, refer to:
 The system supports distinct deployment models depending on your environment:
 - **Dev / Loopback (Default):** Runs locally binding to 127.0.0.1:3000. Ideal for development.
 - **LAN:** Binds to a specific LAN IP for direct access (requires caution).
-- **Heimserver Gateway (Proxy-first):** Runs the operative Leitstand UI behind a reverse proxy (e.g., Caddy) inside a Docker network (`heimnet`) without exposing host ports. (Does not implicitly publish the API.) The Heimserver is the single Source of Truth (SoT) for operational details like DNS, firewall, and reverse proxy configuration. See [Heimserver Gateway Runbook](docs/runbooks/ops.runbook.leitstand-gateway.md) for the contract.
+- **Heimserver Gateway (Proxy-first):** Runs the operative Leitstand UI behind a reverse proxy (e.g., Caddy) inside a Docker network (`heimnet`) without exposing host ports. (Does not implicitly publish the API.) The Heimserver is the single Source of Truth (SoT) for operational details like DNS, firewall, and reverse proxy configuration. See the [Runtime Contract](docs/runtime.contract.md) for the normative contract, and the [Heimserver Gateway Runbook](docs/runbooks/ops.runbook.leitstand-gateway.md) for operational context.
 
 ## Features
 
