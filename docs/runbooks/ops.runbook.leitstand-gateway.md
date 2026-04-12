@@ -4,7 +4,7 @@ title: ops.runbook.leitstand-gateway
 doc_type: runbook
 status: active
 canonicality: derived
-source: heimserver.context.md
+source: heimgewebe/heimserver/runbooks/ops.runbook.leitstand-gateway.md
 summary: >
   ops.runbook.leitstand-gateway
 ---
@@ -16,13 +16,13 @@ Canonical Source: Heimserver Ops Repository (runbooks/ops.runbook.leitstand-gate
 Dieses Dokument beschreibt den Vertragszustand. Operative Details werden ausschließlich im Heimserver-Repo gepflegt.
 
 
-Stand: 2026-02-03 (abgeleitet aus heimserver.context.md)
+Stand: 2026-02-03
 Dokumentklasse: VERTRAG · ABGELEITET
 Scope: Heimserver-only
-Owner: ops / Heimserver; Änderungen an Proxy/Firewall/DNS müssen dieses Runbook im selben PR updaten.
+Owner: ops / Heimserver; Operative Änderungen erfolgen ausschließlich im Heimserver-Repo. Dieses Dokument wird davon abgeleitet (manuell synchronisiert).
 
 ## 0) Zweck
-Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers:
+Dieses Runbook beschreibt den vertraglich fixierten Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers:
 - Gateway handles UI (canonical) and API (optional/external config)
 - kein Public
 - WireGuard = Transport
@@ -37,7 +37,7 @@ Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren H
 - Zugriff ausschließlich aus LAN (<LAN_SUBNET>) und WireGuard (<WG_SUBNET>)
 - Reverse Proxy ist die einzige Eintrittsstelle
 - Docker-Netze sind keine Vertrauenszone
-- Docker-Caddy ist kanonisch; Host-Caddy (systemd) ist verboten
+- Docker-Caddy ist die vertragliche Eintrittsstelle; Host-Caddy (systemd) ist verboten
 - TLS via Caddy internal CA
 - Leitstand: Viewer-first, READ-ONLY default
 - Aktionen ausschließlich über ACS; keine Leitstand-Fallback-Writes
@@ -71,12 +71,12 @@ SOLL:
 - leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (Gateway DNS)
 - api.heimgewebe.home.arpa -> <GATEWAY_IP> (optional)
 
-## 5) Orchestrierungsregel (KANON)
+## 5) Orchestrierungsregel (Vertrag)
 - systemd: Host-nahe Dienste (z. B. docker.service, netfilter-persistent)
 - Docker/Compose: HTTP-/HTTPS-Dienste, UIs, APIs, Proxies
 - Mischbetrieb (Host-Caddy) ist verboten, außer explizit dokumentierte Ausnahme
 
-## 6) Caddy Site (KANONISCH)
+## 6) Caddy Site (Vertragsinvariante)
 Caddy läuft in Docker und ist die einzige Eintrittsstelle.
 
 Gateway-Invariante:
@@ -84,10 +84,10 @@ Gateway-Invariante:
 - HTTPS only
 - Reverse proxy zu leitstand:3000
 
-## 7) Firewall (KANON)
+## 7) Firewall (Vertrag)
 Firewall-Details werden im Heimserver-Repo gepflegt.
 
-## 8) DOCKER-USER cage (KANON)
+## 8) DOCKER-USER cage (Vertrag)
 Netzwerk- und iptables-Details werden im Heimserver-Repo gepflegt.
 
 ## 9) Deploy-Runbook (Schritte)
