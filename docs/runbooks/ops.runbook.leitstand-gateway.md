@@ -3,7 +3,7 @@ id: docs.runbooks.ops.runbook.leitstand-gateway
 title: ops.runbook.leitstand-gateway
 doc_type: runbook
 status: active
-canonicality: canonical
+canonicality: derived
 summary: >
   ops.runbook.leitstand-gateway
 ---
@@ -16,7 +16,7 @@ Dieses Dokument beschreibt den Vertragszustand. Operative Details werden ausschl
 
 
 Stand: 2026-02-03 (abgeleitet aus heimserver.context.md)
-Dokumentklasse: OPERATIV · KANONISCH
+Dokumentklasse: VERTRAG · ABGELEITET
 Scope: Heimserver-only
 Owner: ops / Heimserver; Änderungen an Proxy/Firewall/DNS müssen dieses Runbook im selben PR updaten.
 
