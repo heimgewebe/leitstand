@@ -4,6 +4,7 @@ title: ops.runbook.leitstand-gateway
 doc_type: runbook
 status: active
 canonicality: derived
+source: heimserver.context.md
 summary: >
   ops.runbook.leitstand-gateway
 ---
