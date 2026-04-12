@@ -389,6 +389,137 @@ describe('GET /insights', () => {
     expect(res.text).toContain('New insights route wired');
   });
 
+  it('should render the Beobachtungsebene layer card with raw meta', async () => {
+    const insightsController = await import('../src/controllers/insights.js');
+    vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({
+      insights: {
+        ts: '2026-03-30',
+        topics: [['leitstand', 0.8]],
+        questions: ['Welche Quelle stützt den Shift?'],
+        deltas: ['Something shifted'],
+        source: 'semantAH.daily',
+        data_refs: {
+          topics: {
+            '0': { refs: ['event:evt-123', 'obs:obs-999'], drilldown_url: '/timeline?focus=evt-123' },
+          },
+          questions: {
+            '0': { refs: ['metric:cpu:95'] },
+          },
+          deltas: {
+            '0': { refs: ['event:evt-200'], drilldown_url: '/timeline?focus=evt-200' },
+          },
+        },
+        metadata: { observatory_ref: 'obs-999', uncertainty: 0.1 },
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: '2026-03-30T10:00:00.000Z',
+        data_age_minutes: 60,
+        freshness_state: 'fresh',
+        freshness_source: 'metadata.generated_at',
+        freshness_degraded: false,
+        stale_after_hours: 30,
+        uncertainty: 0.1,
+        observatory_ref: 'obs-999',
+      },
+    });
+
+    const res = await request(app).get('/insights');
+
+    expect(res.status).toBe(200);
+    // Zwei-Schichten: Beobachtungsebene card
+    expect(res.text).toContain('Beobachtungsebene');
+    expect(res.text).toContain('Rohdaten-Referenz');
+    expect(res.text).toContain('2026-03-30');
+    expect(res.text).toContain('semantAH.daily');
+    // Zwei-Schichten: Interpretationsebene divider
+    expect(res.text).toContain('Interpretationsebene');
+    // Confidence bar from uncertainty 0.1 → 90% confidence
+    expect(res.text).toContain('90%');
+    // Evidence path
+    expect(res.text).toContain('Evidenzpfad');
+    expect(res.text).toContain('obs-999');
+    expect(res.text).toContain('insights.daily');
+    // Per-insight traceability refs
+    expect(res.text).toContain('data_refs');
+    expect(res.text).toContain('event:evt-123');
+    expect(res.text).toContain('metric:cpu:95');
+    expect(res.text).toContain('event:evt-200');
+    expect(res.text).toContain('/timeline?focus=evt-123');
+    expect(res.text).toContain('/timeline?focus=evt-200');
+  });
+
+  it('should render delta section with Tagesverdichtung label and date', async () => {
+    const insightsController = await import('../src/controllers/insights.js');
+    vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({
+      insights: {
+        ts: '2026-03-29',
+        topics: [],
+        questions: [],
+        deltas: ['Neue Observatory-Quelle verfügbar.'],
+        metadata: { uncertainty: 0.25 },
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: '2026-03-30T08:00:00.000Z',
+        data_age_minutes: 30,
+        freshness_state: 'fresh',
+        freshness_source: 'metadata.generated_at',
+        freshness_degraded: false,
+        stale_after_hours: 30,
+        uncertainty: 0.25,
+        observatory_ref: null,
+      },
+    });
+
+    const res = await request(app).get('/insights');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Tagesverdichtung');
+    expect(res.text).toContain('Veränderungen zum Vortag');
+    expect(res.text).toContain('2026-03-29');
+    expect(res.text).toContain('Neue Observatory-Quelle verfügbar.');
+  });
+
+  it('should render evidence path without observatory node when ref is absent', async () => {
+    const insightsController = await import('../src/controllers/insights.js');
+    vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({
+      insights: {
+        ts: '2026-03-28',
+        topics: [['ci', 0.5]],
+        questions: [],
+        deltas: [],
+        source: 'semantAH.daily',
+      },
+      view_meta: {
+        source_kind: 'fixture',
+        missing_reason: 'enoent',
+        is_strict: false,
+        data_timestamp: null,
+        data_age_minutes: null,
+        freshness_state: 'unknown',
+        freshness_source: 'unknown',
+        freshness_degraded: false,
+        stale_after_hours: 30,
+        uncertainty: null,
+        observatory_ref: null,
+      },
+    });
+
+    const res = await request(app).get('/insights');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Evidenzpfad');
+    // No observatory link when ref is absent
+    expect(res.text).not.toContain('Observatorium (');
+    expect(res.text).toContain('semantAH.daily');
+    expect(res.text).toContain('insights.daily');
+  });
+
   it('should show transport-time wording when freshness falls back to mtime', async () => {
     const insightsController = await import('../src/controllers/insights.js');
     vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({

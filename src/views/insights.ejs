@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
   <title>Erkenntnisse – Leitstand</title>
   <meta charset="utf-8">
@@ -20,6 +20,8 @@
       --text-muted: #64748b;
       --accent: #3b82f6;
       --warn: #f59e0b;
+      --topic-name-width: 160px;
+      --topic-row-gap: 12px;
     }
 
     body {
@@ -86,18 +88,6 @@
       font-size: 0.88em;
     }
 
-    .interpretation-badge {
-      display: inline-block;
-      margin-top: 10px;
-      padding: 4px 10px;
-      background: rgba(59, 130, 246, 0.08);
-      border: 1px solid rgba(59, 130, 246, 0.2);
-      border-radius: 20px;
-      font-size: 0.72em;
-      color: var(--accent);
-      letter-spacing: 0.02em;
-    }
-
     .section {
       background: var(--bg-card);
       backdrop-filter: blur(16px);
@@ -126,13 +116,13 @@
     .topic-row {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--topic-row-gap);
     }
 
     .topic-name {
       font-size: 0.82em;
       color: var(--text-primary);
-      min-width: 160px;
+      min-width: var(--topic-name-width);
       flex-shrink: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -187,6 +177,50 @@
       font-size: 0.9em;
     }
 
+    .item-text {
+      display: block;
+      color: var(--text-secondary);
+    }
+
+    .data-refs {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 0.68em;
+      line-height: 1.2;
+    }
+
+    .topic-data-refs {
+      margin-left: calc(var(--topic-name-width) + var(--topic-row-gap));
+      margin-bottom: 6px;
+    }
+
+    .data-refs-label {
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .data-ref-chip {
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--border-glass);
+      background: var(--bg-glass);
+      color: var(--text-secondary);
+    }
+
+    .data-ref-link {
+      margin-left: 2px;
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(59, 130, 246, 0.35);
+    }
+
+    .data-ref-link:hover { text-decoration: underline; }
+
     .questions-list li::before { content: '?'; }
     .deltas-list li::before { content: '△'; }
 
@@ -218,6 +252,12 @@
       margin: 8px auto 0;
     }
 
+    @media (max-width: 640px) {
+      .topic-data-refs {
+        margin-left: 0;
+      }
+    }
+
     #source-badge {
       position: fixed;
       bottom: 16px;
@@ -237,6 +277,213 @@
     #source-badge .warn {
       color: var(--warn);
     }
+
+    /* ── Zwei-Schichten-Sicht ──────────────────────────── */
+
+    .layer-card {
+      border-radius: 14px;
+      padding: 18px 22px;
+      margin-bottom: 20px;
+    }
+
+    .layer-card.layer-raw {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .layer-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .layer-label {
+      font-size: 0.68em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .layer-label.raw { color: #6b7280; }
+    .layer-label.interp { color: var(--accent); }
+
+    .layer-pill {
+      font-size: 0.62em;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .layer-pill.raw {
+      background: rgba(107, 114, 128, 0.12);
+      border: 1px solid rgba(107, 114, 128, 0.25);
+      color: #9ca3af;
+    }
+
+    .layer-pill.interp {
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      color: var(--accent);
+    }
+
+    .raw-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .raw-meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .raw-meta-label {
+      font-size: 0.65em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .raw-meta-value {
+      font-size: 0.8em;
+      color: var(--text-secondary);
+    }
+
+    .raw-meta-value a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .raw-meta-value a:hover { text-decoration: underline; }
+
+    /* Confidence bar */
+    .confidence-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .confidence-label {
+      font-size: 0.68em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .confidence-track {
+      flex: 1;
+      height: 5px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-glass);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    .confidence-fill.high { background: #22c55e; }
+    .confidence-fill.mid  { background: #f59e0b; }
+    .confidence-fill.low  { background: #ef4444; }
+
+    .confidence-value {
+      font-size: 0.72em;
+      color: var(--text-muted);
+      min-width: 48px;
+      text-align: right;
+    }
+
+    /* Interpretation layer divider */
+    .layer-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .layer-divider::before,
+    .layer-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(59, 130, 246, 0.15);
+    }
+
+    .layer-divider span {
+      font-size: 0.65em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(59, 130, 246, 0.5);
+      white-space: nowrap;
+    }
+
+    /* Delta section */
+    .delta-date-note {
+      font-size: 0.72em;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    /* Evidence path */
+    .evidenz-card {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 24px;
+    }
+
+    .evidenz-title {
+      font-size: 0.68em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .evidenz-chain {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78em;
+    }
+
+    .evidenz-node {
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      color: var(--text-secondary);
+    }
+
+    .evidenz-node.origin {
+      border-color: rgba(59, 130, 246, 0.25);
+      color: var(--accent);
+    }
+
+    .evidenz-arrow {
+      color: var(--text-muted);
+      font-size: 0.9em;
+    }
+
+    .evidenz-node a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .evidenz-node a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -254,7 +501,6 @@
     <div class="page-header">
       <h1>Erkenntnisse</h1>
       <div class="subtitle">Semantische Tagesanalyse – Topics, offene Fragen und erkannte Deltas</div>
-      <span class="interpretation-badge">Semantische Interpretation – kein Rohdaten-Ersatz</span>
     </div>
 
     <% if (!insights) { %>
@@ -271,13 +517,76 @@
         <% } %>
       </div>
     <% } else { %>
+
+      <%
+        // Confidence = 1 - uncertainty (global). Null when no uncertainty provided.
+        const confidenceVal = (view_meta.uncertainty !== null) ? Math.max(0, 1 - view_meta.uncertainty) : null;
+        const confidencePct = confidenceVal !== null ? Math.round(confidenceVal * 100) : null;
+        const confidenceClass = confidencePct === null ? '' : confidencePct >= 75 ? 'high' : confidencePct >= 45 ? 'mid' : 'low';
+        const topicDataRefs = insights.data_refs?.topics ?? {};
+        const questionDataRefs = insights.data_refs?.questions ?? {};
+        const deltaDataRefs = insights.data_refs?.deltas ?? {};
+      %>
+
+      <!-- ── Beobachtungsebene ───────────────────────────────── -->
+      <div class="layer-card layer-raw">
+        <div class="layer-header">
+          <span class="layer-label raw">Beobachtungsebene</span>
+          <span class="layer-pill raw">Rohdaten-Referenz</span>
+        </div>
+        <div class="raw-meta-grid">
+          <% if (insights.ts) { %>
+          <div class="raw-meta-item">
+            <span class="raw-meta-label">Digest-Datum</span>
+            <span class="raw-meta-value"><%= insights.ts %></span>
+          </div>
+          <% } %>
+          <% if (insights.source) { %>
+          <div class="raw-meta-item">
+            <span class="raw-meta-label">Analyse-Quelle</span>
+            <span class="raw-meta-value"><%= insights.source %></span>
+          </div>
+          <% } %>
+          <div class="raw-meta-item">
+            <span class="raw-meta-label">Rohe Ereignisse</span>
+            <span class="raw-meta-value"><a href="/timeline">→ Zeitachse öffnen</a></span>
+          </div>
+          <% if (view_meta.observatory_ref) { %>
+          <div class="raw-meta-item">
+            <span class="raw-meta-label">Observatorium-Basis</span>
+            <span class="raw-meta-value"><a href="/observatory"><%= view_meta.observatory_ref %></a></span>
+          </div>
+          <% } %>
+        </div>
+        <% if (confidencePct !== null) { %>
+        <div class="confidence-row">
+          <span class="confidence-label">Konfidenz</span>
+          <div class="confidence-track">
+            <div class="confidence-fill <%= confidenceClass %>" style="width: <%= confidencePct %>%;"></div>
+          </div>
+          <span class="confidence-value"><%= confidencePct %>%</span>
+        </div>
+        <% } %>
+      </div>
+      <!-- ── Ende Beobachtungsebene ─────────────────────────── -->
+
+      <!-- Schichtentrennlinie -->
+      <div class="layer-divider">
+        <span>Interpretationsebene</span>
+      </div>
+
       <% if (insights.topics.length > 0) { %>
       <div class="section">
-        <div class="section-title">Topics</div>
+        <div class="layer-header" style="margin-bottom:14px;">
+          <span class="layer-label interp">Topics</span>
+          <span class="layer-pill interp">Semantische Gewichtung</span>
+        </div>
         <div class="topic-list">
-          <% for (const [name, score] of insights.topics) { %>
+          <% for (let idx = 0; idx < insights.topics.length; idx++) { %>
+          <% const [name, score] = insights.topics[idx]; %>
           <% const scorePercent = Math.round(Math.min(Math.max(Number(score), 0), 1) * 100); %>
           <% const scoreWidth = `${scorePercent}%`; %>
+          <% const topicRefEntry = topicDataRefs[String(idx)]; %>
           <div class="topic-row">
             <span class="topic-name" title="<%= name %>"><%= name %></span>
             <div class="topic-bar-track">
@@ -285,6 +594,17 @@
             </div>
             <span class="topic-score"><%= scorePercent %>%</span>
           </div>
+          <% if (topicRefEntry) { %>
+          <div class="data-refs topic-data-refs">
+            <span class="data-refs-label">data_refs</span>
+            <% for (const ref of topicRefEntry.refs) { %>
+            <span class="data-ref-chip"><%= ref %></span>
+            <% } %>
+            <% if (topicRefEntry.drilldown_url) { %>
+            <a class="data-ref-link" href="<%= topicRefEntry.drilldown_url %>">Drilldown</a>
+            <% } %>
+          </div>
+          <% } %>
           <% } %>
         </div>
       </div>
@@ -292,10 +612,28 @@
 
       <% if (insights.questions.length > 0) { %>
       <div class="section">
-        <div class="section-title">Offene Fragen</div>
+        <div class="layer-header" style="margin-bottom:14px;">
+          <span class="layer-label interp">Offene Fragen</span>
+          <span class="layer-pill interp">Erkannte Unklarheiten</span>
+        </div>
         <ul class="item-list questions-list">
-          <% for (const question of insights.questions) { %>
-          <li><%= question %></li>
+          <% for (let idx = 0; idx < insights.questions.length; idx++) { %>
+          <% const question = insights.questions[idx]; %>
+          <% const questionRefEntry = questionDataRefs[String(idx)]; %>
+          <li>
+            <span class="item-text"><%= question %></span>
+            <% if (questionRefEntry) { %>
+            <div class="data-refs">
+              <span class="data-refs-label">data_refs</span>
+              <% for (const ref of questionRefEntry.refs) { %>
+              <span class="data-ref-chip"><%= ref %></span>
+              <% } %>
+              <% if (questionRefEntry.drilldown_url) { %>
+              <a class="data-ref-link" href="<%= questionRefEntry.drilldown_url %>">Drilldown</a>
+              <% } %>
+            </div>
+            <% } %>
+          </li>
           <% } %>
         </ul>
       </div>
@@ -303,10 +641,31 @@
 
       <% if (insights.deltas.length > 0) { %>
       <div class="section">
-        <div class="section-title">Deltas</div>
+        <div class="layer-header" style="margin-bottom:4px;">
+          <span class="layer-label interp">Deltas</span>
+          <span class="layer-pill interp">Tagesverdichtung</span>
+        </div>
+        <% if (insights.ts) { %>
+        <div class="delta-date-note">Veränderungen zum Vortag · Stand: <%= insights.ts %></div>
+        <% } %>
         <ul class="item-list deltas-list">
-          <% for (const delta of insights.deltas) { %>
-          <li><%= delta %></li>
+          <% for (let idx = 0; idx < insights.deltas.length; idx++) { %>
+          <% const delta = insights.deltas[idx]; %>
+          <% const deltaRefEntry = deltaDataRefs[String(idx)]; %>
+          <li>
+            <span class="item-text"><%= delta %></span>
+            <% if (deltaRefEntry) { %>
+            <div class="data-refs">
+              <span class="data-refs-label">data_refs</span>
+              <% for (const ref of deltaRefEntry.refs) { %>
+              <span class="data-ref-chip"><%= ref %></span>
+              <% } %>
+              <% if (deltaRefEntry.drilldown_url) { %>
+              <a class="data-ref-link" href="<%= deltaRefEntry.drilldown_url %>">Drilldown</a>
+              <% } %>
+            </div>
+            <% } %>
+          </li>
           <% } %>
         </ul>
       </div>
@@ -319,6 +678,34 @@
         <p>Die Analyse enthält noch keine Topics, Fragen oder Deltas.</p>
       </div>
       <% } %>
+
+      <!-- ── Evidenzpfad ─────────────────────────────────────── -->
+      <div class="evidenz-card">
+        <div class="evidenz-title">Evidenzpfad</div>
+        <div class="evidenz-chain">
+          <% if (view_meta.observatory_ref) { %>
+          <span class="evidenz-node origin">
+            <a href="/observatory">Observatorium (<%= view_meta.observatory_ref %>)</a>
+          </span>
+          <span class="evidenz-arrow">→</span>
+          <% } %>
+          <% if (insights.source) { %>
+          <span class="evidenz-node"><%= insights.source %></span>
+          <span class="evidenz-arrow">→</span>
+          <% } %>
+          <span class="evidenz-node">insights.daily</span>
+          <span class="evidenz-arrow">→</span>
+          <span class="evidenz-node origin">Erkenntnisse (diese Ansicht)</span>
+        </div>
+        <% if (confidencePct !== null) { %>
+        <div style="margin-top:10px; font-size:0.72em; color:var(--text-muted);">
+          Globale Unsicherheit: <%= (view_meta.uncertainty * 100).toFixed(0) %>% · Konfidenz: <%= confidencePct %>%
+          <% if (view_meta.freshness_degraded) { %> · <span style="color:var(--warn);">Degradierter Zeitstempel-Fallback</span><% } %>
+        </div>
+        <% } %>
+      </div>
+      <!-- ── Ende Evidenzpfad ────────────────────────────────── -->
+
     <% } %>
   </div>
 
@@ -346,12 +733,6 @@
     <% } %>
     <% if (view_meta.freshness_degraded) { %>
       · <span class="warn">degradierter Fallback</span>
-    <% } %>
-    <% if (view_meta.uncertainty !== null) { %>
-      · Unsicherheit: <%= (view_meta.uncertainty * 100).toFixed(0) %>%
-    <% } %>
-    <% if (view_meta.observatory_ref) { %>
-      · Ref: <%= view_meta.observatory_ref %>
     <% } %>
   </div>
 </body>

@@ -34,8 +34,8 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 
 - [ ] Organismus-Graph als eigene Sicht aufbauen (Repos als Knoten, Beziehungen als Kanten, Rollen sichtbar).
 - [ ] Datenmapping von Fleet/Contract-Quellen in ein internes, UI-freundliches Graph-Modell abschließen.
-- [ ] Basisinteraktion bauen: zoomen, pannen, Knotenfokus, Legende fur Rollen/Achsen.
-- [ ] Strukturzustand versioniert anzeigen ("Stand: ..."), keine Live-Illusion fur statische Daten.
+- [ ] Basisinteraktion bauen: zoomen, pannen, Knotenfokus, Legende für Rollen/Achsen.
+- [ ] Strukturzustand versioniert anzeigen ("Stand: ..."), keine Live-Illusion für statische Daten.
 - [ ] Akzeptanztest: Jede dargestellte Kante ist auf einen nachvollziehbaren Contract- oder Artefaktbezug zuruckfuhrbar.
 
 ### 3) Phase 2 umsetzen: Physiologie (Health-Layer)
@@ -50,17 +50,17 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 
 - [x] Timeline-Ansicht mit Filterung nach Organ, Typ und Zeitraum implementieren.
 - [ ] Event-Typisierung und visuelle Kodierung vereinheitlichen (Farben/Badges/Icons konsistent).
-- [x] Zeitpunktbasierten Replay-Snapshot fur definierte Zeitfenster einfuhren (historische Zustande fur Phasen 1+2 nachvollziehbar).
-- [x] Kontextpanel fur Event-Details und referenzierte Artefakte bereitstellen.
+- [x] Zeitpunktbasierten Replay-Snapshot für definierte Zeitfenster einführen (historische Zustände für Phasen 1+2 nachvollziehbar).
+- [x] Kontextpanel für Event-Details und referenzierte Artefakte bereitstellen.
 - [ ] Akzeptanztest: Ursache-Wirkungsketten uber mindestens einen realen Incident nachvollziehen.
 
 ### 5) Phase 4 umsetzen: Erkenntnisschichten (Raw vs. Insight)
 
-- [ ] Zwei-Schichten-Sicht implementieren: Beobachtungsebene (Raw) klar getrennt von Interpretation (Insights).
-- [ ] Unsicherheits- und Confidence-Darstellung fur Insight-Elemente einbauen.
-- [ ] Insight-Evidenzpfad anzeigen (welche Events/Metriken stutzen diese Aussage?).
-- [ ] Tagesverdichtung (`insights.daily`) plus Delta zum Vortag visualisieren.
-- [ ] Akzeptanztest: Jede Insight-Kachel ist bis auf Rohdatenebene zuruckverfolgbar.
+- [x] Zwei-Schichten-Sicht implementieren: Beobachtungsebene (Raw) klar getrennt von Interpretation (Insights).
+- [x] Unsicherheits- und Confidence-Darstellung für Insight-Elemente einbauen.
+- [x] Sichtbaren Herkunftspfad anzeigen (Observatorium -> Analyse-Quelle -> insights.daily -> UI).
+- [~] Tagesverdichtung (`insights.daily`) plus Delta zum Vortag visualisieren (UI-Label vorhanden; belastbarer Vortagsvergleich als Datenbindung noch offen).
+- [~] Akzeptanztest: Jede Insight-Kachel ist bis auf Rohdatenebene zurückverfolgbar (UI/Payload unterstützen per-Insight-`data_refs`; flächendeckende Producer-Befüllung noch offen).
 
 ### 6) Phase 5 umsetzen: Reflexion (Meta-Analyse)
 
@@ -73,7 +73,7 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 ### 7) UX, Zugang und Betriebsreife
 
 - [ ] Cross-View-Navigation bauen (Graph <-> Timeline <-> Insight-Layer ohne Kontextverlust).
-- [ ] Responsives Verhalten fur Leitstand-Kernansichten auf Desktop und Mobile absichern.
+- [ ] Responsives Verhalten für Leitstand-Kernansichten auf Desktop und Mobile absichern.
 - [ ] Performance-Budget festlegen (Initial Load, Interaktion, Daten-Refresh) und messen.
 - [ ] Leermengen-/Fehlerzustande UX-seitig definieren (kein Datenfriedhof, klare Operator-Hinweise).
 - [ ] Accessibility-Basics absichern (Kontrast, Tastaturfokus, Labels).
@@ -93,7 +93,16 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [ ] Sprint C: Roadmap 5-6 (Erkenntnis + Reflexion)
 - [ ] Sprint D: Roadmap 7-8 (UX-Hartung + Qualitat + Rollout)
 
-### Implementierungsstand (2026-03-29)
+### Implementierungsstand (2026-04-07)
+
+- [x] Insights-Ansicht zeigt Zwei-Schichten-Sicht: Beobachtungsebene (Digest-Datum, Analyse-Quelle, Observatory-Referenz, Link zur Zeitachse) klar getrennt von der Interpretationsebene (Topics, Fragen, Deltas).
+- [x] Konfidenzbalken in der Beobachtungsebene berechnet aus globalem Unsicherheitswert (`1 - uncertainty`).
+- [x] Sichtbarer Herkunftspfad: Kette Observatorium -> Analyse-Quelle -> insights.daily -> Erkenntnisse-Ansicht mit klickbarem Observatory-Link.
+- [~] Deltas-Sektion als Tagesverdichtung mit Datum gekennzeichnet ("Veränderungen zum Vortag · Stand: …"); ein belastbarer Vergleich auf konkretes Vortags-Artefakt ist noch nicht separat ausgewiesen.
+- [x] Unsicherheits- und Konfidenzwert in Evidenzpfad-Karte als globale Aussage ausgewiesen.
+- [x] Tests für Zwei-Schichten-Rendering, Evidenzpfad, Konfidenz und Tagesverdichtung in `tests/server.test.ts` ergänzt.
+- [x] Per-Insight-Rohdatenreferenzen (`data_refs`/Drilldown-Ziele) werden im Insights-Payload akzeptiert und pro Topic/Frage/Delta im UI dargestellt.
+- [~] Flachendeckende Ende-zu-Ende-Rückverfolgbarkeit hängt noch von konsistenter `data_refs`-Befüllung in den Producer-Artefakten ab.
 
 - [x] Timeline-Zeitfenster im UI steuerbar (`hours`: 6/24/48/72/168).
 - [x] Event-Limit im UI steuerbar (`max`: 100/200/500/1000).
@@ -103,19 +112,19 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [x] Replay-Metadaten erweitert (`replay_mode`, `replay_until`) und in der Source-Badge sichtbar gemacht.
 - [x] Event-Details bleiben per Klick auf Event expandierbar (Kontext-/Payload-Einsicht).
 - [x] Anatomy-Quelle zeigt Data-Freshness (`fresh/stale/unknown`) auf Basis von `generated_at`.
-- [x] Stale-Schwelle fur Anatomy eingefuhrt (`72h`) und im Controller als Metadatum hinterlegt.
+- [x] Stale-Schwelle für Anatomy eingeführt (`72h`) und im Controller als Metadatum hinterlegt.
 - [x] Anatomy-Graph zeigt Health-Status pro Node (OK/Warn/Fail/Unknown) als Layer inkl. Legende.
 - [x] Health-Quelle und Health-Freshness werden in der Source-Badge transparent ausgewiesen.
 
 Technische Referenzen:
 
-- `src/server.ts` (robustes Query-Parsing fur Timeline-Parameter)
+- `src/server.ts` (robustes Query-Parsing für Timeline-Parameter)
 - `src/controllers/timeline.ts` (View-Meta um Fenster/Limit erweitert)
 - `src/views/timeline.ejs` (UI-Steuerung und Anzeige der aktiven Konfiguration)
 - `tests/controllers/timeline.test.ts` (Replay-/Zeitfenster-Verhalten abgesichert)
 - `src/controllers/anatomy.ts` (Freshness-Berechnung und Metadaten)
 - `src/views/anatomy.ejs` (Freshness- und Stale-Hinweise in Source-Badge)
-- `src/fixtures/metrics/2023-10-27.json` (Repo-Statusdaten fur lokalen Health-Layer)
+- `src/fixtures/metrics/2023-10-27.json` (Repo-Statusdaten für lokalen Health-Layer)
 - `tests/controllers/anatomy.test.ts` (Health-Overlay-Mapping und Fallback abgesichert)
 
 ## Phase 1: Anatomie (Strukturelle Übersicht)
