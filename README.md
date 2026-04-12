@@ -63,6 +63,13 @@ For details, refer to:
 - [Access Matrix](docs/access.matrix.md)
 - [Drift Signals](docs/drift.signals.md)
 
+## Deployment Modes Clarification
+
+The system supports distinct deployment models depending on your environment:
+- **Dev / Loopback (Default):** Runs locally binding to 127.0.0.1:3000. Ideal for development.
+- **LAN:** Binds to a specific LAN IP for direct access (requires caution).
+- **Heimserver Gateway (Proxy-first):** Runs behind a reverse proxy (e.g., Caddy) inside a Docker network (`heimnet`) without exposing host ports. The Heimserver is the single Source of Truth (SoT) for operational details like DNS, firewall, and reverse proxy configuration. See [Heimserver Gateway Runbook](docs/runbooks/ops.runbook.leitstand-gateway.md) for the contract.
+
 ## Features
 
 The daily digest generator combines:
