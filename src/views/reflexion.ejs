@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Reflexion – Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Meta-Analyse und Selbstreflexion des Heimgewebes (Heimgeist).">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-glass: rgba(255, 255, 255, 0.04);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --border-active: rgba(255, 255, 255, 0.15);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #8b5cf6; /* purple for meta */
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --success: #22c55e;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 20px;
+      background: rgba(10, 14, 26, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 0.82em;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    nav a:hover { color: var(--text-primary); background: var(--bg-glass); }
+    nav a.active { color: var(--accent); background: rgba(139, 92, 246, 0.1); }
+
+    nav .title {
+      font-weight: 700;
+      font-size: 0.9em;
+      color: var(--text-primary);
+      margin-right: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px 96px;
+    }
+
+    .page-header {
+      margin-bottom: 28px;
+    }
+
+    .page-header h1 {
+      font-size: 1.6em;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .page-header .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.88em;
+    }
+
+    /* Meta State / Heimgeist-Bar */
+    .heimgeist-bar {
+      background: rgba(139, 92, 246, 0.05);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 14px;
+      padding: 18px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .meta-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .meta-label {
+      font-size: 0.65em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .meta-val {
+      font-size: 1.1em;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .meta-val.low { color: var(--success); }
+    .meta-val.mid { color: var(--warn); }
+    .meta-val.high { color: var(--danger); }
+    
+    .meta-val.conf-high { color: var(--success); }
+    .meta-val.conf-mid { color: var(--warn); }
+    .meta-val.conf-low { color: var(--danger); }
+
+    .autonomy-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.7em;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(139, 92, 246, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    /* Section Styles */
+    .section {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-bottom: 24px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-glass);
+      padding-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 1.1em;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .section-badge {
+      font-size: 0.65em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: var(--bg-glass);
+      color: var(--text-muted);
+    }
+
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      list-style: none;
+    }
+
+    .item-row {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+
+    .item-meta {
+      display: flex;
+      gap: 10px;
+      font-size: 0.7em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .item-pill {
+      background: var(--bg-glass);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .item-desc {
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Hypotheses & Recommendations Grid */
+    .hypotheses-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 768px) {
+      .hypotheses-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .hypothesis-card {
+      background: rgba(139, 92, 246, 0.02);
+      border: 1px solid var(--border-glass);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .hyp-header {
+      padding: 10px 14px;
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid var(--border-glass);
+      font-size: 0.7em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .hyp-badge {
+      color: var(--warn);
+      background: rgba(245, 158, 11, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .hyp-body {
+      padding: 14px;
+      flex: 1;
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .hyp-actions {
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.15);
+      border-top: 1px dashed var(--border-glass);
+    }
+    
+    .action-title {
+      font-size: 0.7em;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .action-list {
+      padding-left: 14px;
+      font-size: 0.8em;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .action-list li { margin-bottom: 4px; }
+
+    /* Source Badge */
+    #source-badge {
+      position: fixed;
+      bottom: 16px;
+      right: 20px;
+      z-index: 50;
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 0.72em;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    #source-badge .warn { color: var(--warn); }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="title">Leitstand</span>
+    <a href="/">Home</a>
+    <a href="/observatory">Observatorium</a>
+    <a href="/anatomy">Anatomie</a>
+    <a href="/timeline">Zeitachse</a>
+    <a href="/insights">Erkenntnisse</a>
+    <a href="/reflexion" class="active">Reflexion</a>
+    <a href="/ops">Ops</a>
+  </nav>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>Reflexion</h1>
+      <div class="subtitle">Systemautopoiese – Meta-Analyse, Drift und Hypothesen (Heimgeist)</div>
+    </div>
+
+    <% if (!reflexion) { %>
+      <div class="section empty-state">
+        <div style="font-size: 2em; margin-bottom:10px;">◎</div>
+        <h3>Keine Reflexionsdaten verfügbar</h3>
+        <p>Fehlergrund: <%= view_meta.missing_reason %></p>
+      </div>
+    <% } else { %>
+      
+      <% if (reflexion.meta_state) { %>
+      <div class="heimgeist-bar">
+        <div class="meta-stat">
+          <span class="meta-label">Konfidenz</span>
+          <% 
+            const conf = reflexion.meta_state.confidence; 
+            const confClass = conf >= 0.8 ? 'conf-high' : conf >= 0.5 ? 'conf-mid' : 'conf-low';
+          %>
+          <span class="meta-val <%= confClass %>"><%= Math.round(conf * 100) %>%</span>
+        </div>
+        <div class="meta-stat">
+          <span class="meta-label">Fatigue (Ermüdung)</span>
+          <% 
+            const fat = reflexion.meta_state.fatigue; 
+            const fatClass = fat <= 0.2 ? 'low' : fat <= 0.5 ? 'mid' : 'high';
+          %>
+          <span class="meta-val <%= fatClass %>"><%= Math.round(fat * 100) %>%</span>
+        </div>
+        <div class="meta-stat">
+          <span class="meta-label">Tension (Risiko)</span>
+          <% 
+            const tens = reflexion.meta_state.risk_tension; 
+            const tensClass = tens <= 0.3 ? 'low' : tens <= 0.6 ? 'mid' : 'high';
+          %>
+          <span class="meta-val <%= tensClass %>"><%= Math.round(tens * 100) %>%</span>
+        </div>
+        <div class="meta-stat" style="margin-left: auto;">
+          <span class="meta-label">Autonomy Level</span>
+          <span style="margin-top:2px;">
+            <span class="autonomy-badge"><%= reflexion.meta_state.autonomy_level %></span>
+          </span>
+        </div>
+      </div>
+      <% } %>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Drift-Marker</span>
+          <span class="section-badge"><%= (reflexion.drift_markers || []).length %> erkannt</span>
+        </div>
+        <% if (reflexion.drift_markers && reflexion.drift_markers.length > 0) { %>
+          <ul class="item-list">
+            <% reflexion.drift_markers.forEach(drift => { %>
+            <li class="item-row">
+              <div class="item-meta">
+                <span class="item-pill">Kontext: <%= drift.time_context %></span>
+                <% if (drift.evidence_ref) { %>
+                  <span class="item-pill">Evidenz: <%= drift.evidence_ref %></span>
+                <% } %>
+              </div>
+              <div class="item-desc"><%= drift.description %></div>
+            </li>
+            <% }) %>
+          </ul>
+        <% } else { %>
+          <div class="empty-state" style="padding: 20px;">Keine Drift festgestellt.</div>
+        <% } %>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Wissenslücken (Epistemischer Leerraum)</span>
+          <span class="section-badge" style="color:var(--danger); background:rgba(239, 68, 68, 0.1);"><%= (reflexion.knowledge_gaps || []).length %> Lücken</span>
+        </div>
+        <% if (reflexion.knowledge_gaps && reflexion.knowledge_gaps.length > 0) { %>
+          <ul class="item-list">
+            <% reflexion.knowledge_gaps.forEach(gap => { %>
+            <li class="item-row">
+              <div class="item-meta">
+                <span class="item-pill" style="color: var(--danger);"><%= gap.category %></span>
+                <% if (gap.confidence_impact) { %>
+                  <span class="item-pill">Konfidenz-Einbuße: -<%= Math.round(gap.confidence_impact * 100) %>%</span>
+                <% } %>
+              </div>
+              <div class="item-desc"><%= gap.description %></div>
+            </li>
+            <% }) %>
+          </ul>
+        <% } else { %>
+          <div class="empty-state" style="padding: 20px;">Keine kritischen Wissenslücken.</div>
+        <% } %>
+      </div>
+
+      <div class="section" style="background:transparent; border:none; padding:0;">
+        <div class="section-header" style="border:none;">
+          <span class="section-title">Hypothesen & Empfehlungen</span>
+          <span class="section-badge" style="color:var(--warn);"><%= (reflexion.hypotheses || []).length %></span>
+        </div>
+        
+        <% if (reflexion.hypotheses && reflexion.hypotheses.length > 0) { %>
+          <div class="hypotheses-grid">
+            <% reflexion.hypotheses.forEach(hyp => { %>
+              <div class="hypothesis-card">
+                <div class="hyp-header">
+                  <span>Diagnose</span>
+                  <% if (hyp.is_hypothesis) { %><span class="hyp-badge">HYPOTHESE</span><% } %>
+                </div>
+                <div class="hyp-body">
+                  <%= hyp.diagnose %>
+                </div>
+                <div class="hyp-actions">
+                  <div class="action-title">Handlungsempfehlung</div>
+                  <% if (hyp.recommendations && hyp.recommendations.length > 0) { %>
+                    <ul class="action-list">
+                      <% hyp.recommendations.forEach(rec => { %>
+                        <li><%= rec %></li>
+                      <% }) %>
+                    </ul>
+                  <% } else { %>
+                    <div style="font-size:0.8em; color:var(--text-muted);">Keine expliziten Aktionen empfohlen.</div>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <div class="section empty-state">Keine aktiven Hypothesen oder Empfehlungen.</div>
+        <% } %>
+      </div>
+      
+    <% } %>
+  </div>
+
+  <div id="source-badge">
+    <% if (view_meta.source_kind === 'fixture') { %>
+      <span class="warn">Fixture-Daten</span>
+    <% } else if (view_meta.source_kind === 'missing') { %>
+      <span class="warn">Keine Daten</span>
+    <% } else { %>
+      Quelle: Artefakt
+    <% } %>
+    <% if (view_meta.data_timestamp) { %> · <%= view_meta.data_timestamp.slice(0, 16).replace('T', ' ') %> UTC<% } %>
+    <% if (view_meta.freshness_state === 'stale') { %>
+      · <span class="warn">Stale</span>
+    <% } %>
+  </div>
+</body>
+</html>
