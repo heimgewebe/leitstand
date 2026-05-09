@@ -58,6 +58,7 @@ describe('sanitizeReflexionBundle', () => {
     expect(result?.meta_state?.basis_signals).toEqual(['signal', 'other']);
     expect(result?.drift_markers).toEqual([{ id: 'd-1', time_context: '24h', description: 'ok' }]);
     expect(result?.knowledge_gaps).toEqual([{ id: 'g-1', category: 'coverage', description: 'ok' }]);
+    expect(result?.knowledge_gaps?.[0]).not.toHaveProperty('confidence_impact');
     expect(result?.hypotheses).toEqual([
       { id: 'h-1', diagnose: 'ok', is_hypothesis: true, recommendations: ['do'] },
     ]);

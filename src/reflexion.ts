@@ -104,8 +104,8 @@ function sanitizeKnowledgeGap(raw: unknown): KnowledgeGap | null {
   const description = asNonEmptyString(raw.description);
   if (id === null || category === null || description === null) return null;
 
-  const confidenceImpact = raw.confidence_impact === undefined ? undefined : asUnitIntervalNumber(raw.confidence_impact);
-  return typeof confidenceImpact === 'number'
+  const confidenceImpact = asUnitIntervalNumber(raw.confidence_impact);
+  return confidenceImpact !== null
     ? { id, category, description, confidence_impact: confidenceImpact }
     : { id, category, description };
 }
