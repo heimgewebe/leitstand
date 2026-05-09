@@ -67,7 +67,7 @@ async function getTransportTimestamp(path: string | null): Promise<string | null
 export async function getReflexionData(): Promise<ReflexionViewData> {
   const { isStrict, isStrictFail, paths } = envConfig;
 
-  // We look for reflexion bundle; fallback to self_state.json if reflexion doesn't exist
+  // We look for reflexion bundle data in reflexion.json (artifact first, fixture fallback).
   const artifactPath = join(paths.artifacts, 'reflexion.json');
   const fixturePath = join(paths.fixtures, 'reflexion.json');
 

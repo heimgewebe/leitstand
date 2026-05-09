@@ -368,6 +368,19 @@
           </span>
         </div>
       </div>
+      <% if (reflexion.meta_state.basis_signals.length > 0) { %>
+      <div class="section" style="margin-top: 0;">
+        <div class="section-header">
+          <span class="section-title">Basis-Signale</span>
+          <span class="section-badge"><%= reflexion.meta_state.basis_signals.length %></span>
+        </div>
+        <ul class="item-list">
+          <% reflexion.meta_state.basis_signals.forEach(signal => { %>
+            <li class="item-row"><div class="item-desc"><%= signal %></div></li>
+          <% }) %>
+        </ul>
+      </div>
+      <% } %>
       <% } %>
 
       <div class="section">
