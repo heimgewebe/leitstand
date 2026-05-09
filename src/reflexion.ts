@@ -150,7 +150,7 @@ export function sanitizeReflexionBundle(raw: unknown): ReflexionBundle | null {
   if (raw.hypotheses !== undefined && !Array.isArray(raw.hypotheses)) return null;
 
   const metaState = raw.meta_state === undefined ? undefined : sanitizeMetaState(raw.meta_state);
-  if (raw.meta_state !== undefined && metaState === null) return null;
+  if (metaState === null) return null;
 
   const driftMarkers = (raw.drift_markers ?? [])
     .map(sanitizeDriftMarker)
