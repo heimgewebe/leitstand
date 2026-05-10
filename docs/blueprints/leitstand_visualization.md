@@ -115,7 +115,7 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [x] Stale-Schwelle für Anatomy eingeführt (`72h`) und im Controller als Metadatum hinterlegt.
 - [x] Anatomy-Graph zeigt Health-Status pro Node (OK/Warn/Fail/Unknown) als Layer inkl. Legende.
 - [x] Health-Quelle und Health-Freshness werden in der Source-Badge transparent ausgewiesen.
-- [~] Reflexion-Route `/reflexion` inkl. Reflexion-View, Sanitizer und Server/Controller-Tests implementiert; Artefaktvertrag `heimgeist.reflexion.bundle.v1` wird im Leitstand hart validiert, producerseitige E2E-Konformität bleibt offen.
+- [~] Reflexion-Route `/reflexion` inkl. Reflexion-View, Sanitizer und Server/Controller-Tests implementiert; `heimgeist.reflexion.bundle.v1` wird im Leitstand defensiv auf Schema-ID und Grundstruktur geprüft, kanonischer Producer-Contract und E2E-Konformität bleiben offen.
 - [x] Reflexion bleibt read-only: Handlungsempfehlungen werden angezeigt, aber nicht vom Leitstand ausgeführt.
 
 Technische Referenzen:
