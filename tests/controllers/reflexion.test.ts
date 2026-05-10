@@ -127,4 +127,34 @@ describe('getReflexionData controller', () => {
       vi.useRealTimers();
     }
   });
+
+  it('treats a future generated_at as unknown and falls back to mtime', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'));
+
+    try {
+      vi.mocked(stat).mockResolvedValue({ mtime: new Date('2026-05-10T10:00:00.000Z') } as Awaited<ReturnType<typeof stat>>);
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: {
+          ...validReflexionBundle,
+          // Timestamp is 2 hours in the future — indicates clock drift
+          generated_at: '2026-05-10T14:00:00.000Z',
+        },
+        source: 'artifact',
+        reason: 'ok',
+      });
+
+      const result = await getReflexionData();
+
+      // Future timestamps must not silently produce 0-minute freshness;
+      // the controller falls back to mtime instead.
+      expect(result.view_meta.freshness_source).toBe('mtime');
+      expect(result.view_meta.data_age_minutes).toBe(120);
+      expect(result.view_meta.freshness_state).toBe('fresh');
+      expect(stat).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
 });

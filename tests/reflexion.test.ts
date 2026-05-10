@@ -96,4 +96,28 @@ describe('sanitizeReflexionBundle', () => {
       },
     })).toBeNull();
   });
+
+  it('returns null when passed an array at root (arrays are not records)', () => {
+    expect(sanitizeReflexionBundle([])).toBeNull();
+    expect(sanitizeReflexionBundle([{ schema: 'heimgeist.reflexion.bundle.v1' }])).toBeNull();
+  });
+
+  it('rejects nested arrays masquerading as meta_state or drift_markers objects', () => {
+    // An array at meta_state must not be treated as a Record
+    expect(sanitizeReflexionBundle({ meta_state: [] })).toBeNull();
+    // An array at drift_markers is rejected because drift_markers must be an array of records
+    const result = sanitizeReflexionBundle({
+      meta_state: {
+        confidence: 0.5,
+        fatigue: 0.3,
+        risk_tension: 0.2,
+        autonomy_level: 'aware',
+        basis_signals: ['s'],
+      },
+      drift_markers: [[]],
+    });
+    // The inner array is not a record, so it is filtered out — not silently accepted
+    expect(result).not.toBeNull();
+    expect(result?.drift_markers).toHaveLength(0);
+  });
 });
