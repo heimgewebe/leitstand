@@ -135,12 +135,13 @@ export async function getReflexionData(): Promise<ReflexionViewData> {
     const resolvedPath = loaded.source === 'artifact' ? artifactPath : (loaded.source === 'fixture' ? fixturePath : null);
     const transportTimestamp = await getTransportTimestamp(resolvedPath);
     if (transportTimestamp) {
-        const ms = new Date(transportTimestamp).getTime();
-        const ageMinutes = Math.max(0, Math.floor((Date.now() - ms) / 60_000));
-        finalTimestamp = new Date(ms).toISOString();
-        finalAge = ageMinutes;
-        finalState = ageMinutes > STALE_AFTER_HOURS * 60 ? 'stale' : 'fresh';
-        finalSource = 'mtime';
+      console.warn('[Reflexion] Falling back to transport timestamp (mtime) for freshness.');
+      const ms = new Date(transportTimestamp).getTime();
+      const ageMinutes = Math.max(0, Math.floor((Date.now() - ms) / 60_000));
+      finalTimestamp = new Date(ms).toISOString();
+      finalAge = ageMinutes;
+      finalState = ageMinutes > STALE_AFTER_HOURS * 60 ? 'stale' : 'fresh';
+      finalSource = 'mtime';
     }
   }
 

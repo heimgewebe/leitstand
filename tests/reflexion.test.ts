@@ -33,6 +33,7 @@ describe('sanitizeReflexionBundle', () => {
 
   it('removes invalid array items element-wise', () => {
     const result = sanitizeReflexionBundle({
+      schema: 'heimgeist.reflexion.bundle.v1',
       meta_state: {
         confidence: 0.5,
         fatigue: 0.4,
@@ -66,6 +67,7 @@ describe('sanitizeReflexionBundle', () => {
 
   it('normalizes out-of-range numeric meta values into 0..1', () => {
     const result = sanitizeReflexionBundle({
+      schema: 'heimgeist.reflexion.bundle.v1',
       meta_state: {
         confidence: 999,
         fatigue: -10,
@@ -84,6 +86,7 @@ describe('sanitizeReflexionBundle', () => {
     expect(sanitizeReflexionBundle(null)).toBeNull();
     expect(sanitizeReflexionBundle('bad')).toBeNull();
     expect(sanitizeReflexionBundle([])).toBeNull();
+    expect(sanitizeReflexionBundle({})).toBeNull();
     expect(sanitizeReflexionBundle({ schema: 1 })).toBeNull();
     expect(sanitizeReflexionBundle({ schema: 'wrong.schema.v1' })).toBeNull();
     expect(sanitizeReflexionBundle({ meta_state: 'bad' })).toBeNull();
@@ -109,6 +112,7 @@ describe('sanitizeReflexionBundle', () => {
 
   it('filters nested array entries from drift_markers element-wise', () => {
     const result = sanitizeReflexionBundle({
+      schema: 'heimgeist.reflexion.bundle.v1',
       meta_state: {
         confidence: 0.5,
         fatigue: 0.3,

@@ -418,7 +418,7 @@
             <li class="item-row">
               <div class="item-meta">
                 <span class="item-pill" style="color: var(--danger);"><%= gap.category %></span>
-                <% if (gap.confidence_impact) { %>
+                <% if (gap.confidence_impact !== undefined && gap.confidence_impact !== null) { %>
                   <span class="item-pill">Konfidenz-Einbuße: -<%= Math.round(gap.confidence_impact * 100) %>%</span>
                 <% } %>
               </div>

@@ -87,6 +87,7 @@ describe('getReflexionData controller', () => {
       expect(result.view_meta.data_age_minutes).toBe(120);
       expect(result.view_meta.freshness_state).toBe('fresh');
       expect(stat).toHaveBeenCalledTimes(1);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Falling back to transport timestamp'));
     } finally {
       vi.useRealTimers();
     }
@@ -153,6 +154,7 @@ describe('getReflexionData controller', () => {
       expect(result.view_meta.data_age_minutes).toBe(120);
       expect(result.view_meta.freshness_state).toBe('fresh');
       expect(stat).toHaveBeenCalledTimes(1);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Falling back to transport timestamp'));
     } finally {
       vi.useRealTimers();
     }

@@ -374,7 +374,7 @@ describe('GET /reflexion', () => {
           { id: 'd-1', time_context: '24h', description: 'Event drift', evidence_ref: 'chronik:event.line' },
         ],
         knowledge_gaps: [
-          { id: 'g-1', category: 'coverage', description: 'Missing telemetry', confidence_impact: 0.1 },
+          { id: 'g-1', category: 'coverage', description: 'Missing telemetry', confidence_impact: 0 },
         ],
         hypotheses: [
           { id: 'h-1', diagnose: 'Cron stalled', is_hypothesis: true, recommendations: ['Check runner logs'] },
@@ -400,6 +400,7 @@ describe('GET /reflexion', () => {
     expect(res.text).toContain('CI stable');
     expect(res.text).toContain('Event drift');
     expect(res.text).toContain('Missing telemetry');
+    expect(res.text).toContain('Konfidenz-Einbuße: -0%');
     expect(res.text).toContain('Cron stalled');
     expect(res.text).toContain('Fixture-Daten');
   });
