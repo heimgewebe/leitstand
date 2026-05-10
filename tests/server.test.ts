@@ -347,6 +347,156 @@ describe('GET /observatory', () => {
   });
 });
 
+describe('GET /reflexion', () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    resetEnvConfig();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('renders reflexion view with meta state, drift, gaps, and hypotheses', async () => {
+    const reflexionController = await import('../src/controllers/reflexion.js');
+    vi.spyOn(reflexionController, 'getReflexionData').mockResolvedValueOnce({
+      reflexion: {
+        schema: 'heimgeist.reflexion.bundle.v1',
+        generated_at: '2026-05-10T08:00:00.000Z',
+        meta_state: {
+          confidence: 0.9,
+          fatigue: 0.1,
+          risk_tension: 0.2,
+          autonomy_level: 'aware',
+          basis_signals: ['CI stable'],
+        },
+        drift_markers: [
+          { id: 'd-1', time_context: '24h', description: 'Event drift', evidence_ref: 'chronik:event.line' },
+        ],
+        knowledge_gaps: [
+          { id: 'g-1', category: 'coverage', description: 'Missing telemetry', confidence_impact: 0 },
+        ],
+        hypotheses: [
+          { id: 'h-1', diagnose: 'Cron stalled', is_hypothesis: true, recommendations: ['Check runner logs'] },
+        ],
+      },
+      view_meta: {
+        source_kind: 'fixture',
+        missing_reason: 'enoent',
+        is_strict: false,
+        data_timestamp: '2026-05-10T08:00:00.000Z',
+        data_age_minutes: 120,
+        freshness_state: 'fresh',
+        freshness_source: 'generated_at',
+        stale_after_hours: 24,
+      },
+    });
+
+    const res = await request(app).get('/reflexion');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Reflexion');
+    expect(res.text).toContain('Autonomy Level');
+    expect(res.text).toContain('CI stable');
+    expect(res.text).toContain('Event drift');
+    expect(res.text).toContain('Missing telemetry');
+    expect(res.text).toContain('Konfidenz-Einbuße: -0%');
+    expect(res.text).toContain('Cron stalled');
+    expect(res.text).toContain('Fixture-Daten');
+  });
+
+  it('renders missing-state when no reflexion data is available', async () => {
+    const reflexionController = await import('../src/controllers/reflexion.js');
+    vi.spyOn(reflexionController, 'getReflexionData').mockResolvedValueOnce({
+      reflexion: null,
+      view_meta: {
+        source_kind: 'missing',
+        missing_reason: 'enoent',
+        is_strict: false,
+        data_timestamp: null,
+        data_age_minutes: null,
+        freshness_state: 'unknown',
+        freshness_source: 'unknown',
+        stale_after_hours: 24,
+      },
+    });
+
+    const res = await request(app).get('/reflexion');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Keine Reflexionsdaten verfügbar');
+    expect(res.text).toContain('Fehlergrund: enoent');
+  });
+
+  it('renders transport-time fallback indicator for mtime freshness source', async () => {
+    const reflexionController = await import('../src/controllers/reflexion.js');
+    vi.spyOn(reflexionController, 'getReflexionData').mockResolvedValueOnce({
+      reflexion: {
+        schema: 'heimgeist.reflexion.bundle.v1',
+        generated_at: '2026-05-10T08:00:00.000Z',
+        drift_markers: [],
+        knowledge_gaps: [],
+        hypotheses: [],
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: '2026-05-10T10:00:00.000Z',
+        data_age_minutes: 120,
+        freshness_state: 'fresh',
+        freshness_source: 'mtime',
+        stale_after_hours: 24,
+      },
+    });
+
+    const res = await request(app).get('/reflexion');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Transportzeit-Fallback');
+  });
+
+  it('renders unknown freshness indicator when freshness state is unknown', async () => {
+    const reflexionController = await import('../src/controllers/reflexion.js');
+    vi.spyOn(reflexionController, 'getReflexionData').mockResolvedValueOnce({
+      reflexion: {
+        schema: 'heimgeist.reflexion.bundle.v1',
+        generated_at: '2026-05-10T08:00:00.000Z',
+        drift_markers: [],
+        knowledge_gaps: [],
+        hypotheses: [],
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: null,
+        data_age_minutes: null,
+        freshness_state: 'unknown',
+        freshness_source: 'unknown',
+        stale_after_hours: 24,
+      },
+    });
+
+    const res = await request(app).get('/reflexion');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Freshness unbekannt');
+  });
+
+  it('returns 503 without leaking strict error details for /reflexion', async () => {
+    const reflexionController = await import('../src/controllers/reflexion.js');
+    vi.spyOn(reflexionController, 'getReflexionData')
+      .mockRejectedValueOnce(new Error('Strict Reflexion missing artifact detail'));
+
+    const res = await request(app).get('/reflexion');
+
+    expect(res.status).toBe(503);
+    expect(res.text).toBe('Service Unavailable');
+    expect(res.text).not.toContain('Strict Reflexion missing artifact detail');
+  });
+});
+
 describe('GET /insights', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();

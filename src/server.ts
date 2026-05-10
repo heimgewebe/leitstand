@@ -11,6 +11,7 @@ import { getObservatoryData } from './controllers/observatory.js';
 import { getAnatomyData } from './controllers/anatomy.js';
 import { getInsightsData } from './controllers/insights.js';
 import { getTimelineData } from './controllers/timeline.js';
+import { getReflexionData } from './controllers/reflexion.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
 import { randomBytes } from 'crypto';
@@ -379,6 +380,23 @@ app.get('/timeline', async (req, res) => {
     if (!res.headersSent) {
       console.error('[Timeline] Error:', error);
       res.status(500).send('Error loading timeline data');
+    }
+  }
+});
+
+app.get('/reflexion', async (_req, res) => {
+  try {
+    const data = await getReflexionData();
+    res.render('reflexion', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[Reflexion] Error:', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('Strict')) {
+        res.status(503).send('Service Unavailable');
+      } else {
+        res.status(500).send('Error loading reflexion data');
+      }
     }
   }
 });

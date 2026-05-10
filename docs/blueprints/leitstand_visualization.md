@@ -64,11 +64,11 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 
 ### 6) Phase 5 umsetzen: Reflexion (Meta-Analyse)
 
-- [ ] Heimgeist-Kommentar-Layer mit expliziter Hypothesen-Markierung integrieren.
-- [ ] Drift-Marker mit Zeitbezug und Evidenzverweisen aufbauen.
-- [ ] Wissenslucken sichtbar machen ("fehlende Daten", "niedrige Abdeckung", "niedrige Sicherheit").
-- [ ] Klare Trennung von Diagnose und Handlungsempfehlung im UI durchsetzen.
-- [ ] Akzeptanztest: Reflexionsaussagen bleiben als Hypothesen erkennbar und wirken nicht wie harte Fakten.
+- [~] Heimgeist-Kommentar-Layer mit expliziter Hypothesen-Markierung integrieren (Route/View/Test vorhanden; Producer-Contract noch nicht Ende-zu-Ende abgesichert).
+- [~] Drift-Marker mit Zeitbezug und Evidenzverweisen aufbauen (Anzeige vorhanden; Contract-Hartung producerseitig noch offen).
+- [~] Wissenslucken sichtbar machen ("fehlende Daten", "niedrige Abdeckung", "niedrige Sicherheit") (UI vorhanden; Datenabdeckung noch ausbaufähig).
+- [~] Klare Trennung von Diagnose und Handlungsempfehlung im UI durchsetzen (Read-only-Darstellung aktiv; keine Handlungsausführung im Leitstand).
+- [~] Akzeptanztest: Reflexionsaussagen bleiben als Hypothesen erkennbar und wirken nicht wie harte Fakten (View/Tests vorhanden; E2E-Producer-Abdeckung noch offen).
 
 ### 7) UX, Zugang und Betriebsreife
 
@@ -115,6 +115,8 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [x] Stale-Schwelle für Anatomy eingeführt (`72h`) und im Controller als Metadatum hinterlegt.
 - [x] Anatomy-Graph zeigt Health-Status pro Node (OK/Warn/Fail/Unknown) als Layer inkl. Legende.
 - [x] Health-Quelle und Health-Freshness werden in der Source-Badge transparent ausgewiesen.
+- [~] Reflexion-Route `/reflexion` inkl. Reflexion-View, Sanitizer und Server/Controller-Tests implementiert; `heimgeist.reflexion.bundle.v1` wird im Leitstand defensiv auf Schema-ID und Grundstruktur geprüft, kanonischer Producer-Contract und E2E-Konformität bleiben offen.
+- [x] Reflexion bleibt read-only: Handlungsempfehlungen werden angezeigt, aber nicht vom Leitstand ausgeführt.
 
 Technische Referenzen:
 

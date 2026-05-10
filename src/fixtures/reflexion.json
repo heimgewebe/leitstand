@@ -1,0 +1,55 @@
+{
+  "schema": "heimgeist.reflexion.bundle.v1",
+  "generated_at": "2026-04-15T04:20:00Z",
+  "meta_state": {
+    "confidence": 0.85,
+    "fatigue": 0.1,
+    "risk_tension": 0.2,
+    "autonomy_level": "aware",
+    "basis_signals": [
+      "CI success rate 99%",
+      "No open critical issues"
+    ]
+  },
+  "drift_markers": [
+    {
+      "id": "drift-events-01",
+      "time_context": "Letzte 72h",
+      "description": "Die Eventrate vom Typ 'aussen.event.weather' ist im Vergleich zur Vorwoche um 40% gesunken.",
+      "evidence_ref": "chronik:event.line"
+    }
+  ],
+  "knowledge_gaps": [
+    {
+      "id": "gap-coverage-01",
+      "category": "niedrige Abdeckung",
+      "description": "Repo 'heimlern' liefert seit 3 Tagen keine Metriken mehr. Zustand unbekannt.",
+      "confidence_impact": 0.15
+    },
+    {
+      "id": "gap-data-01",
+      "category": "fehlende Daten",
+      "description": "Es fehlen Sensordaten aus dem Außenbereich für die gestrige Analyse.",
+      "confidence_impact": 0.05
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp-01",
+      "diagnose": "Vermute, dass der Ausfall der Wetterdaten mit einem kürzlichen API-Limit beim Provider zusammenhängt.",
+      "is_hypothesis": true,
+      "recommendations": [
+        "Prüfe das Rate-Limit im Provider-Dashboard.",
+        "Implementiere aggressiveres Caching in 'aussensensor'."
+      ]
+    },
+    {
+      "id": "hyp-02",
+      "diagnose": "Das Ausbleiben von Metriken in 'heimlern' deutet auf einen stumm fehlgeschlagenen Cron-Job hin.",
+      "is_hypothesis": true,
+      "recommendations": [
+        "Prüfe die WGX Guard-Logs für das 'heimlern' Repo."
+      ]
+    }
+  ]
+}
