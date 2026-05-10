@@ -483,6 +483,18 @@ describe('GET /reflexion', () => {
     expect(res.status).toBe(200);
     expect(res.text).toContain('Freshness unbekannt');
   });
+
+  it('returns 503 without leaking strict error details for /reflexion', async () => {
+    const reflexionController = await import('../src/controllers/reflexion.js');
+    vi.spyOn(reflexionController, 'getReflexionData')
+      .mockRejectedValueOnce(new Error('Strict Reflexion missing artifact detail'));
+
+    const res = await request(app).get('/reflexion');
+
+    expect(res.status).toBe(503);
+    expect(res.text).toBe('Service Unavailable');
+    expect(res.text).not.toContain('Strict Reflexion missing artifact detail');
+  });
 });
 
 describe('GET /insights', () => {
