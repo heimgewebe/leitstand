@@ -480,6 +480,12 @@
       Quelle: Artefakt
     <% } %>
     <% if (view_meta.data_timestamp) { %> · <%= view_meta.data_timestamp.slice(0, 16).replace('T', ' ') %> UTC<% } %>
+    <% if (view_meta.freshness_source === 'mtime') { %>
+      · <span class="warn">Transportzeit-Fallback</span>
+    <% } %>
+    <% if (view_meta.freshness_state === 'unknown') { %>
+      · <span class="warn">Freshness unbekannt</span>
+    <% } %>
     <% if (view_meta.freshness_state === 'stale') { %>
       · <span class="warn">Stale</span>
     <% } %>
