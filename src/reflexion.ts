@@ -36,6 +36,8 @@ export interface ReflexionBundle {
   hypotheses?: Hypothesis[];
 }
 
+const REFLEXION_SCHEMA = 'heimgeist.reflexion.bundle.v1';
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -140,7 +142,7 @@ export function sanitizeReflexionBundle(raw: unknown): ReflexionBundle | null {
     return null;
   }
 
-  if (raw.schema !== undefined && typeof raw.schema !== 'string') {
+  if (raw.schema !== undefined && raw.schema !== REFLEXION_SCHEMA) {
     return null;
   }
 
@@ -165,7 +167,7 @@ export function sanitizeReflexionBundle(raw: unknown): ReflexionBundle | null {
     .filter((entry): entry is Hypothesis => entry !== null);
 
   return {
-    schema: typeof raw.schema === 'string' ? raw.schema : 'heimgeist.reflexion.bundle.v1',
+    schema: raw.schema ?? REFLEXION_SCHEMA,
     generated_at: typeof raw.generated_at === 'string' ? raw.generated_at : undefined,
     meta_state: metaState,
     drift_markers: driftMarkers,

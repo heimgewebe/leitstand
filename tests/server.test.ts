@@ -426,6 +426,62 @@ describe('GET /reflexion', () => {
     expect(res.text).toContain('Keine Reflexionsdaten verfügbar');
     expect(res.text).toContain('Fehlergrund: enoent');
   });
+
+  it('renders transport-time fallback indicator for mtime freshness source', async () => {
+    const reflexionController = await import('../src/controllers/reflexion.js');
+    vi.spyOn(reflexionController, 'getReflexionData').mockResolvedValueOnce({
+      reflexion: {
+        schema: 'heimgeist.reflexion.bundle.v1',
+        generated_at: '2026-05-10T08:00:00.000Z',
+        drift_markers: [],
+        knowledge_gaps: [],
+        hypotheses: [],
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: '2026-05-10T10:00:00.000Z',
+        data_age_minutes: 120,
+        freshness_state: 'fresh',
+        freshness_source: 'mtime',
+        stale_after_hours: 24,
+      },
+    });
+
+    const res = await request(app).get('/reflexion');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Transportzeit-Fallback');
+  });
+
+  it('renders unknown freshness indicator when freshness state is unknown', async () => {
+    const reflexionController = await import('../src/controllers/reflexion.js');
+    vi.spyOn(reflexionController, 'getReflexionData').mockResolvedValueOnce({
+      reflexion: {
+        schema: 'heimgeist.reflexion.bundle.v1',
+        generated_at: '2026-05-10T08:00:00.000Z',
+        drift_markers: [],
+        knowledge_gaps: [],
+        hypotheses: [],
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: null,
+        data_age_minutes: null,
+        freshness_state: 'unknown',
+        freshness_source: 'unknown',
+        stale_after_hours: 24,
+      },
+    });
+
+    const res = await request(app).get('/reflexion');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Freshness unbekannt');
+  });
 });
 
 describe('GET /insights', () => {

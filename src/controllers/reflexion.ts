@@ -5,6 +5,7 @@ import { loadWithFallback } from '../utils/loader.js';
 import { sanitizeReflexionBundle, type ReflexionBundle } from '../reflexion.js';
 
 const STALE_AFTER_HOURS = 24;
+const FUTURE_SKEW_TOLERANCE_MS = 60_000;
 
 type FreshnessSource = 'generated_at' | 'mtime' | 'unknown';
 
@@ -34,10 +35,10 @@ function computeFreshness(raw: ReflexionBundle): FreshnessResult & { timestamp_v
   if (generatedAt) {
     const ms = new Date(generatedAt).getTime();
     if (!Number.isNaN(ms)) {
-      const now = Date.now();
-      // A future timestamp indicates clock drift; treat as unknown so the mtime
-      // fallback takes over rather than silently reporting 0 minutes elapsed.
-      if (ms > now) {
+      // A future timestamp beyond the clock-skew tolerance indicates clock drift;
+      // treat as unknown so the mtime fallback takes over rather than silently
+      // reporting 0 minutes elapsed.
+      if (ms > Date.now() + FUTURE_SKEW_TOLERANCE_MS) {
         return {
           data_timestamp: null,
           data_age_minutes: null,
@@ -46,7 +47,7 @@ function computeFreshness(raw: ReflexionBundle): FreshnessResult & { timestamp_v
           timestamp_valid: false,
         };
       }
-      const ageMinutes = Math.floor((now - ms) / 60_000);
+      const ageMinutes = Math.max(0, Math.floor((Date.now() - ms) / 60_000));
       return {
         data_timestamp: new Date(ms).toISOString(),
         data_age_minutes: ageMinutes,

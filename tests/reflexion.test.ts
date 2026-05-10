@@ -83,9 +83,15 @@ describe('sanitizeReflexionBundle', () => {
   it('returns null for broken root structures', () => {
     expect(sanitizeReflexionBundle(null)).toBeNull();
     expect(sanitizeReflexionBundle('bad')).toBeNull();
+    expect(sanitizeReflexionBundle([])).toBeNull();
     expect(sanitizeReflexionBundle({ schema: 1 })).toBeNull();
+    expect(sanitizeReflexionBundle({ schema: 'wrong.schema.v1' })).toBeNull();
     expect(sanitizeReflexionBundle({ meta_state: 'bad' })).toBeNull();
+    expect(sanitizeReflexionBundle({ meta_state: [] })).toBeNull();
     expect(sanitizeReflexionBundle({ drift_markers: {} })).toBeNull();
+    const nestedArrayResult = sanitizeReflexionBundle({ drift_markers: [[]] });
+    expect(nestedArrayResult).not.toBeNull();
+    expect(nestedArrayResult?.drift_markers).toEqual([]);
     expect(sanitizeReflexionBundle({
       meta_state: {
         confidence: Number.NaN,
