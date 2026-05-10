@@ -5,6 +5,7 @@ import { loadWithFallback } from '../utils/loader.js';
 import { sanitizeReflexionBundle, type ReflexionBundle } from '../reflexion.js';
 
 const STALE_AFTER_HOURS = 24;
+const FUTURE_SKEW_TOLERANCE_MS = 60_000;
 
 type FreshnessSource = 'generated_at' | 'mtime' | 'unknown';
 
@@ -34,7 +35,7 @@ function computeFreshness(raw: ReflexionBundle): FreshnessResult & { timestamp_v
   if (generatedAt) {
     const ms = new Date(generatedAt).getTime();
     if (!Number.isNaN(ms)) {
-      if (ms > Date.now()) {
+      if (ms > Date.now() + FUTURE_SKEW_TOLERANCE_MS) {
         return {
           data_timestamp: null,
           data_age_minutes: null,

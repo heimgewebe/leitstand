@@ -88,8 +88,9 @@ describe('sanitizeReflexionBundle', () => {
     expect(sanitizeReflexionBundle({ meta_state: 'bad' })).toBeNull();
     expect(sanitizeReflexionBundle({ meta_state: [] })).toBeNull();
     expect(sanitizeReflexionBundle({ drift_markers: {} })).toBeNull();
-    expect(sanitizeReflexionBundle({ drift_markers: [[]] })).not.toBeNull();
-    expect(sanitizeReflexionBundle({ drift_markers: [[]] })?.drift_markers).toEqual([]);
+    const nestedArrayResult = sanitizeReflexionBundle({ drift_markers: [[]] });
+    expect(nestedArrayResult).not.toBeNull();
+    expect(nestedArrayResult?.drift_markers).toEqual([]);
     expect(sanitizeReflexionBundle({
       meta_state: {
         confidence: Number.NaN,
