@@ -34,6 +34,15 @@ function computeFreshness(raw: ReflexionBundle): FreshnessResult & { timestamp_v
   if (generatedAt) {
     const ms = new Date(generatedAt).getTime();
     if (!Number.isNaN(ms)) {
+      if (ms > Date.now()) {
+        return {
+          data_timestamp: null,
+          data_age_minutes: null,
+          freshness_state: 'unknown',
+          freshness_source: 'unknown',
+          timestamp_valid: false
+        };
+      }
       const ageMinutes = Math.max(0, Math.floor((Date.now() - ms) / 60_000));
       return {
         data_timestamp: new Date(ms).toISOString(),

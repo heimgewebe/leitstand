@@ -127,4 +127,32 @@ describe('getReflexionData controller', () => {
       vi.useRealTimers();
     }
   });
+
+  it('treats future generated_at as unknown when no mtime fallback exists', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'));
+
+    try {
+      vi.mocked(stat).mockRejectedValueOnce(new Error('ENOENT'));
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: {
+          ...validReflexionBundle,
+          generated_at: '2026-05-10T12:30:00.000Z',
+        },
+        source: 'artifact',
+        reason: 'ok',
+      });
+
+      const result = await getReflexionData();
+
+      expect(result.reflexion).not.toBeNull();
+      expect(result.view_meta.freshness_source).toBe('unknown');
+      expect(result.view_meta.freshness_state).toBe('unknown');
+      expect(result.view_meta.data_timestamp).toBeNull();
+      expect(result.view_meta.data_age_minutes).toBeNull();
+      expect(stat).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
