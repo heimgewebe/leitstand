@@ -167,7 +167,7 @@ export function sanitizeReflexionBundle(raw: unknown): ReflexionBundle | null {
     .filter((entry): entry is Hypothesis => entry !== null);
 
   return {
-    schema: raw.schema ?? REFLEXION_SCHEMA,
+    schema: raw.schema === REFLEXION_SCHEMA ? raw.schema : REFLEXION_SCHEMA,
     generated_at: typeof raw.generated_at === 'string' ? raw.generated_at : undefined,
     meta_state: metaState,
     drift_markers: driftMarkers,
