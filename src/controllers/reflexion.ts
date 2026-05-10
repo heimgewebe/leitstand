@@ -35,13 +35,16 @@ function computeFreshness(raw: ReflexionBundle): FreshnessResult & { timestamp_v
   if (generatedAt) {
     const ms = new Date(generatedAt).getTime();
     if (!Number.isNaN(ms)) {
+      // A future timestamp beyond the clock-skew tolerance indicates clock drift;
+      // treat as unknown so the mtime fallback takes over rather than silently
+      // reporting 0 minutes elapsed.
       if (ms > Date.now() + FUTURE_SKEW_TOLERANCE_MS) {
         return {
           data_timestamp: null,
           data_age_minutes: null,
           freshness_state: 'unknown',
           freshness_source: 'unknown',
-          timestamp_valid: false
+          timestamp_valid: false,
         };
       }
       const ageMinutes = Math.max(0, Math.floor((Date.now() - ms) / 60_000));
@@ -50,7 +53,7 @@ function computeFreshness(raw: ReflexionBundle): FreshnessResult & { timestamp_v
         data_age_minutes: ageMinutes,
         freshness_state: ageMinutes > STALE_AFTER_HOURS * 60 ? 'stale' : 'fresh',
         freshness_source: 'generated_at',
-        timestamp_valid: true
+        timestamp_valid: true,
       };
     }
   }

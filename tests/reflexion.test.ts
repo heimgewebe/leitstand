@@ -102,4 +102,27 @@ describe('sanitizeReflexionBundle', () => {
       },
     })).toBeNull();
   });
+
+  it('returns null for root arrays with object-like content', () => {
+    expect(sanitizeReflexionBundle([{ schema: 'heimgeist.reflexion.bundle.v1' }])).toBeNull();
+  });
+
+  it('rejects meta_state arrays because meta_state must be a record', () => {
+    expect(sanitizeReflexionBundle({ meta_state: [] })).toBeNull();
+  });
+
+  it('filters nested array entries from drift_markers element-wise', () => {
+    const result = sanitizeReflexionBundle({
+      meta_state: {
+        confidence: 0.5,
+        fatigue: 0.3,
+        risk_tension: 0.2,
+        autonomy_level: 'aware',
+        basis_signals: ['s'],
+      },
+      drift_markers: [[]],
+    });
+    expect(result).not.toBeNull();
+    expect(result?.drift_markers).toEqual([]);
+  });
 });
