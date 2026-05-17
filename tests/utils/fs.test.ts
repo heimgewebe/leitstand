@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { mkdtemp, rm, stat, utimes, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { readJsonFile, EmptyFileError, InvalidJsonError } from '../../src/utils/fs.js';
+import { readJsonFile, EmptyFileError, InvalidJsonError, getTransportTimestamp } from '../../src/utils/fs.js';
 
 describe('readJsonFile', () => {
   let testDir: string;
@@ -53,5 +53,38 @@ describe('readJsonFile', () => {
   it('should throw original error (e.g. ENOENT) if the file does not exist', async () => {
     const filePath = join(testDir, 'non-existent.json');
     await expect(readJsonFile(filePath)).rejects.toHaveProperty('code', 'ENOENT');
+  });
+});
+
+describe('getTransportTimestamp', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = await mkdtemp(join(tmpdir(), 'leitstand-test-mtime-'));
+  });
+
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true });
+  });
+
+  it('returns null when path is null', async () => {
+    expect(await getTransportTimestamp(null)).toBeNull();
+  });
+
+  it('returns null when the file does not exist', async () => {
+    expect(await getTransportTimestamp(join(testDir, 'missing.json'))).toBeNull();
+  });
+
+  it('returns the mtime as ISO string when the file exists', async () => {
+    const filePath = join(testDir, 'present.json');
+    await writeFile(filePath, '{}');
+    const fixed = new Date('2026-01-15T12:34:56.000Z');
+    await utimes(filePath, fixed, fixed);
+
+    const ts = await getTransportTimestamp(filePath);
+    expect(ts).toBe(fixed.toISOString());
+    // sanity: matches actual stat mtime
+    const s = await stat(filePath);
+    expect(ts).toBe(s.mtime.toISOString());
   });
 });

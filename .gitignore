@@ -44,6 +44,7 @@ pnpm-debug.log*
 *.tmp
 tmp/
 verification/*.png
+git-output.txt
 
 # --- Security / Secrets (MUST NOT be committed) ---
 .env

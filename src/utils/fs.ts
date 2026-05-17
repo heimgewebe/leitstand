@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises';
+import { readFile, stat } from 'fs/promises';
 
 export class EmptyFileError extends Error {
   code = 'EMPTY_FILE';
@@ -33,5 +33,20 @@ export async function readJsonFile<T>(path: string): Promise<T> {
       throw new InvalidJsonError(path, error.message);
     }
     throw error;
+  }
+}
+
+/**
+ * Returns the mtime of a file as an ISO string, or null if the path is
+ * missing/unreadable. Used by view controllers as a transport-level
+ * freshness fallback when no semantic timestamp is available in the payload.
+ */
+export async function getTransportTimestamp(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  try {
+    const fileStats = await stat(path);
+    return fileStats.mtime.toISOString();
+  } catch {
+    return null;
   }
 }
