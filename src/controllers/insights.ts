@@ -1,7 +1,7 @@
-import { stat } from 'fs/promises';
 import { join } from 'path';
 import { envConfig } from '../config.js';
 import { sanitizeDailyInsights, type DailyInsights } from '../insights.js';
+import { getTransportTimestamp } from '../utils/fs.js';
 import { loadWithFallback } from '../utils/loader.js';
 
 /**
@@ -90,19 +90,6 @@ function computeFreshness(raw: DailyInsights): FreshnessResult {
     freshness_source: 'unknown' as const,
     freshness_degraded: false,
   };
-}
-
-async function getTransportTimestamp(path: string | null): Promise<string | null> {
-  if (!path) {
-    return null;
-  }
-
-  try {
-    const fileStats = await stat(path);
-    return fileStats.mtime.toISOString();
-  } catch {
-    return null;
-  }
 }
 
 export async function getInsightsData(): Promise<InsightsViewData> {

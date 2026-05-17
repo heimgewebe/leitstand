@@ -1,6 +1,6 @@
-import { stat } from 'fs/promises';
 import { join } from 'path';
 import { envConfig } from '../config.js';
+import { getTransportTimestamp } from '../utils/fs.js';
 import { loadWithFallback } from '../utils/loader.js';
 import { sanitizeReflexionBundle, type ReflexionBundle } from '../reflexion.js';
 
@@ -66,16 +66,6 @@ function computeFreshness(raw: ReflexionBundle): FreshnessResult & { timestamp_v
     freshness_source: 'unknown',
     timestamp_valid: false
   };
-}
-
-async function getTransportTimestamp(path: string | null): Promise<string | null> {
-  if (!path) return null;
-  try {
-    const fileStats = await stat(path);
-    return fileStats.mtime.toISOString();
-  } catch {
-    return null;
-  }
 }
 
 export async function getReflexionData(): Promise<ReflexionViewData> {
