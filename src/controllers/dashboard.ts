@@ -35,6 +35,15 @@ export interface DashboardData {
 }
 
 /**
+ * Maps error messages that contain strict-mode details (e.g. artifact paths) to an
+ * opaque token so the dashboard tile never surfaces internal path information.
+ * Non-strict messages pass through unchanged.
+ */
+function publicErrorReason(msg: string): string {
+  return msg.includes('Strict') ? 'strict-load-failed' : msg;
+}
+
+/**
  * Wraps a controller call so an upstream failure becomes a typed error tile
  * instead of crashing the whole dashboard. The home page must always render.
  */
@@ -44,7 +53,7 @@ async function safeLoad<T>(name: string, loader: () => Promise<T>): Promise<{ da
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`[Dashboard] ${name} load failed:`, msg);
-    return { data: null, error: msg };
+    return { data: null, error: publicErrorReason(msg) };
   }
 }
 

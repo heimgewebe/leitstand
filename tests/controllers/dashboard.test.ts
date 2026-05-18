@@ -116,6 +116,55 @@ describe('getDashboardData controller', () => {
     }
   });
 
+  it('masks strict-mode error messages as an opaque token in error_reason', async () => {
+    vi.spyOn(anatomyCtrl, 'getAnatomyData').mockRejectedValue(
+      new Error('Strict load failed: /data/artifacts/anatomy/2026-05-18.json not found'),
+    );
+    vi.spyOn(insightsCtrl, 'getInsightsData').mockRejectedValue(
+      new Error('Strict: /var/run/leitstand/insights/latest.json is missing'),
+    );
+    vi.spyOn(timelineCtrl, 'getTimelineData').mockResolvedValue({
+      events: [],
+      view_meta: {
+        source_kind: 'missing',
+        window_state: 'empty',
+        missing_reason: 'enoent',
+        is_strict: false,
+        since: '',
+        until: '',
+        total_loaded: 0,
+        hours_back: 48,
+        max_events: 200,
+        replay_mode: false,
+        replay_until: null,
+      },
+    });
+    vi.spyOn(reflexionCtrl, 'getReflexionData').mockResolvedValue({
+      reflexion: null,
+      view_meta: {
+        source_kind: 'missing',
+        missing_reason: 'enoent',
+        is_strict: false,
+        data_timestamp: null,
+        data_age_minutes: null,
+        freshness_state: 'unknown',
+        freshness_source: 'unknown',
+        stale_after_hours: 24,
+      },
+    });
+
+    const result = await getDashboardData();
+
+    const anatomyTile = result.phases.find((p) => p.id === 'anatomie')!;
+    expect(anatomyTile.error_reason).toBe('strict-load-failed');
+    expect(anatomyTile.error_reason).not.toContain('artifact detail');
+    expect(anatomyTile.error_reason).not.toContain('/data/artifacts');
+
+    const insightsTile = result.phases.find((p) => p.id === 'erkenntnisse')!;
+    expect(insightsTile.error_reason).toBe('strict-load-failed');
+    expect(insightsTile.error_reason).not.toContain('/var/run');
+  });
+
   it('isolates failures so one broken controller does not break the others', async () => {
     vi.spyOn(anatomyCtrl, 'getAnatomyData').mockRejectedValue(new Error('anatomy boom'));
     vi.spyOn(insightsCtrl, 'getInsightsData').mockResolvedValue({
