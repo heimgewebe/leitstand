@@ -156,11 +156,13 @@ describe('getDashboardData controller', () => {
     const result = await getDashboardData();
 
     const anatomyTile = result.phases.find((p) => p.id === 'anatomie')!;
+    expect(anatomyTile.source_kind).toBe('error');
     expect(anatomyTile.error_reason).toBe('strict-load-failed');
     expect(anatomyTile.error_reason).not.toContain('artifact detail');
     expect(anatomyTile.error_reason).not.toContain('/data/artifacts');
 
     const insightsTile = result.phases.find((p) => p.id === 'erkenntnisse')!;
+    expect(insightsTile.source_kind).toBe('error');
     expect(insightsTile.error_reason).toBe('strict-load-failed');
     expect(insightsTile.error_reason).not.toContain('/var/run');
   });
