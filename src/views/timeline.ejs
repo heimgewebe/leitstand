@@ -248,6 +248,23 @@
       font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
     }
 
+    .event-item .event-family {
+      font-size: 0.7em;
+      font-weight: 600;
+      padding: 2px 8px 2px 6px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .event-item .event-family .family-icon {
+      font-size: 0.95em;
+      line-height: 1;
+    }
+
     .event-item .event-repo {
       font-size: 0.75em;
       font-weight: 500;
@@ -403,8 +420,22 @@
     <% if (events && events.length > 0) { %>
       <!-- Client-side Event Filters (only useful when events are present) -->
       <div class="filter-bar" id="filterBar">
+        <label for="filterFamily">Familie</label>
+        <select id="filterFamily" aria-label="Nach Event-Familie filtern">
+          <option value="">Alle</option>
+          <%
+            // Restrict the family dropdown to families that actually appear in the
+            // current window. Order remains the canonical alphabetical order from
+            // listEventFamilies() so it stays stable across reloads/filters.
+            const presentFamilyIds = new Set(events.map(e => getEventFamily(e.kind).id));
+          %>
+          <% eventFamilies.filter(f => presentFamilyIds.has(f.id)).forEach(function(f) { %>
+            <option value="<%= f.id %>"><%= f.label %></option>
+          <% }); %>
+        </select>
+
         <label for="filterKind">Typ</label>
-        <select id="filterKind">
+        <select id="filterKind" aria-label="Nach Event-Kind filtern">
           <option value="">Alle</option>
           <% const kinds = [...new Set(events.map(e => e.kind))].sort(); %>
           <% kinds.forEach(function(k) { %>
@@ -413,7 +444,7 @@
         </select>
 
         <label for="filterRepo">Repo</label>
-        <select id="filterRepo">
+        <select id="filterRepo" aria-label="Nach Repository filtern">
           <option value="">Alle</option>
           <% const repos = [...new Set(events.filter(e => e.repo).map(e => e.repo))].sort(); %>
           <% repos.forEach(function(r) { %>
@@ -422,7 +453,7 @@
         </select>
 
         <label for="filterSeverity">Severity</label>
-        <select id="filterSeverity">
+        <select id="filterSeverity" aria-label="Nach Severity filtern">
           <option value="">Alle</option>
           <option value="error">Error</option>
           <option value="warn">Warn</option>
@@ -440,9 +471,6 @@
       <div class="timeline" id="timeline">
         <%
           let lastDate = '';
-          const kindColors = {};
-          const colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1'];
-          let colorIdx = 0;
         %>
         <% events.forEach(function(event, i) { %>
           <%
@@ -450,12 +478,10 @@
             const dateStr = dt.toISOString().split('T')[0];
             const timeStr = dt.toISOString().split('T')[1].replace('Z', '').substring(0, 8);
 
-            // Assign color by kind
-            if (!kindColors[event.kind]) {
-              kindColors[event.kind] = colorPalette[colorIdx % colorPalette.length];
-              colorIdx++;
-            }
-            const dotColor = kindColors[event.kind];
+            // Deterministic family classification — stable across reloads, filters and replays.
+            const family = getEventFamily(event.kind);
+            const familyBg = family.color + '1F'; // ~12% alpha tint
+            const familyBorder = family.color + '4D'; // ~30% alpha border
 
             const severityClass = event.severity === 'error' ? 'severity-error'
               : event.severity === 'warn' ? 'severity-warn'
@@ -473,15 +499,22 @@
 
           <div class="event-item"
                data-kind="<%= event.kind %>"
+               data-family="<%= family.id %>"
                data-repo="<%= event.repo || '' %>"
                data-severity="<%= event.severity || '' %>"
-               data-index="<%= i %>">
+               data-index="<%= i %>"
+               role="button"
+               tabindex="0"
+               aria-label="<%= event.kind %><%= event.repo ? ' für ' + event.repo : '' %> · <%= timeStr %>">
             <div class="dot-container">
-              <div class="dot" style="border-color: <%= dotColor %>;"></div>
+              <div class="dot" style="border-color: <%= family.color %>;"></div>
             </div>
             <div class="event-content">
               <div class="event-header">
-                <span class="event-kind" style="color: <%= dotColor %>;"><%= event.kind %></span>
+                <span class="event-family" style="background: <%= familyBg %>; border: 1px solid <%= familyBorder %>; color: <%= family.color %>;">
+                  <span class="family-icon" aria-hidden="true"><%= family.icon %></span><%= family.label %>
+                </span>
+                <span class="event-kind" style="color: <%= family.color %>;"><%= event.kind %></span>
                 <% if (event.repo) { %>
                   <span class="event-repo"><%= event.repo %></span>
                 <% } %>
@@ -544,6 +577,7 @@
 
   <script>
     // --- Filtering ---
+    const filterFamily = document.getElementById('filterFamily');
     const filterKind = document.getElementById('filterKind');
     const filterRepo = document.getElementById('filterRepo');
     const filterSeverity = document.getElementById('filterSeverity');
@@ -575,6 +609,7 @@
     function applyFilters() {
       if (!timeline) return;
 
+      const family = filterFamily ? filterFamily.value : '';
       const kind = filterKind ? filterKind.value : '';
       const repo = filterRepo ? filterRepo.value : '';
       const severity = filterSeverity ? filterSeverity.value : '';
@@ -583,11 +618,12 @@
       let count = 0;
 
       items.forEach(item => {
+        const matchFamily = !family || item.dataset.family === family;
         const matchKind = !kind || item.dataset.kind === kind;
         const matchRepo = !repo || item.dataset.repo === repo;
         const matchSev = !severity || item.dataset.severity === severity;
 
-        if (matchKind && matchRepo && matchSev) {
+        if (matchFamily && matchKind && matchRepo && matchSev) {
           item.style.display = '';
           count++;
         } else {
@@ -613,6 +649,7 @@
       if (visibleCount) visibleCount.textContent = count;
     }
 
+    if (filterFamily) filterFamily.addEventListener('change', applyFilters);
     if (filterKind) filterKind.addEventListener('change', applyFilters);
     if (filterRepo) filterRepo.addEventListener('change', applyFilters);
     if (filterSeverity) filterSeverity.addEventListener('change', applyFilters);
@@ -650,14 +687,27 @@
     }
 
     // --- Detail Toggle (event delegation, no inline onclick) ---
-    document.addEventListener('click', function(e) {
-      if (!(e.target instanceof Element)) return;
-      var item = e.target.closest('.event-item');
+    function toggleDetail(item) {
       if (!item) return;
       var idx = item.dataset.index;
       if (idx === undefined) return;
       var el = document.getElementById('detail-' + idx);
       if (el) el.classList.toggle('expanded');
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!(e.target instanceof Element)) return;
+      toggleDetail(e.target.closest('.event-item'));
+    });
+
+    // Keyboard support for the role="button" event items (Space / Enter).
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (!(e.target instanceof Element)) return;
+      var item = e.target.closest('.event-item');
+      if (!item) return;
+      e.preventDefault();
+      toggleDetail(item);
     });
   </script>
 </body>

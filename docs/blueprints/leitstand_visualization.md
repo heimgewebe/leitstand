@@ -49,7 +49,7 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 ### 4) Phase 3 umsetzen: Zeitachse (chronologische Rekonstruktion)
 
 - [x] Timeline-Ansicht mit Filterung nach Organ, Typ und Zeitraum implementieren.
-- [ ] Event-Typisierung und visuelle Kodierung vereinheitlichen (Farben/Badges/Icons konsistent).
+- [x] Event-Typisierung und visuelle Kodierung vereinheitlichen (Farben/Badges/Icons konsistent). Implementiert in `src/utils/eventKind.ts` mit deterministischer Klassifikation nach Producer-Namespace; Timeline-View nutzt die stabile Familie für Dot-Farbe, Badge und Filter.
 - [x] Zeitpunktbasierten Replay-Snapshot für definierte Zeitfenster einführen (historische Zustände für Phasen 1+2 nachvollziehbar).
 - [x] Kontextpanel für Event-Details und referenzierte Artefakte bereitstellen.
 - [ ] Akzeptanztest: Ursache-Wirkungsketten uber mindestens einen realen Incident nachvollziehen.
@@ -72,11 +72,11 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 
 ### 7) UX, Zugang und Betriebsreife
 
-- [ ] Cross-View-Navigation bauen (Graph <-> Timeline <-> Insight-Layer ohne Kontextverlust).
+- [~] Cross-View-Navigation bauen (Graph <-> Timeline <-> Insight-Layer ohne Kontextverlust). Landing-Seite `/` aggregiert Phase 1-5 mit Quelle/Frische je Phase als Einstieg; tiefere Filterübergaben zwischen Views sind weiter offen.
 - [ ] Responsives Verhalten für Leitstand-Kernansichten auf Desktop und Mobile absichern.
 - [ ] Performance-Budget festlegen (Initial Load, Interaktion, Daten-Refresh) und messen.
-- [ ] Leermengen-/Fehlerzustande UX-seitig definieren (kein Datenfriedhof, klare Operator-Hinweise).
-- [ ] Accessibility-Basics absichern (Kontrast, Tastaturfokus, Labels).
+- [~] Leermengen-/Fehlerzustande UX-seitig definieren (kein Datenfriedhof, klare Operator-Hinweise). Empty-States in den Phase-Views vorhanden, Landing-Seite zeigt Fehler-Tile pro Phase, falls ein Controller scheitert.
+- [~] Accessibility-Basics absichern (Kontrast, Tastaturfokus, Labels). Home (`index.ejs`) und Timeline tragen ARIA-Labels, Focus-Styles und Keyboard-Toggle; übrige Views stehen für Sweep aus.
 
 ### 8) Qualitat, Guards und Rollout
 
@@ -117,17 +117,24 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [x] Health-Quelle und Health-Freshness werden in der Source-Badge transparent ausgewiesen.
 - [~] Reflexion-Route `/reflexion` inkl. Reflexion-View, Sanitizer und Server/Controller-Tests implementiert; `heimgeist.reflexion.bundle.v1` wird im Leitstand defensiv auf Schema-ID und Grundstruktur geprüft, kanonischer Producer-Contract und E2E-Konformität bleiben offen.
 - [x] Reflexion bleibt read-only: Handlungsempfehlungen werden angezeigt, aber nicht vom Leitstand ausgeführt.
+- [x] Event-Typisierung und visuelle Kodierung in der Zeitachse vereinheitlicht: Stabile Familie pro Producer-Namespace (`ci.*`, `knowledge.*`, `fleet.*`, ...) mit deterministischer Farbe und Badge-Icon; neuer Familien-Filter.
+- [x] Landing-Seite `/` als Phasenübersicht: Aggregiert Quelle und Frische pro Phase (Anatomie, Physiologie, Zeitachse, Erkenntnisse, Reflexion); isoliert Controller-Fehler in Tiles, statt die Seite zu kippen.
 
 Technische Referenzen:
 
-- `src/server.ts` (robustes Query-Parsing für Timeline-Parameter)
+- `src/server.ts` (robustes Query-Parsing für Timeline-Parameter; Dashboard-Route)
 - `src/controllers/timeline.ts` (View-Meta um Fenster/Limit erweitert)
-- `src/views/timeline.ejs` (UI-Steuerung und Anzeige der aktiven Konfiguration)
+- `src/views/timeline.ejs` (UI-Steuerung und Anzeige der aktiven Konfiguration, Familien-Filter)
 - `tests/controllers/timeline.test.ts` (Replay-/Zeitfenster-Verhalten abgesichert)
 - `src/controllers/anatomy.ts` (Freshness-Berechnung und Metadaten)
 - `src/views/anatomy.ejs` (Freshness- und Stale-Hinweise in Source-Badge)
 - `src/fixtures/metrics/2023-10-27.json` (Repo-Statusdaten für lokalen Health-Layer)
 - `tests/controllers/anatomy.test.ts` (Health-Overlay-Mapping und Fallback abgesichert)
+- `src/utils/eventKind.ts` (Deterministische Klassifikation von Event-Familien)
+- `src/controllers/dashboard.ts` (Aggregator für Landing-Seite mit Fehler-Isolation)
+- `src/views/index.ejs` (Landing-Seite im Dark-Theme mit ARIA-Labels und Phase-Tiles)
+- `tests/utils/eventKind.test.ts` (Event-Familien-Stabilität und Fallback)
+- `tests/controllers/dashboard.test.ts` (Phase-Tiles und Fehler-Isolation)
 
 ## Phase 1: Anatomie (Strukturelle Übersicht)
 

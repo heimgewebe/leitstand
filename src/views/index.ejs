@@ -1,25 +1,342 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
   <title>Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Leitstand – Beobachtungs- und Verdichtungsmodul des Heimgewebe-Organismus.">
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    nav { margin-bottom: 20px; padding: 10px; background: #f0f0f0; }
-    nav a { margin-right: 15px; text-decoration: none; color: #333; font-weight: bold; }
-    nav a:hover { text-decoration: underline; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-glass: rgba(255, 255, 255, 0.04);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #3b82f6;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --fail: #ef4444;
+      --unknown: #64748b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 20px;
+      background: rgba(10, 14, 26, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 0.82em;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    nav a:hover { color: var(--text-primary); background: var(--bg-glass); }
+    nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    nav a.active { color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+    nav .title { font-weight: 700; font-size: 0.9em; color: var(--text-primary); margin-right: 16px; }
+
+    .main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    .page-header {
+      margin-bottom: 36px;
+    }
+
+    .page-header h1 {
+      font-size: 1.9em;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+
+    .page-header .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.95em;
+      max-width: 720px;
+      line-height: 1.55;
+    }
+
+    .section-title {
+      font-size: 0.72em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .phase-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .phase-card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
+      padding: 18px 20px;
+      transition: border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
+    }
+
+    .phase-card:hover,
+    .phase-card:focus-visible {
+      border-color: rgba(59, 130, 246, 0.4);
+      background: rgba(17, 24, 39, 0.95);
+      outline: none;
+    }
+
+    .phase-card:focus-visible {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    .phase-card .phase-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .phase-card .phase-number {
+      font-size: 0.65em;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .phase-card h2 {
+      font-size: 1.05em;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+
+    .phase-card .description {
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .phase-card .metric {
+      font-size: 0.85em;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 0.72em;
+      color: var(--text-muted);
+    }
+
+    .source-pill,
+    .freshness-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border-glass);
+      background: var(--bg-glass);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .source-pill.source-artifact { color: var(--ok); border-color: rgba(34, 197, 94, 0.25); }
+    .source-pill.source-fixture { color: var(--warn); border-color: rgba(245, 158, 11, 0.25); }
+    .source-pill.source-missing,
+    .source-pill.source-error { color: var(--fail); border-color: rgba(239, 68, 68, 0.25); }
+
+    .freshness-pill.freshness-fresh { color: var(--ok); border-color: rgba(34, 197, 94, 0.25); }
+    .freshness-pill.freshness-stale { color: var(--warn); border-color: rgba(245, 158, 11, 0.25); }
+    .freshness-pill.freshness-unknown { color: var(--text-muted); }
+
+    .error-note {
+      margin-top: 10px;
+      font-size: 0.72em;
+      color: var(--fail);
+      line-height: 1.45;
+    }
+
+    .info-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-bottom: 24px;
+    }
+
+    .info-card h2 {
+      font-size: 1em;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .info-card p {
+      color: var(--text-secondary);
+      font-size: 0.88em;
+      line-height: 1.6;
+    }
+
+    .info-card .role-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 8px;
+      font-size: 0.82em;
+      color: var(--text-secondary);
+    }
+
+    .info-card .role-list li {
+      padding: 6px 10px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+    }
+
+    .info-card .role-list strong { color: var(--text-primary); font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .main { padding: 28px 18px 64px; }
+      .page-header h1 { font-size: 1.5em; }
+    }
+
+    /* Visually hidden text accessible to screen readers */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
 </head>
 <body>
-  <nav>
-    <a href="/">Home</a>
+  <nav aria-label="Hauptnavigation">
+    <span class="title">Leitstand</span>
+    <a href="/" class="active" aria-current="page">Home</a>
     <a href="/observatory">Observatorium</a>
     <a href="/anatomy">Anatomie</a>
     <a href="/timeline">Zeitachse</a>
     <a href="/insights">Erkenntnisse</a>
+    <a href="/reflexion">Reflexion</a>
     <a href="/ops">Ops</a>
-    <a href="/intent">Intent</a>
   </nav>
-  <h1>Welcome to Leitstand</h1>
-  <p>Dashboard and control-room for the heimgewebe organism.</p>
+
+  <main class="main" id="main">
+    <header class="page-header">
+      <h1>Leitstand</h1>
+      <p class="subtitle">
+        Beobachtungs- und Verdichtungsmodul des Heimgewebe-Organismus.
+        Strikter Observer: visualisiert Zustände, ohne externe Systeme zu mutieren.
+      </p>
+    </header>
+
+    <section aria-labelledby="phasen-heading">
+      <h2 id="phasen-heading" class="section-title">Erkenntnisphasen</h2>
+
+      <% if (!phases || phases.length === 0) { %>
+        <div class="info-card" role="status">
+          <h2>Daten konnten nicht geladen werden</h2>
+          <p>Die Phasenübersicht ist aktuell nicht verfügbar. Einzelne Ansichten sind weiterhin über die Navigation erreichbar.</p>
+        </div>
+      <% } else { %>
+        <div class="phase-grid">
+          <% phases.forEach(function(p) { %>
+            <a class="phase-card"
+               href="<%= p.href %>"
+               data-phase-id="<%= p.id %>"
+               aria-label="<%= p.title %> – Phase <%= p.phase %> – <%= p.description %>">
+              <div class="phase-header">
+                <span class="phase-number">Phase <%= p.phase %></span>
+                <span class="source-pill source-<%= p.source_kind %>">
+                  <% if (p.source_kind === 'artifact') { %>Artefakt<% } %>
+                  <% if (p.source_kind === 'fixture') { %>Fixture<% } %>
+                  <% if (p.source_kind === 'missing') { %>fehlt<% } %>
+                  <% if (p.source_kind === 'error') { %>Fehler<% } %>
+                </span>
+              </div>
+              <h2><%= p.title %></h2>
+              <p class="description"><%= p.description %></p>
+              <div class="metric"><%= p.metric %></div>
+              <div class="meta-row">
+                <span class="freshness-pill freshness-<%= p.freshness_state %>">
+                  <% if (p.freshness_state === 'fresh') { %>frisch<% } %>
+                  <% if (p.freshness_state === 'stale') { %>stale<% } %>
+                  <% if (p.freshness_state === 'unknown') { %>Frische unbekannt<% } %>
+                </span>
+              </div>
+              <% if (p.error_reason) { %>
+                <div class="error-note" role="alert">Lade-Fehler: <%= p.error_reason %></div>
+              <% } %>
+            </a>
+          <% }); %>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="info-card" aria-labelledby="rolle-heading">
+      <h2 id="rolle-heading">Rolle des Leitstands</h2>
+      <p>
+        Der Leitstand beobachtet, verdichtet und visualisiert den Zustand des Heimgewebe-Organismus.
+        Er ist ausdrücklich kein Orchestrator, keine Steuerinstanz und schreibt nicht in externe Systeme.
+      </p>
+      <ul class="role-list">
+        <li><strong>chronik</strong> – Event-Log</li>
+        <li><strong>semantAH</strong> – Semantik &amp; Insights</li>
+        <li><strong>wgx</strong> – Fleet-Metriken</li>
+        <li><strong>heimgeist</strong> – Reflexion</li>
+        <li><strong>hauski</strong> – Entscheidungen</li>
+        <li><strong>metarepo</strong> – Contracts &amp; Governance</li>
+      </ul>
+    </section>
+  </main>
 </body>
 </html>
