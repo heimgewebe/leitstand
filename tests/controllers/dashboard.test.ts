@@ -121,7 +121,7 @@ describe('getDashboardData controller', () => {
       new Error('Strict load failed: /data/artifacts/anatomy/2026-05-18.json not found'),
     );
     vi.spyOn(insightsCtrl, 'getInsightsData').mockRejectedValue(
-      new Error('Strict: /var/run/leitstand/insights/latest.json is missing'),
+      new Error('strict: /var/run/leitstand/insights/latest.json is missing'),
     );
     vi.spyOn(timelineCtrl, 'getTimelineData').mockResolvedValue({
       events: [],
