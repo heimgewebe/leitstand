@@ -775,3 +775,46 @@ describe('GET /timeline – until UTC contract', () => {
     expect(untilArg).toBeUndefined();
   });
 });
+
+describe('GET / – dashboard landing page', () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    resetEnvConfig();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('renders all five phase cards with stable IDs', async () => {
+    const res = await request(app).get('/');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('data-phase-id="anatomie"');
+    expect(res.text).toContain('data-phase-id="physiologie"');
+    expect(res.text).toContain('data-phase-id="zeitachse"');
+    expect(res.text).toContain('data-phase-id="erkenntnisse"');
+    expect(res.text).toContain('data-phase-id="reflexion"');
+  });
+
+  it('renders an accessible nav and a main landmark', async () => {
+    const res = await request(app).get('/');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('aria-label="Hauptnavigation"');
+    expect(res.text).toContain('<main');
+    expect(res.text).toContain('aria-current="page"');
+  });
+
+  it('does not crash even if every phase controller fails', async () => {
+    const dashboardController = await import('../src/controllers/dashboard.js');
+    vi.spyOn(dashboardController, 'getDashboardData').mockRejectedValueOnce(new Error('fully broken'));
+
+    const res = await request(app).get('/');
+
+    // The route catches the failure and renders the empty shell rather than
+    // emitting a 5xx, since the landing page must remain reachable for ops.
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Daten konnten nicht geladen werden');
+  });
+});

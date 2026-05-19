@@ -20,3 +20,26 @@ implementations:
       - tests/cli.test.ts
     supersedes: []
     deprecated_by: []
+
+  - id: impl.utils.eventKind
+    path: src/utils/eventKind.ts
+    impl_type: util
+    status: active
+    documented_by:
+      - docs/blueprints/leitstand_visualization.md
+    verified_by:
+      - tests/utils/eventKind.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.controller.dashboard
+    path: src/controllers/dashboard.ts
+    impl_type: controller
+    status: active
+    documented_by:
+      - docs/blueprints/leitstand_visualization.md
+    verified_by:
+      - tests/controllers/dashboard.test.ts
+      - tests/server.test.ts
+    supersedes: []
+    deprecated_by: []

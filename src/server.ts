@@ -12,6 +12,8 @@ import { getAnatomyData } from './controllers/anatomy.js';
 import { getInsightsData } from './controllers/insights.js';
 import { getTimelineData } from './controllers/timeline.js';
 import { getReflexionData } from './controllers/reflexion.js';
+import { getDashboardData } from './controllers/dashboard.js';
+import { getEventFamily, listEventFamilies } from './utils/eventKind.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
 import { randomBytes } from 'crypto';
@@ -287,8 +289,17 @@ app.get('/ops', (_req, res) => {
   });
 });
 
-app.get('/', (_req, res) => {
-  res.render('index');
+app.get('/', async (_req, res) => {
+  try {
+    const data = await getDashboardData();
+    res.render('index', data);
+  } catch (error) {
+    // The dashboard controller swallows per-phase errors into typed tiles, so
+    // an exception here is unexpected — render the bare nav-only shell rather
+    // than crashing the landing page.
+    console.error('[Dashboard] Unexpected error:', error);
+    res.render('index', { phases: [] });
+  }
 });
 
 app.get('/observatory', async (_req, res) => {
@@ -375,7 +386,11 @@ app.get('/timeline', async (req, res) => {
     const untilOverride = parsedUntil && !Number.isNaN(parsedUntil.getTime()) ? parsedUntil : undefined;
 
     const data = await getTimelineData(hoursBack, maxEvents, untilOverride);
-    res.render('timeline', data);
+    res.render('timeline', {
+      ...data,
+      getEventFamily,
+      eventFamilies: listEventFamilies(),
+    });
   } catch (error) {
     if (!res.headersSent) {
       console.error('[Timeline] Error:', error);

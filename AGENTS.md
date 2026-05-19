@@ -55,4 +55,26 @@ All new documents and critical implementations must be discoverable:
 - Empty `catch` blocks: Ensure explicit `// Ignore ENOENT` comments are added when ignoring ENOENT errors.
 
 ## Open Gaps
-- TBD
+
+Anchored on `docs/blueprints/leitstand_visualization.md`. Items listed as `[ ]` or
+`[~]` there are the canonical source — this list mirrors the highest-impact ones
+so agents can pick up work without re-reading the full roadmap.
+
+- **Phase 0/1 governance**: Scope, source inventory and DoD checklist still need
+  to be formally documented (`docs/blueprints/leitstand_visualization.md` §0-§1).
+- **Phase 5 Vortagsvergleich**: Delta-Sektion zeigt heutige Daten, der belastbare
+  Vortagsvergleich auf das konkrete Vortags-Artefakt fehlt als Datenbindung.
+- **Phase 6 Reflexion-Producer-Contract**: Producer-Contract für
+  `heimgeist.reflexion.bundle.v1` ist im Leitstand defensiv geprüft, aber noch
+  nicht End-to-End mit dem Producer-Repo abgestimmt.
+- **Phase 7 Cross-View-Navigation**: Filter-/Kontextübergaben zwischen
+  Zeitachse, Anatomie und Erkenntnissen sind noch nicht vollständig (Drilldown
+  ist erst per-Insight implementiert).
+- **Phase 7 Responsives Verhalten**: Mobile-Layouts der Kernansichten sind nur
+  punktuell geprüft (z. B. Topic-Liste in `insights.ejs`).
+- **Phase 7 Accessibility**: Tastaturfokus und ARIA sind partiell vorhanden
+  (Home, Timeline); ein systematischer A11y-Sweep über alle Views steht aus.
+- **Phase 8 Tests**: Visualmodell- und Mapping-Tests werden Phase für Phase
+  ergänzt – derzeit liegen Schwerpunkte bei Controller- und Server-Tests.
+- **Semantic Graph Generator** (`docs/_generated/`): Die generierten Übersichten
+  sind aktuell Platzhalter; ein echter Generator ist nicht vorgesehen.
