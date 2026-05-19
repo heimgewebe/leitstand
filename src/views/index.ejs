@@ -271,6 +271,7 @@
   </nav>
 
   <main class="main" id="main">
+    <% const phaseCards = typeof phases !== 'undefined' && Array.isArray(phases) ? phases : []; %>
     <header class="page-header">
       <h1>Leitstand</h1>
       <p class="subtitle">
@@ -282,14 +283,14 @@
     <section aria-labelledby="phasen-heading">
       <h2 id="phasen-heading" class="section-title">Erkenntnisphasen</h2>
 
-      <% if (!phases || phases.length === 0) { %>
+      <% if (phaseCards.length === 0) { %>
         <div class="info-card" role="status">
           <h2>Daten konnten nicht geladen werden</h2>
           <p>Die Phasenübersicht ist aktuell nicht verfügbar. Einzelne Ansichten sind weiterhin über die Navigation erreichbar.</p>
         </div>
       <% } else { %>
         <div class="phase-grid">
-          <% phases.forEach(function(p) { %>
+          <% phaseCards.forEach(function(p) { %>
             <a class="phase-card"
                href="<%= p.href %>"
                data-phase-id="<%= p.id %>"
@@ -309,7 +310,7 @@
               <div class="meta-row">
                 <span class="freshness-pill freshness-<%= p.freshness_state %>">
                   <% if (p.freshness_state === 'fresh') { %>frisch<% } %>
-                  <% if (p.freshness_state === 'stale') { %>stale<% } %>
+                  <% if (p.freshness_state === 'stale') { %>veraltet<% } %>
                   <% if (p.freshness_state === 'unknown') { %>Frische unbekannt<% } %>
                 </span>
               </div>

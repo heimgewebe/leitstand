@@ -206,11 +206,11 @@ describe('getDashboardData controller', () => {
 
     const anatomyTile = result.phases.find((p) => p.id === 'anatomie')!;
     expect(anatomyTile.source_kind).toBe('error');
-    expect(anatomyTile.error_reason).toBe('anatomy boom');
+    expect(anatomyTile.error_reason).toBe('controller-load-failed');
 
     const timelineTile = result.phases.find((p) => p.id === 'zeitachse')!;
     expect(timelineTile.source_kind).toBe('error');
-    expect(timelineTile.error_reason).toBe('timeline boom');
+    expect(timelineTile.error_reason).toBe('controller-load-failed');
 
     // Unaffected tiles still render their proper "missing" state.
     const insightsTile = result.phases.find((p) => p.id === 'erkenntnisse')!;

@@ -38,10 +38,10 @@ export interface DashboardData {
  * Maps error messages that contain strict-mode details (e.g. artifact paths) to an
  * opaque token so the dashboard tile never surfaces internal path information.
  * Case-insensitive match to handle variations (Strict, strict, STRICT).
- * Non-strict messages pass through unchanged.
+ * Non-strict messages are also mapped to an opaque token; raw errors stay in logs.
  */
 function publicErrorReason(msg: string): string {
-  return msg.toLowerCase().includes('strict') ? 'strict-load-failed' : msg;
+  return msg.toLowerCase().includes('strict') ? 'strict-load-failed' : 'controller-load-failed';
 }
 
 /**

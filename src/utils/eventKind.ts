@@ -18,7 +18,7 @@ export interface EventFamily {
   label: string;
   /** Hex color used for dot/border and badge accent. */
   color: string;
-  /** Single-character glyph used as the badge icon (CSS-safe, no emoji). */
+  /** Single-character Unicode glyph used as the badge icon. */
   icon: string;
 }
 

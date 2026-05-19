@@ -75,7 +75,7 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [~] Cross-View-Navigation bauen (Graph <-> Timeline <-> Insight-Layer ohne Kontextverlust). Landing-Seite `/` aggregiert Phase 1-5 mit Quelle/Frische je Phase als Einstieg; tiefere Filterübergaben zwischen Views sind weiter offen.
 - [ ] Responsives Verhalten für Leitstand-Kernansichten auf Desktop und Mobile absichern.
 - [ ] Performance-Budget festlegen (Initial Load, Interaktion, Daten-Refresh) und messen.
-- [~] Leermengen-/Fehlerzustande UX-seitig definieren (kein Datenfriedhof, klare Operator-Hinweise). Empty-States in den Phase-Views vorhanden, Landing-Seite zeigt Fehler-Tile pro Phase, falls ein Controller scheitert.
+- [~] Leermengen-/Fehlerzustände UX-seitig definieren (kein Datenfriedhof, klare Operator-Hinweise). Empty-States in den Phase-Views vorhanden, Landing-Seite zeigt Fehler-Tile pro Phase, falls ein Controller scheitert.
 - [~] Accessibility-Basics absichern (Kontrast, Tastaturfokus, Labels). Home (`index.ejs`) und Timeline tragen ARIA-Labels, Focus-Styles und Keyboard-Toggle; übrige Views stehen für Sweep aus.
 
 ### 8) Qualitat, Guards und Rollout
