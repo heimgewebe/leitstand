@@ -1,3 +1,4 @@
+<% const phaseCards = Array.isArray(locals.phases) ? locals.phases : []; %>
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -271,7 +272,6 @@
   </nav>
 
   <main class="main" id="main">
-    <% const phaseCards = typeof phases !== 'undefined' && Array.isArray(phases) ? phases : []; %>
     <header class="page-header">
       <h1>Leitstand</h1>
       <p class="subtitle">
