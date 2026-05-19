@@ -104,6 +104,7 @@ describe('getDashboardData controller', () => {
     // Timeline 'chronik' source kind is normalized to 'artifact' for UI uniformity.
     expect(result.phases[2].source_kind).toBe('artifact');
     expect(result.phases[2].metric).toContain('1 Events');
+    expect(result.phases[2].freshness_state).toBe('unknown');
 
     expect(result.phases[3].source_kind).toBe('artifact');
     expect(result.phases[3].metric).toContain('1 Topics');

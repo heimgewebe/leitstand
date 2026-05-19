@@ -100,9 +100,9 @@ export async function getDashboardData(): Promise<DashboardData> {
       description: 'Chronologische Events des Heimgewebes (48 h Fenster).',
       href: '/timeline',
       source_kind: timeline.error ? 'error' : (timeline.data?.view_meta.source_kind === 'chronik' ? 'artifact' : timeline.data?.view_meta.source_kind === 'fixture' ? 'fixture' : 'missing'),
-      freshness_state: timeline.data
-        ? (timeline.data.events.length > 0 ? 'fresh' : 'unknown')
-        : 'unknown',
+      // Timeline does not expose a freshness contract yet; event presence alone is
+      // not a reliable indicator for "fresh".
+      freshness_state: 'unknown',
       metric: timeline.data
         ? `${timeline.data.events.length} Events · ${timeline.data.view_meta.hours_back}h`
         : 'keine Zeitachsendaten',
