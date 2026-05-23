@@ -12,7 +12,9 @@ describe('cli date parsing', () => {
   it('parses valid ISO dates', () => {
     const parsed = parseTargetDate('2025-12-05');
 
-    expect(parsed.toISOString().startsWith('2025-12-05')).toBe(true);
+    expect(parsed.getFullYear()).toBe(2025);
+    expect(parsed.getMonth()).toBe(11);
+    expect(parsed.getDate()).toBe(5);
   });
 
   it('throws for invalid date strings', () => {
