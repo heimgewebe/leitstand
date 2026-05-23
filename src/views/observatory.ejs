@@ -1,26 +1,464 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Leitstand Observatory - System Observation and Insights Dashboard">
   <title>Observatorium - Leitstand</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    nav { margin-bottom: 20px; padding: 10px; background: #f0f0f0; }
-    nav a { margin-right: 15px; text-decoration: none; color: #333; font-weight: bold; }
-    nav a:hover { text-decoration: underline; }
-    .topic { margin-bottom: 20px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
-    .topic h3 { margin-top: 0; }
-    .meta { color: #666; font-size: 0.9em; margin-bottom: 20px; }
-    .empty-state { padding: 40px; background: #f9f9f9; border: 2px dashed #ccc; text-align: center; color: #666; margin-top: 20px; border-radius: 8px; }
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-glass: rgba(255, 255, 255, 0.04);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #3b82f6;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --fail: #ef4444;
+    }
 
-    /* Insights & Negations */
-    .section-title { margin-top: 30px; border-bottom: 2px solid #333; padding-bottom: 5px; }
-    .insight-card { margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fafafa; }
-    .insight-card.negation { border-left: 5px solid #d9534f; background: #fff0f0; }
-    .insight-card h4 { margin: 0 0 5px 0; font-size: 1.1em; }
-    .insight-meta { font-size: 0.85em; color: #555; margin-bottom: 5px; }
-    .verdict { font-weight: bold; color: #d9534f; margin-top: 5px; }
-    .relation { display: flex; gap: 10px; margin-top: 10px; font-size: 0.9em; }
-    .relation-item { background: #eee; padding: 2px 6px; border-radius: 3px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Navigation */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      background-color: rgba(17, 24, 39, 0.5);
+      border-bottom: 1px solid var(--border-glass);
+      padding: 12px 20px;
+      margin-bottom: 30px;
+    }
+
+    nav a {
+      display: inline-block;
+      margin-right: 20px;
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: 0.95em;
+      transition: color 0.2s ease;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+    }
+
+    /* Main Container */
+    .main-wrapper {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 20px 40px 20px;
+    }
+
+    /* Page Title */
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 30px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      font-size: 1.5em;
+      margin: 30px 0 20px 0;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    h3 {
+      font-size: 1.1em;
+      margin: 15px 0 10px 0;
+      font-weight: 600;
+    }
+
+    h4 {
+      font-size: 1em;
+      margin: 10px 0 5px 0;
+      font-weight: 600;
+    }
+
+    /* Section Cards */
+    .section {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: 12px;
+      backdrop-filter: blur(16px);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .section-alt {
+      background-color: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      padding: 16px;
+      margin-bottom: 20px;
+      font-size: 0.9em;
+    }
+
+    /* Metadata Display */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+      font-size: 0.95em;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-label {
+      color: var(--text-muted);
+      font-size: 0.85em;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .meta-value {
+      color: var(--text-primary);
+      font-weight: 500;
+      word-break: break-word;
+    }
+
+    /* Status Badges */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-ok {
+      background-color: rgba(34, 197, 94, 0.15);
+      color: var(--ok);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .status-warn {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--warn);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status-fail {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: var(--fail);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status-unclear {
+      background-color: rgba(168, 85, 247, 0.15);
+      color: #a855f7;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    .status-missing {
+      background-color: rgba(148, 163, 184, 0.15);
+      color: var(--text-secondary);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    /* Alert Boxes */
+    .alert-warning {
+      background-color: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-left: 4px solid var(--warn);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.95em;
+    }
+
+    .alert-error {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-left: 4px solid var(--fail);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.95em;
+    }
+
+    .alert-info {
+      background-color: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-left: 4px solid var(--accent);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.95em;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: var(--bg-secondary);
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 0.95em;
+    }
+
+    thead {
+      background-color: var(--bg-glass);
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    th {
+      padding: 12px;
+      text-align: left;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.85em;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border-glass);
+      color: var(--text-primary);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background-color: var(--bg-glass);
+    }
+
+    /* Metric Cards */
+    .metric-card {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-size: 2em;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .metric-label {
+      color: var(--text-secondary);
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
+      margin: 15px 0;
+    }
+
+    /* Lists */
+    ul, ol {
+      margin-left: 20px;
+    }
+
+    li {
+      margin-bottom: 6px;
+      color: var(--text-primary);
+    }
+
+    /* Code/Monospace */
+    code, pre {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+
+    pre {
+      padding: 12px;
+      overflow-x: auto;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid var(--border-glass);
+    }
+
+    /* Links */
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      transition: opacity 0.2s ease;
+    }
+
+    a:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+
+    /* Insight/Negation Cards */
+    .insight-card {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 12px;
+    }
+
+    .insight-card.negation {
+      border-left: 4px solid var(--fail);
+      background-color: rgba(239, 68, 68, 0.05);
+    }
+
+    .insight-meta {
+      font-size: 0.85em;
+      color: var(--text-muted);
+      margin: 8px 0;
+    }
+
+    .verdict {
+      font-weight: 600;
+      color: var(--fail);
+      margin-top: 8px;
+    }
+
+    .relation {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 0.9em;
+    }
+
+    .relation-item {
+      background-color: var(--bg-glass);
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border-glass);
+      color: var(--text-secondary);
+    }
+
+    /* Empty State */
+    .empty-state {
+      background-color: var(--bg-card);
+      border: 2px dashed var(--border-glass);
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .empty-state h3 {
+      margin-top: 0;
+      color: var(--text-primary);
+    }
+
+    .empty-state p {
+      margin-bottom: 12px;
+    }
+
+    /* Debug Section */
+    .debug-section {
+      background-color: var(--bg-secondary);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 0.9em;
+    }
+
+    .debug-section h3 {
+      margin-top: 0;
+      color: var(--accent);
+    }
+
+    .debug-section p {
+      color: var(--text-secondary);
+      font-size: 0.9em;
+      margin: 8px 0;
+    }
+
+    /* Topic Cards */
+    .topic-card {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 12px;
+    }
+
+    .topic-card h3 {
+      margin-top: 0;
+    }
+
+    .topic-card p {
+      margin: 8px 0;
+      font-size: 0.95em;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.8em;
+      }
+
+      h2 {
+        font-size: 1.3em;
+      }
+
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      }
+
+      .main-wrapper {
+        padding: 0 12px 30px 12px;
+      }
+
+      nav {
+        padding: 10px 12px;
+      }
+
+      nav a {
+        margin-right: 12px;
+        font-size: 0.9em;
+      }
+    }
   </style>
 </head>
 <body>
@@ -32,719 +470,715 @@
     <a href="/insights">Erkenntnisse</a>
     <a href="/ops">Ops</a>
   </nav>
-  <h1>Observatorium</h1>
 
-  <!-- STRICT MODE & FORENSICS (Always Visible) -->
-  <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background: #fff; font-size: 0.85em; color: #555;">
-    <div><strong>Strict Mode:</strong>
+  <div class="main-wrapper">
+    <h1>Observatorium</h1>
+
+    <!-- STRICT MODE & FORENSICS -->
+    <div class="section-alt">
+      <div style="margin-bottom: 10px;">
+        <strong>Strict Mode:</strong>
         <% if (locals.view_meta && locals.view_meta.is_strict) { %>
-            <span style="color: #d9534f; font-weight: bold;">ON</span>
+            <span class="status-badge status-fail">ON</span>
         <% } else { %>
-            <span style="color: #666;">OFF</span>
-        <% } %>
-    </div>
-    <% if (locals.view_meta && locals.view_meta.forensics) { %>
-      <div style="margin-top: 5px; border-top: 1px dashed #ddd; padding-top: 5px;">
-        <strong>Forensics:</strong><br>
-        <% if (locals.view_meta.forensics.fetched_at) { %>
-           Global: <%= locals.view_meta.forensics.fetched_at %><br>
-        <% } %>
-        <% if (locals.view_meta.forensics.observatory) { %>
-           <strong>Observatory:</strong>
-           <% if (locals.view_meta.forensics.observatory.fetched_at) { %>
-              <%= locals.view_meta.forensics.observatory.fetched_at %> |
-           <% } %>
-           <%= locals.view_meta.forensics.observatory.bytes %> bytes |
-           Source: <%= locals.view_meta.forensics.observatory.source_url %>
-           <% if (locals.view_meta.forensics.observatory.sha) { %> | SHA: <span title="<%= locals.view_meta.forensics.observatory.sha %>"><%= locals.view_meta.forensics.observatory.sha.substring(0, 7) %>...</span><% } %>
-           <% if (locals.view_meta.forensics.observatory.schema_ref) { %> | Schema: <a href="<%= locals.view_meta.forensics.observatory.schema_ref %>" target="_blank" rel="noopener noreferrer" style="color: #555; text-decoration: underline;">ref</a><% } %><br>
-        <% } %>
-        <% if (locals.view_meta.forensics.integrity) { %>
-           <strong>Integrity:</strong>
-           <% if (locals.view_meta.forensics.integrity.fetched_at) { %>
-              <%= locals.view_meta.forensics.integrity.fetched_at %>
-           <% } %>
-           <br>
-        <% } %>
-        <% if (locals.view_meta.forensics.plexer_report) { %>
-           <strong>Plexer:</strong>
-           <% if (locals.view_meta.forensics.plexer_report.fetched_at) { %>
-              <%= locals.view_meta.forensics.plexer_report.fetched_at %>
-           <% } %>
-           <br>
+            <span class="status-badge status-ok">OFF</span>
         <% } %>
       </div>
-    <% } %>
-  </div>
+      <% if (locals.view_meta && locals.view_meta.forensics) { %>
+        <div style="margin-top: 10px; border-top: 1px solid var(--border-glass); padding-top: 10px;">
+          <div style="margin-bottom: 8px;"><strong>Forensics Metadata:</strong></div>
+          <% if (locals.view_meta.forensics.fetched_at) { %>
+             <div style="color: var(--text-secondary); font-size: 0.9em;">Global: <%= locals.view_meta.forensics.fetched_at %></div>
+          <% } %>
+          <% if (locals.view_meta.forensics.observatory) { %>
+             <div style="color: var(--text-secondary); font-size: 0.9em; margin-top: 6px;">
+               <strong>Observatory:</strong>
+               <% if (locals.view_meta.forensics.observatory.fetched_at) { %>
+                  <%= locals.view_meta.forensics.observatory.fetched_at %> |
+               <% } %>
+               <%= locals.view_meta.forensics.observatory.bytes %> bytes |
+               Source: <%= locals.view_meta.forensics.observatory.source_url %>
+               <% if (locals.view_meta.forensics.observatory.sha) { %> | SHA: <code title="<%= locals.view_meta.forensics.observatory.sha %>"><%= locals.view_meta.forensics.observatory.sha.substring(0, 7) %>...</code><% } %>
+               <% if (locals.view_meta.forensics.observatory.schema_ref) { %> | <a href="<%= locals.view_meta.forensics.observatory.schema_ref %>" target="_blank" rel="noopener noreferrer">Schema ref</a><% } %>
+             </div>
+          <% } %>
+          <% if (locals.view_meta.forensics.integrity) { %>
+             <div style="color: var(--text-secondary); font-size: 0.9em; margin-top: 6px;">
+               <strong>Integrity:</strong>
+               <% if (locals.view_meta.forensics.integrity.fetched_at) { %>
+                  <%= locals.view_meta.forensics.integrity.fetched_at %>
+               <% } %>
+             </div>
+          <% } %>
+          <% if (locals.view_meta.forensics.plexer_report) { %>
+             <div style="color: var(--text-secondary); font-size: 0.9em; margin-top: 6px;">
+               <strong>Plexer:</strong>
+               <% if (locals.view_meta.forensics.plexer_report.fetched_at) { %>
+                  <%= locals.view_meta.forensics.plexer_report.fetched_at %>
+               <% } %>
+             </div>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
 
-  <!-- RUNTIME DEBUG (Always Available) -->
-  <div id="runtime-observatory" style="margin-top: 10px; padding: 10px; background: #eef; border: 1px solid #ccd; border-radius: 5px; display: none; font-size: 0.9em;">
-    <h3 style="margin-top:0;">Debug: Runtime Fetch</h3>
-    <p style="margin-top:0; color:#666; font-size:0.9em;">Checks connectivity to upstream Release Asset. Does <strong>not</strong> verify local build artifacts.</p>
-    <div id="obs-runtime-status">Initializing...</div>
-    <pre id="obs-runtime-json" style="max-height: 200px; overflow: auto; background: #fff; padding: 10px; border: 1px solid #ddd;"></pre>
-  </div>
-  <script>
-    (async function() {
-      const URL = "<%= locals.observatoryUrl %>";
-      const debugContainer = document.getElementById("runtime-observatory");
-      const statusEl = document.getElementById("obs-runtime-status");
-      const preEl = document.getElementById("obs-runtime-json");
+    <!-- RUNTIME DEBUG -->
+    <div id="runtime-observatory" style="display: none;">
+      <div class="debug-section">
+        <h3>Runtime Fetch Status</h3>
+        <p style="margin-top: 0;">Checks connectivity to upstream Release Asset. Does <strong>not</strong> verify local build artifacts.</p>
+        <div id="obs-runtime-status" style="margin-top: 10px; color: var(--text-secondary);">Initializing...</div>
+        <pre id="obs-runtime-json"></pre>
+      </div>
+    </div>
 
-      const isDebug = new URLSearchParams(window.location.search).get("debug") === "1";
-      if (isDebug) debugContainer.style.display = "block";
+    <script>
+      (async function() {
+        const URL = "<%= locals.observatoryUrl %>";
+        const debugContainer = document.getElementById("runtime-observatory");
+        const statusEl = document.getElementById("obs-runtime-status");
+        const preEl = document.getElementById("obs-runtime-json");
 
-      statusEl.textContent = "Fetching live data from: " + URL;
+        const isDebug = new URLSearchParams(window.location.search).get("debug") === "1";
+        if (isDebug) debugContainer.style.display = "block";
 
-      try {
-        const r = await fetch(URL, { cache: "no-store" });
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const data = await r.json();
+        statusEl.textContent = "Fetching live data from: " + URL;
 
-        // Update Metadata
-        const genEl = document.getElementById("obs-generated-at");
-        if (genEl) genEl.textContent = (data.generated_at || "n/a") + " (Live)";
-        const srcEl = document.getElementById("obs-source-desc");
-        if (srcEl) srcEl.textContent = "Live from Release Asset";
+        try {
+          const r = await fetch(URL, { cache: "no-store" });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const data = await r.json();
 
-        // Update Topics (only if container exists - i.e. not empty state)
-        const topicsContainer = document.getElementById("obs-topics-container");
-        if (topicsContainer) {
-          topicsContainer.textContent = ""; // Clear existing content
-          if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
-            data.topics.forEach(t => {
-              const topicDiv = document.createElement("div");
-              topicDiv.className = "topic";
-              const h3 = document.createElement("h3");
-              h3.textContent = t.title || "Untitled topic";
-              topicDiv.appendChild(h3);
-              if (t.summary) {
-                const pSummary = document.createElement("p");
-                pSummary.textContent = t.summary;
-                topicDiv.appendChild(pSummary);
-              }
-              const pSources = document.createElement("p");
-              const strong = document.createElement("strong");
-              strong.textContent = "Sources: ";
-              pSources.appendChild(strong);
-              pSources.appendChild(document.createTextNode(t.sources ? t.sources.length : 0));
-              topicDiv.appendChild(pSources);
-              topicsContainer.appendChild(topicDiv);
-            });
-          } else {
-            const p = document.createElement("p");
-            p.textContent = "No topics available.";
-            topicsContainer.appendChild(p);
+          // Update Metadata
+          const genEl = document.getElementById("obs-generated-at");
+          if (genEl) genEl.textContent = (data.generated_at || "n/a") + " (Live)";
+          const srcEl = document.getElementById("obs-source-desc");
+          if (srcEl) srcEl.textContent = "Live from Release Asset";
+
+          // Update Topics
+          const topicsContainer = document.getElementById("obs-topics-container");
+          if (topicsContainer) {
+            topicsContainer.textContent = "";
+            if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
+              data.topics.forEach(t => {
+                const topicDiv = document.createElement("div");
+                topicDiv.className = "topic-card";
+                const h3 = document.createElement("h3");
+                h3.textContent = t.title || "Untitled topic";
+                topicDiv.appendChild(h3);
+                if (t.summary) {
+                  const pSummary = document.createElement("p");
+                  pSummary.textContent = t.summary;
+                  topicDiv.appendChild(pSummary);
+                }
+                const pSources = document.createElement("p");
+                const strong = document.createElement("strong");
+                strong.textContent = "Sources: ";
+                pSources.appendChild(strong);
+                pSources.appendChild(document.createTextNode(String(t.sources ? t.sources.length : 0)));
+                topicDiv.appendChild(pSources);
+                topicsContainer.appendChild(topicDiv);
+              });
+            } else {
+              const p = document.createElement("p");
+              p.textContent = "No topics available.";
+              topicsContainer.appendChild(p);
+            }
           }
-        }
 
-        // Debug Output
-        statusEl.textContent = "";
-        const strong = document.createElement("strong");
-        strong.textContent = "Live data loaded!";
-        statusEl.appendChild(strong);
-        statusEl.style.color = "green";
-        if (isDebug) {
-          preEl.textContent = JSON.stringify(data, null, 2);
-        }
-      } catch (e) {
-        statusEl.textContent = "";
-        const strong = document.createElement("strong");
-        strong.textContent = "Runtime fetch failed.";
-        statusEl.appendChild(strong);
-        statusEl.appendChild(document.createElement("br"));
-        statusEl.appendChild(document.createTextNode(String(e)));
-        statusEl.style.color = "red";
-        if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
-      }
-    })();
-  </script>
+          // Debug Output
+          statusEl.textContent = "";
+          const strong = document.createElement("strong");
+          strong.textContent = "Live data loaded!";
+          statusEl.appendChild(strong);
+          statusEl.style.color = "var(--ok)";
+          if (isDebug) {
+            preEl.textContent = JSON.stringify(data, null, 2);
+          }
+        } catch (e) {
+          statusEl.textContent = "";
+          statusEl.style.color = "var(--fail)";
 
-  <% if (data) { %>
-  <div class="meta">
-    <div><strong>Generated:</strong> <span id="obs-generated-at"><%= data.generated_at || "n/a" %></span></div>
-    <div><strong>Source:</strong> <span id="obs-source-desc">
-      <% if (typeof data.source === 'string') { %>
-        <%= data.source %>
-      <% } else if (data.source && typeof data.source === 'object') { %>
-        <%= data.source.source_type %>: <%= data.source.ref %>
-      <% } else { %>
-        n/a
-      <% } %>
-    </span></div>
-    <div><strong>ID:</strong> <%= data.observatory_id || "n/a" %></div>
-    <div>
-      <strong>Quelle:</strong>
-      <% if (locals.view_meta && locals.view_meta.source_kind === 'artifact') { %>
-        Artefakt (knowledge.observatory.json)
-      <% } else if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
-        <span style="color: #d9534f; font-weight: bold;">Fixture (Fallback) - Live Data Missing</span>
-      <% } else { %>
-        unknown
+          const strong = document.createElement("strong");
+          strong.textContent = "Runtime fetch failed.";
+          statusEl.appendChild(strong);
+          statusEl.appendChild(document.createTextNode(" "));
+          statusEl.appendChild(document.createTextNode(String(e)));
+
+          if (isDebug) console.error("Observatory Runtime Fetch Error:", e);
+        }
+      })();
+    </script>
+
+    <% if (data) { %>
+
+    <!-- METADATA SECTION -->
+    <div class="section">
+      <h2>Data Source & Metadata</h2>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <span class="meta-label">Generated</span>
+          <span class="meta-value" id="obs-generated-at"><%= data.generated_at || "n/a" %></span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Observatory ID</span>
+          <span class="meta-value"><%= data.observatory_id || "n/a" %></span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Source</span>
+          <span class="meta-value" id="obs-source-desc">
+            <% if (typeof data.source === 'string') { %>
+              <%= data.source %>
+            <% } else if (data.source && typeof data.source === 'object') { %>
+              <%= data.source.source_type %>: <%= data.source.ref %>
+            <% } else { %>
+              n/a
+            <% } %>
+          </span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Source Kind</span>
+          <% if (locals.view_meta && locals.view_meta.source_kind === 'artifact') { %>
+            <span class="status-badge status-ok">Artifact</span>
+          <% } else if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
+            <span class="status-badge status-warn">Fixture (Fallback)</span>
+          <% } else { %>
+            <span class="status-badge status-unclear">Unknown</span>
+          <% } %>
+        </div>
+      </div>
+
+      <% if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
+        <div class="alert-warning">
+          <strong>⚠️ Fallback Mode:</strong> This view is running in fallback mode using static fixture data. The live knowledge artifact could not be loaded.
+        </div>
       <% } %>
     </div>
-  </div>
+    <!-- HEIMGEIST SELF-STATE PANEL -->
+    <div class="section">
+      <h2>Heimgeist Self-State</h2>
+      <% if (locals.selfState && locals.selfState.current) { %>
+        <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <strong>Source:</strong>
+            <% if (locals.view_meta && locals.view_meta.self_state_source_kind === 'artifact') { %>
+              <span class="status-badge status-ok">self_state.json (Artifact)</span>
+            <% } else { %>
+              <span class="status-badge status-warn">self_state.json (Fixture)</span>
+            <% } %>
+            <% if (locals.selfState.schema) { %>
+              <span style="color: var(--text-muted); font-size: 0.9em; margin-left: 8px;">(Schema: <%= locals.selfState.schema %>)</span>
+            <% } else { %>
+              <span style="color: var(--fail); font-size: 0.9em; margin-left: 8px;">(Schema: unknown)</span>
+            <% } %>
+          </div>
+          <div style="font-weight: 600; padding: 6px 12px; border-radius: 6px; background-color: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3);">
+            Autonomy: <%= locals.selfState.current.autonomy_level %>
+          </div>
+        </div>
 
-  <% if (locals.view_meta && locals.view_meta.source_kind === 'fixture') { %>
-    <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
-      <strong>⚠️ Warning:</strong> This view is running in fallback mode using static fixture data. The live knowledge artifact could not be loaded.
-    </div>
-  <% } %>
+        <% if (locals.view_meta && locals.view_meta.self_state_schema_valid === false) { %>
+          <div class="alert-warning">
+            <strong>⚠️ Schema Mismatch:</strong> The loaded artifact does not match the expected contract (heimgeist.self_state.bundle.v1). Displaying best-effort rendering.
+          </div>
+        <% } %>
 
-  <!-- HEIMGEIST SELF-STATE (New Panel) -->
-  <h2 class="section-title">Heimgeist Self-State</h2>
-  <div style="background: #f3e5f5; border: 1px solid #e1bee7; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
-    <% if (locals.selfState && locals.selfState.current) { %>
-       <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
-         <div>
-             <strong>Source:</strong>
-             <% if (locals.view_meta && locals.view_meta.self_state_source_kind === 'artifact') { %>
-                self_state.json (Artifact)
-             <% } else { %>
-                self_state.json (Fixture)
-             <% } %>
-             <% if (locals.selfState.schema) { %>
-                <span style="color: #666; font-size: 0.85em;">(Schema: <%= locals.selfState.schema %>)</span>
-             <% } else { %>
-                <span style="color: #d9534f; font-size: 0.85em;">(Schema: unknown)</span>
-             <% } %>
-         </div>
-         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px; background-color: #fff; color: #6a1b9a;">
-            Autonomy Level: <%= locals.selfState.current.autonomy_level %>
-         </div>
-       </div>
+        <!-- Current Metrics -->
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-value" style="color: #a855f7;"><%= (locals.selfState.current.confidence * 100).toFixed(0) %>%</div>
+            <div class="metric-label">Confidence</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" style="color: #a855f7;"><%= (locals.selfState.current.fatigue * 100).toFixed(0) %>%</div>
+            <div class="metric-label">Fatigue</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" style="color: #a855f7;"><%= (locals.selfState.current.risk_tension * 100).toFixed(0) %>%</div>
+            <div class="metric-label">Risk Tension</div>
+          </div>
+        </div>
 
-       <% if (locals.view_meta && locals.view_meta.self_state_schema_valid === false) { %>
-         <div style="background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ffeeba;">
-           <strong>⚠️ Schema Mismatch:</strong> The loaded artifact does not match the expected contract (heimgeist.self_state.bundle.v1). Displaying best-effort rendering.
-         </div>
-       <% } %>
+        <!-- Basis Signals -->
+        <% if (locals.selfState.current.basis_signals && locals.selfState.current.basis_signals.length > 0) { %>
+          <div style="margin-top: 20px;">
+            <strong>Basis Signals:</strong>
+            <ul style="margin-top: 8px; color: var(--text-secondary);">
+              <% locals.selfState.current.basis_signals.forEach(function(signal) { %>
+                <li><%= signal %></li>
+              <% }); %>
+            </ul>
+          </div>
+        <% } %>
 
-       <!-- Current Metrics Grid -->
-       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 20px;">
-           <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #e1bee7;">
-               <div style="font-size: 1.5em; font-weight: bold; color: #4a148c;"><%= (locals.selfState.current.confidence * 100).toFixed(0) %>%</div>
-               <div style="color: #666; font-size: 0.8em;">Confidence</div>
-           </div>
-           <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #e1bee7;">
-               <div style="font-size: 1.5em; font-weight: bold; color: #4a148c;"><%= (locals.selfState.current.fatigue * 100).toFixed(0) %>%</div>
-               <div style="color: #666; font-size: 0.8em;">Fatigue</div>
-           </div>
-           <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #e1bee7;">
-               <div style="font-size: 1.5em; font-weight: bold; color: #4a148c;"><%= (locals.selfState.current.risk_tension * 100).toFixed(0) %>%</div>
-               <div style="color: #666; font-size: 0.8em;">Risk Tension</div>
-           </div>
-       </div>
-
-       <!-- Basis Signals -->
-       <% if (locals.selfState.current.basis_signals && locals.selfState.current.basis_signals.length > 0) { %>
-         <div style="margin-bottom: 15px;">
-           <strong>Basis Signals:</strong>
-           <ul style="margin-top: 5px; color: #555; font-size: 0.9em;">
-             <% locals.selfState.current.basis_signals.forEach(function(signal) { %>
-               <li><%= signal %></li>
-             <% }); %>
-           </ul>
-         </div>
-       <% } %>
-
-       <!-- History (Last 24h / 7 Days) -->
-       <% if (locals.selfState.history && locals.selfState.history.length > 0) { %>
-         <div style="margin-top: 20px; border-top: 1px solid #e1bee7; padding-top: 10px;">
-            <strong>History (Last 7 Snapshots):</strong>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85em; background: #fff;">
+        <!-- History -->
+        <% if (locals.selfState.history && locals.selfState.history.length > 0) { %>
+          <div style="margin-top: 20px; border-top: 1px solid var(--border-glass); padding-top: 20px;">
+            <strong>History (Last 7 Snapshots)</strong>
+            <table style="margin-top: 12px;">
               <thead>
-                <tr style="background: #f3e5f5; text-align: left;">
-                  <th style="padding: 5px;">Time</th>
-                  <th style="padding: 5px;">Autonomy</th>
-                  <th style="padding: 5px;">Conf.</th>
-                  <th style="padding: 5px;">Fatigue</th>
-                  <th style="padding: 5px;">Risk</th>
+                <tr>
+                  <th>Time</th>
+                  <th>Autonomy</th>
+                  <th>Conf.</th>
+                  <th>Fatigue</th>
+                  <th>Risk</th>
                 </tr>
               </thead>
               <tbody>
                 <% locals.selfState.history.slice(0, 7).forEach(function(snap) { %>
                   <%
                      let isValidDate = !isNaN(Date.parse(snap.timestamp));
-                     let rowStyle = isValidDate ? "border-bottom: 1px solid #eee;" : "border-bottom: 1px solid #eee; background-color: #fce4ec; color: #c62828;";
                      let timeDisplay = isValidDate ? snap.timestamp : (snap.timestamp + " (INVALID)");
                   %>
-                  <tr style="<%= rowStyle %>">
-                    <td style="padding: 5px;"><%= timeDisplay %></td>
-                    <td style="padding: 5px;"><%= snap.state.autonomy_level %></td>
-                    <td style="padding: 5px;"><%= (snap.state.confidence * 100).toFixed(0) %>%</td>
-                    <td style="padding: 5px;"><%= (snap.state.fatigue * 100).toFixed(0) %>%</td>
-                    <td style="padding: 5px;"><%= (snap.state.risk_tension * 100).toFixed(0) %>%</td>
+                  <tr <% if (!isValidDate) { %>style="background-color: rgba(239, 68, 68, 0.1);"<% } %>>
+                    <td><%= timeDisplay %></td>
+                    <td><%= snap.state.autonomy_level %></td>
+                    <td><%= (snap.state.confidence * 100).toFixed(0) %>%</td>
+                    <td><%= (snap.state.fatigue * 100).toFixed(0) %>%</td>
+                    <td><%= (snap.state.risk_tension * 100).toFixed(0) %>%</td>
                   </tr>
                 <% }); %>
               </tbody>
             </table>
-         </div>
-       <% } %>
+          </div>
+        <% } %>
 
-       <div style="margin-top: 15px; font-size: 0.8em; color: #7b1fa2; font-style: italic;">
+        <div style="margin-top: 20px; font-size: 0.9em; color: var(--text-muted); font-style: italic;">
           ⚠️ Self-State is heuristic – no claim to truth.
-       </div>
+        </div>
 
-    <% } else { %>
-       <p style="color: #666; font-style: italic;">
-         <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+      <% } else { %>
+        <p style="color: var(--text-secondary); font-style: italic;">
+          <% if (locals.view_meta && locals.view_meta.is_strict) { %>
             Self-State artifact not found (Strict Mode).
-         <% } else { %>
+          <% } else { %>
             Self-State not available.
-         <% } %>
-       </p>
-    <% } %>
-  </div>
-
-  <!-- PLEXER DELIVERY (New Panel) -->
-  <h2 class="section-title">Plexer Delivery Status</h2>
-  <div style="background: #e0f2f1; border: 1px solid #b2dfdb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
-    <% if (locals.plexerDelivery && locals.plexerDelivery.counts) { %>
+          <% } %>
+        </p>
+      <% } %>
+    </div>
+    <!-- PLEXER DELIVERY STATUS PANEL -->
+    <div class="section">
+      <h2>Plexer Delivery Status</h2>
+      <% if (locals.plexerDelivery && locals.plexerDelivery.counts) { %>
         <%
            const pCounts = locals.plexerDelivery.counts;
            const pending = pCounts.pending || 0;
            const failed = pCounts.failed || 0;
            let pStatus = 'OK';
-           let pColor = '#00695c';
-           if (failed > 0) { pStatus = 'FAIL'; pColor = '#c62828'; }
-           else if (pending > 10) { pStatus = 'BUSY'; pColor = '#f9a825'; }
+           let pStatusClass = 'status-ok';
+           if (failed > 0) { pStatus = 'FAIL'; pStatusClass = 'status-fail'; }
+           else if (pending > 10) { pStatus = 'BUSY'; pStatusClass = 'status-warn'; }
         %>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-           <div>
-               <strong>Status:</strong> <span style="font-weight: bold; color: <%= pColor %>"><%= pStatus %></span>
-           </div>
-           <% if (locals.plexerDelivery.last_retry_at) { %>
-               <div style="font-size: 0.9em; color: #555;">Last Retry: <%= locals.plexerDelivery.last_retry_at %></div>
-           <% } %>
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <strong>Status:</strong>
+            <span class="status-badge <%= pStatusClass %>"><%= pStatus %></span>
+          </div>
+          <% if (locals.plexerDelivery.last_retry_at) { %>
+            <div style="font-size: 0.9em; color: var(--text-secondary);">Last Retry: <%= locals.plexerDelivery.last_retry_at %></div>
+          <% } %>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
-            <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #b2dfdb;">
-               <div style="font-size: 1.5em; font-weight: bold; color: #00695c;"><%= pending %></div>
-               <div style="color: #666; font-size: 0.8em;">Pending</div>
-            </div>
-            <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #b2dfdb;">
-               <div style="font-size: 1.5em; font-weight: bold; color: <%= failed > 0 ? '#c62828' : '#00695c' %>;"><%= failed %></div>
-               <div style="color: #666; font-size: 0.8em;">Failed</div>
-            </div>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-value" style="color: #22c55e;"><%= pending %></div>
+            <div class="metric-label">Pending</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" style="color: <% if (failed > 0) { %>var(--fail)<% } else { %>#22c55e<% } %>;"><%= failed %></div>
+            <div class="metric-label">Failed</div>
+          </div>
         </div>
 
         <% if (locals.plexerDelivery.last_error) { %>
-            <div style="margin-top: 15px; padding: 10px; background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; border-radius: 4px; font-size: 0.9em;">
-                <strong>Last Error:</strong> <%= locals.plexerDelivery.last_error %>
-            </div>
+          <div class="alert-error">
+            <strong>Last Error:</strong> <%= locals.plexerDelivery.last_error %>
+          </div>
         <% } %>
-    <% } else { %>
-        <p style="color: #666; font-style: italic;">No delivery metrics available.</p>
-    <% } %>
-  </div>
-
-  <!-- INTEGRITY SECTION (New Panel) -->
-  <h2 class="section-title">System Integrity</h2>
-  <div style="background: #e3f2fd; border: 1px solid #bbdefb; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
-    <% if (locals.integritySummaries && locals.integritySummaries.length > 0) { %>
-      <%
-             // Build list of repos to display
-             // 1. Start with known repos from fleet metrics (if available)
-             // 2. Add any repos found in integrity summaries (even if not in fleet metrics)
-
-             const reposMap = new Map();
-
-             // Add from metrics
-             if (locals.fleetMetrics && locals.fleetMetrics.repos) {
-                locals.fleetMetrics.repos.forEach(r => {
-                   if (typeof r === 'string') {
-                      reposMap.set(r, { name: r, status: 'MISSING', isMissing: true });
-                   } else if (r.name) {
-                      reposMap.set(r.name, { name: r.name, status: 'MISSING', isMissing: true });
-                   }
-                });
-             }
-
-             // Add/Merge from summaries
-             locals.integritySummaries.forEach(s => {
-                if (s.repo) {
-                   reposMap.set(s.repo, { ...s, isMissing: false });
-                }
-             });
-
-             // Convert to array and sort alphabetically
-             const repoList = Array.from(reposMap.values()).sort((a, b) => {
-                 const nameA = a.name || a.repo || 'unknown';
-                 const nameB = b.name || b.repo || 'unknown';
-                 return nameA.localeCompare(nameB);
-             });
-
-         // Calculate Aggregate Status using Explicit Status Fields (Contract-First)
-         // Ranking: FAIL > GAP > WARN > UNCLEAR > MISSING > OK
-         // We treat MISSING as a high-severity state (similar to UNCLEAR or WARN) because we lost observability.
-
-         let aggGap = 0;
-         let aggClaims = 0;
-         let aggArtifacts = 0;
-         let statusRank = 0; // 0=OK, 1=UNCLEAR, 2=WARN, 3=GAP, 4=FAIL
-
-         repoList.forEach(s => {
-             aggGap += (s.counts?.loop_gaps || 0);
-             aggClaims += (s.counts?.claims || 0);
-             aggArtifacts += (s.counts?.artifacts || 0);
-
-             let st = (s.status || 'OK').toUpperCase();
-             if (s.isMissing) st = 'MISSING';
-
-             let rank = 0;
-             if (st === 'UNCLEAR') rank = 1;
-             else if (st === 'WARN') rank = 2;
-             else if (st === 'GAP') rank = 3;
-             else if (st === 'MISSING') rank = 4; // Rank MISSING as FAIL-level
-             else if (st === 'FAIL') rank = 4;
-
-             if (rank > statusRank) statusRank = rank;
-         });
-
-         // Determine text/color based on rank
-         let aggStatus = 'OK';
-         let aggColor = '#1b5e20';
-         let aggBg = '#c8e6c9';
-
-         if (statusRank === 4) {
-            aggStatus = 'FAIL';
-            aggColor = '#b71c1c';
-            aggBg = '#ffcdd2';
-         } else if (statusRank === 3) {
-            aggStatus = 'GAP';
-            aggColor = '#bf360c';
-            aggBg = '#ffccbc';
-         } else if (statusRank === 2) {
-            // Check if it's purely MISSING or mixed
-            const hasMissing = repoList.some(r => r.isMissing);
-            const hasWarn = repoList.some(r => (r.status||'').toUpperCase() === 'WARN');
-
-            if (hasWarn) {
-                aggStatus = 'WARN';
-                aggColor = '#e65100';
-                aggBg = '#ffe0b2';
-            } else if (hasMissing) {
-                aggStatus = 'MISSING (Partial)'; // Or just WARN
-                aggColor = '#e65100'; // Orange
-                aggBg = '#ffe0b2';
-            } else {
-                aggStatus = 'WARN'; // Default fallback
-                aggColor = '#e65100';
-                aggBg = '#ffe0b2';
-            }
-         } else if (statusRank === 1) {
-            aggStatus = 'UNCLEAR';
-            aggColor = '#f57f17';
-            aggBg = '#fff9c4';
-         }
-      %>
-
-      <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
-         <div>
-             <strong>Source:</strong>
-             <% if (locals.view_meta && locals.view_meta.integrity_source_kind === 'artifact') { %>
-                integrity/*.json (Artifact)
-             <% } else { %>
-                integrity/*.json (Fixture)
-             <% } %>
-         </div>
-         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px; background-color: <%= aggBg %>; color: <%= aggColor %>;">
-            Overall Status: <%= aggStatus %>
-         </div>
-      </div>
-
-      <% if (locals.view_meta && locals.view_meta.forensics && locals.view_meta.forensics.integrity && locals.view_meta.forensics.integrity.error_reason) { %>
-         <div style="background-color: #fff3cd; color: #856404; padding: 8px; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ffeeba; font-size: 0.9em;">
-           <strong>⚠️ Last Integrity Fetch Error:</strong> <%= locals.view_meta.forensics.integrity.error_reason %>
-         </div>
+      <% } else { %>
+        <p style="color: var(--text-secondary); font-style: italic;">No delivery metrics available.</p>
       <% } %>
+    </div>
+    <!-- SYSTEM INTEGRITY PANEL -->
+    <div class="section">
+      <h2>System Integrity</h2>
+      <% if (locals.integritySummaries && locals.integritySummaries.length > 0) { %>
+        <%
+          const reposMap = new Map();
 
-      <!-- Repo Table -->
-      <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; border-radius: 4px; overflow: hidden; font-size: 0.9em;">
-        <thead>
-          <tr style="background: #f5f5f5; text-align: left; border-bottom: 2px solid #ddd;">
-            <th style="padding: 10px;">Repo</th>
-            <th style="padding: 10px;">Status</th>
-            <th style="padding: 10px;">Counts / Details</th>
-            <th style="padding: 10px;">Generated At</th>
-            <th style="padding: 10px;"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <%
-             repoList.forEach(function(s) {
-                 // Ensure name is set for display
-                 s.name = s.name || s.repo || 'unknown';
+          if (locals.fleetMetrics && locals.fleetMetrics.repos) {
+            locals.fleetMetrics.repos.forEach(r => {
+              if (typeof r === 'string') {
+                reposMap.set(r, { name: r, status: 'MISSING', isMissing: true });
+              } else if (r.name) {
+                reposMap.set(r.name, { name: r.name, status: 'MISSING', isMissing: true });
+              }
+            });
+          }
 
-                 // Strict status source: default to UNCLEAR if missing, never assume OK
-                 let status = s.status || 'UNCLEAR';
-                 let color = 'gray';
-                 let statusTooltip = '';
-                 const isSanitized = s.generated_at_sanitized === true || (s.payload && s.payload.generated_at_sanitized === true);
+          locals.integritySummaries.forEach(s => {
+            if (s.repo) {
+              reposMap.set(s.repo, { ...s, isMissing: false });
+            }
+          });
 
-                 // Append global reasons
-                 if (isSanitized) {
-                    statusTooltip = (statusTooltip ? statusTooltip + '. ' : '') + 'Timestamp sanitized by Chronik';
-                 }
-                 if (!s.generated_at) {
-                    statusTooltip = (statusTooltip ? statusTooltip + '. ' : '') + 'Missing timestamp';
-                 }
+          const repoList = Array.from(reposMap.values()).sort((a, b) => {
+            const nameA = a.name || a.repo || 'unknown';
+            const nameB = b.name || b.repo || 'unknown';
+            return nameA.localeCompare(nameB);
+          });
 
-                 let statusIcon = '';
+          let aggGap = 0;
+          let aggClaims = 0;
+          let aggArtifacts = 0;
+          let statusRank = 0; // 0=OK, 1=UNCLEAR, 2=WARN, 3=GAP, 4=FAIL
 
-                 if (s.isMissing) {
-                     status = 'MISSING';
-                     color = '#9e9e9e'; // Gray
-                     statusTooltip = 'Report not reachable';
-                 } else {
-                     // Map status to colors
-                     if (status === 'OK') {
-                        color = '#2e7d32'; // Green
-                     }
-                     else if (status === 'WARN') {
-                        color = '#f9a825'; // Dark Yellow/Amber
-                     }
-                     else if (status === 'UNCLEAR') {
-                        color = '#7b1fa2'; // Violet
-                     }
-                     else if (status === 'FAIL' || status === 'GAP') {
-                        color = '#c62828'; // Red
-                        // Determine failure reason if not already clear
-                        if (!s.generated_at || isNaN(Date.parse(s.generated_at))) {
-                           statusTooltip = 'Invalid or missing timestamp';
-                           statusIcon = '🕒';
-                        } else {
-                           statusTooltip = statusTooltip || 'Schema violation';
-                           statusIcon = '📄';
-                        }
-                     }
-                 }
-          %>
-          <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 10px; font-weight: bold;">
+          repoList.forEach(s => {
+            aggGap += (s.counts?.loop_gaps || 0);
+            aggClaims += (s.counts?.claims || 0);
+            aggArtifacts += (s.counts?.artifacts || 0);
+
+            let st = (s.status || 'OK').toUpperCase();
+            if (s.isMissing) st = 'MISSING';
+
+            let rank = 0;
+            if (st === 'UNCLEAR') rank = 1;
+            else if (st === 'WARN') rank = 2;
+            else if (st === 'GAP') rank = 3;
+            else if (st === 'MISSING') rank = 4;
+            else if (st === 'FAIL') rank = 4;
+
+            if (rank > statusRank) statusRank = rank;
+          });
+
+          let aggStatus = 'OK';
+          let aggStatusClass = 'status-ok';
+
+          if (statusRank === 4) {
+            aggStatus = 'FAIL';
+            aggStatusClass = 'status-fail';
+          } else if (statusRank === 3) {
+            aggStatus = 'GAP';
+            aggStatusClass = 'status-fail';
+          } else if (statusRank === 2) {
+            const hasWarn = repoList.some(r => (r.status||'').toUpperCase() === 'WARN');
+            if (hasWarn) {
+              aggStatus = 'WARN';
+              aggStatusClass = 'status-warn';
+            } else {
+              aggStatus = 'WARN';
+              aggStatusClass = 'status-warn';
+            }
+          } else if (statusRank === 1) {
+            aggStatus = 'UNCLEAR';
+            aggStatusClass = 'status-unclear';
+          }
+        %>
+
+        <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <strong>Source:</strong>
+            <% if (locals.view_meta && locals.view_meta.integrity_source_kind === 'artifact') { %>
+              <span class="status-badge status-ok">integrity/*.json (Artifact)</span>
+            <% } else { %>
+              <span class="status-badge status-warn">integrity/*.json (Fixture)</span>
+            <% } %>
+          </div>
+          <div style="font-weight: 600;">
+            <span class="status-badge <%= aggStatusClass %>">Overall: <%= aggStatus %></span>
+          </div>
+        </div>
+
+        <% if (locals.view_meta && locals.view_meta.forensics && locals.view_meta.forensics.integrity && locals.view_meta.forensics.integrity.error_reason) { %>
+          <div class="alert-warning">
+            <strong>⚠️ Last Fetch Error:</strong> <%= locals.view_meta.forensics.integrity.error_reason %>
+          </div>
+        <% } %>
+
+        <!-- Repo Table -->
+        <table style="margin-top: 15px;">
+          <thead>
+            <tr>
+              <th>Repo</th>
+              <th>Status</th>
+              <th>Counts / Details</th>
+              <th>Generated At</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <%
+              repoList.forEach(function(s) {
+                s.name = s.name || s.repo || 'unknown';
+
+                let status = s.status || 'UNCLEAR';
+                let statusClass = 'status-unclear';
+                let statusTooltip = '';
+                const isSanitized = s.generated_at_sanitized === true || (s.payload && s.payload.generated_at_sanitized === true);
+
+                if (isSanitized) {
+                  statusTooltip = (statusTooltip ? statusTooltip + '. ' : '') + 'Timestamp sanitized by Chronik';
+                }
+                if (!s.generated_at) {
+                  statusTooltip = (statusTooltip ? statusTooltip + '. ' : '') + 'Missing timestamp';
+                }
+
+                if (s.isMissing) {
+                  status = 'MISSING';
+                  statusClass = 'status-missing';
+                  statusTooltip = 'Report not reachable';
+                } else {
+                  if (status === 'OK') {
+                    statusClass = 'status-ok';
+                  } else if (status === 'WARN') {
+                    statusClass = 'status-warn';
+                  } else if (status === 'UNCLEAR') {
+                    statusClass = 'status-unclear';
+                  } else if (status === 'FAIL' || status === 'GAP') {
+                    statusClass = 'status-fail';
+                    if (!s.generated_at || isNaN(Date.parse(s.generated_at))) {
+                      statusTooltip = 'Invalid or missing timestamp';
+                    } else {
+                      statusTooltip = statusTooltip || 'Schema violation';
+                    }
+                  }
+                }
+            %>
+            <tr>
+              <td style="font-weight: 600;">
                 <% if (s.name === 'unknown') { %>
-                    <span title="Repo name missing in artifact" style="color: #d9534f; border-bottom: 1px dotted #d9534f; cursor: help;">unknown</span>
+                  <span title="Repo name missing in artifact" style="color: var(--fail); border-bottom: 1px dotted var(--fail); cursor: help;">unknown</span>
                 <% } else { %>
-                    <%= s.name %>
+                  <%= s.name %>
                 <% } %>
-            </td>
-            <td style="padding: 10px; color: <%= color %>; font-weight: bold;" title="<%= statusTooltip %>">
-                <%= status %> <%= statusIcon %>
-            </td>
-            <td style="padding: 10px; font-size: 0.85em; color: #555;">
-               <% if (s.counts && typeof s.counts === 'object') { %>
+              </td>
+              <td>
+                <span class="status-badge <%= statusClass %>" <% if (statusTooltip) { %>title="<%= statusTooltip %>"<% } %>>
+                  <%= status %>
+                </span>
+              </td>
+              <td style="font-size: 0.9em;">
+                <% if (s.counts && typeof s.counts === 'object') { %>
                   <% Object.keys(s.counts).sort().forEach(function(key, index, arr) { %>
-                     <span style="white-space: nowrap;">
-                       <%= key %>: <strong><%= s.counts[key] %></strong><%= index < arr.length - 1 ? ', ' : '' %>
-                     </span>
+                    <span style="white-space: nowrap;">
+                      <%= key %>: <strong><%= s.counts[key] %></strong><%= index < arr.length - 1 ? ', ' : '' %>
+                    </span>
                   <% }); %>
-               <% } else { %>
+                <% } else { %>
                   <% if (status === 'OK') { %>
-                      <span style="color: #e65100; font-style: italic; border-bottom: 1px dotted #e65100; cursor: help;" title="Artifact missing counts field">(missing)</span>
+                    <span style="color: var(--warn); font-style: italic; border-bottom: 1px dotted var(--warn); cursor: help;" title="Artifact missing counts field">(missing)</span>
                   <% } else { %>
-                      <span style="color: #9e9e9e; font-style: italic;" title="fetch failed or report invalid">(unavailable)</span>
+                    <span style="color: var(--text-muted); font-style: italic;" title="fetch failed or report invalid">(unavailable)</span>
                   <% } %>
-               <% } %>
-            </td>
-            <td style="padding: 10px; color: #666;">
-                <%= s.generated_at || '' %>
-                <% if (isSanitized) { %>
-                   <span style="color: #e65100; font-size: 0.85em; display: block; margin-top: 2px;">⚠️ Chronik-Eingriff</span>
                 <% } %>
-            </td>
-            <td style="padding: 10px; text-align: right;">
-               <% if (s.summary_url) { %>
-                  <a href="<%= s.summary_url %>" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #1976d2;">&rarr;</a>
-               <% } %>
-            </td>
-          </tr>
-          <% }); %>
-        </tbody>
-      </table>
+              </td>
+              <td style="font-size: 0.9em;">
+                <%= s.generated_at || '—' %>
+                <% if (isSanitized) { %>
+                  <div style="color: var(--warn); font-size: 0.85em; margin-top: 4px;">⚠️ Chronik-Eingriff</div>
+                <% } %>
+              </td>
+              <td style="text-align: right;">
+                <% if (s.summary_url) { %>
+                  <a href="<%= s.summary_url %>" target="_blank" rel="noopener noreferrer" title="View detailed report">→</a>
+                <% } %>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
 
-      <!-- Aggregated Metrics -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 15px;">
-         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 1.5em; font-weight: bold; color: #333;"><%= aggClaims %></div>
-            <div style="color: #666; font-size: 0.8em;">Total Claims</div>
-         </div>
-         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 1.5em; font-weight: bold; color: #333;"><%= aggArtifacts %></div>
-            <div style="color: #666; font-size: 0.8em;">Total Artifacts</div>
-         </div>
-         <div style="background: #fff; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #ddd;">
-            <div style="font-size: 1.5em; font-weight: bold; color: #d9534f;"><%= aggGap %></div>
-            <div style="color: #666; font-size: 0.8em;">Total Gaps</div>
-         </div>
-      </div>
+        <!-- Aggregated Metrics -->
+        <div class="metric-grid" style="margin-top: 20px;">
+          <div class="metric-card">
+            <div class="metric-value"><%= aggClaims %></div>
+            <div class="metric-label">Total Claims</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value"><%= aggArtifacts %></div>
+            <div class="metric-label">Total Artifacts</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" style="color: var(--fail);"><%= aggGap %></div>
+            <div class="metric-label">Total Gaps</div>
+          </div>
+        </div>
 
-    <% } else { %>
-       <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
-         <div>
-             <strong>Source:</strong> MISSING
-         </div>
-         <div style="font-weight: bold; padding: 5px 10px; border-radius: 4px; background-color: #eceff1; color: #455a64;">
-            Status: MISSING
-         </div>
-       </div>
-       <p style="color: #666; font-style: italic;">
-         <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+      <% } else { %>
+        <div style="margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <strong>Source:</strong>
+            <span class="status-badge status-missing">MISSING</span>
+          </div>
+        </div>
+        <p style="color: var(--text-secondary); font-style: italic;">
+          <% if (locals.view_meta && locals.view_meta.is_strict) { %>
             Integrity summary not found (Strict Mode).
-         <% } else { %>
+          <% } else { %>
             Integrity summary not found.
-         <% } %>
-       </p>
-    <% } %>
-  </div>
+          <% } %>
+        </p>
+      <% } %>
+    </div>
+    <!-- PUBLISHED KNOWLEDGE SECTION -->
+    <div class="section">
+      <h2>Verdichtete Erkenntnis (Published Daily)</h2>
+      <% if (locals.insightsDaily) { %>
+        <div class="meta-grid" style="margin-bottom: 15px;">
+          <div class="meta-item">
+            <span class="meta-label">Source</span>
+            <% if (locals.view_meta && locals.view_meta.insights_source_kind === 'artifact') { %>
+              <span class="status-badge status-ok">insights.daily.json (Artifact)</span>
+            <% } else { %>
+              <span class="status-badge status-warn">insights.daily.json (Fixture)</span>
+            <% } %>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Date</span>
+            <span class="meta-value"><%= locals.insightsDaily.ts || 'n/a' %></span>
+          </div>
+          <% if (locals.insightsDaily.source) { %>
+            <div class="meta-item">
+              <span class="meta-label">Source ID</span>
+              <span class="meta-value"><%= locals.insightsDaily.source %></span>
+            </div>
+          <% } %>
+        </div>
 
-  <!-- PUBLISHED KNOWLEDGE SECTION -->
-  <h2 class="section-title">Verdichtete Erkenntnis (Published Daily)</h2>
-  <div style="background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 5px; margin-bottom: 30px;">
-    <% if (locals.insightsDaily) { %>
-       <div style="margin-bottom: 10px;">
-         <strong>Source:</strong>
-         <% if (locals.view_meta && locals.view_meta.insights_source_kind === 'artifact') { %>
-            insights.daily.json (Artifact)
-         <% } else { %>
-            insights.daily.json (Fixture)
-         <% } %>
-       </div>
-       <div style="margin-bottom: 10px;">
-         <strong>Date:</strong> <%= locals.insightsDaily.ts || 'n/a' %>
-       </div>
-
-       <% if (locals.insightsDaily.source) { %>
-         <div style="margin-bottom: 10px;">
-           <strong>Source ID:</strong> <%= locals.insightsDaily.source %>
-         </div>
-       <% } %>
-
-       <% if (locals.insightsDaily.metadata) { %>
-         <% if (locals.insightsDaily.metadata.generated_at) { %>
-            <div style="margin-bottom: 10px;">
+        <% if (locals.insightsDaily.metadata) { %>
+          <% if (locals.insightsDaily.metadata.generated_at) { %>
+            <div style="margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9em;">
               <strong>Generated:</strong> <%= locals.insightsDaily.metadata.generated_at %>
             </div>
-         <% } %>
-         <% if (locals.insightsDaily.metadata.observatory_ref) { %>
-            <div style="margin-bottom: 10px;">
+          <% } %>
+          <% if (locals.insightsDaily.metadata.observatory_ref) { %>
+            <div style="margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9em;">
               <strong>Observatory Ref:</strong> <%= locals.insightsDaily.metadata.observatory_ref %>
             </div>
-         <% } %>
-         <% if (typeof locals.insightsDaily.metadata.uncertainty !== 'undefined') { %>
-            <div style="margin-bottom: 10px;">
+          <% } %>
+          <% if (typeof locals.insightsDaily.metadata.uncertainty !== 'undefined') { %>
+            <div style="margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9em;">
               <strong>Uncertainty:</strong> <%= locals.insightsDaily.metadata.uncertainty %>
             </div>
-         <% } %>
-       <% } %>
+          <% } %>
+        <% } %>
 
-       <% if (locals.insightsDaily.topics && locals.insightsDaily.topics.length > 0) { %>
-         <h4>Topics (Weighted)</h4>
-         <ul style="margin-top: 5px; margin-bottom: 15px;">
-           <% locals.insightsDaily.topics.forEach(function(t) { %>
-             <li><%= t[0] %> <span style="color:#666; font-size:0.9em;">(<%= t[1] %>)</span></li>
-           <% }); %>
-         </ul>
-       <% } %>
-
-       <% if (locals.insightsDaily.questions && locals.insightsDaily.questions.length > 0) { %>
-         <h4>Open Questions</h4>
-         <ul style="margin-top: 5px; margin-bottom: 15px;">
-           <% locals.insightsDaily.questions.forEach(function(q) { %>
-             <li><%= q %></li>
-           <% }); %>
-         </ul>
-       <% } %>
-
-       <% if (locals.insightsDaily.deltas && locals.insightsDaily.deltas.length > 0) { %>
-         <h4>Deltas (Changes)</h4>
-         <ul style="margin-top: 5px; margin-bottom: 15px;">
-           <% locals.insightsDaily.deltas.forEach(function(d) { %>
-             <li><%= d %></li>
-           <% }); %>
-         </ul>
-       <% } %>
-
-    <% } else { %>
-       <% if (locals.view_meta && locals.view_meta.is_strict) { %>
-          <p style="color: #d9534f; font-weight: bold;">No published insights available (Strict Mode - Artifact missing).</p>
-       <% } else { %>
-          <p style="color: #666; font-style: italic;">No daily insights published yet (Dev Fallback).</p>
-       <% } %>
-    <% } %>
-  </div>
-
-  <!-- RAW KNOWLEDGE SECTION -->
-  <h2 class="section-title">Erkenntnisraum (Raw Observatory)</h2>
-
-  <% if (data.insights && data.insights.length > 0) { %>
-    <h2 class="section-title">Insights / Conflicts</h2>
-    <div class="insights">
-      <% data.insights.forEach(function(insight) { %>
-        <% if (insight.type === 'insight.negation') { %>
-          <div class="insight-card negation">
-            <h4>Conflict Detected</h4>
-            <div class="insight-meta">ID: <%= insight.id %></div>
-            <div class="verdict">Verdict: <%= insight.verdict %></div>
-            <div class="relation">
-              <% if (insight.relation) { %>
-                <span class="relation-item">Thesis: <%= insight.relation.thesis %></span>
-                <span class="relation-item">Antithesis: <%= insight.relation.antithesis %></span>
-              <% } %>
-            </div>
-            <!-- Optional: Link to thesis detail if we had a route for it -->
-          </div>
-        <% } else { %>
-          <!-- Generic insight fallback -->
-          <div class="insight-card">
-            <h4><%= insight.type || 'Generic Insight' %></h4>
-            <div class="insight-meta">ID: <%= insight.id %></div>
+        <% if (locals.insightsDaily.topics && locals.insightsDaily.topics.length > 0) { %>
+          <div style="margin-top: 15px;">
+            <h4>Topics (Weighted)</h4>
+            <ul style="margin-top: 8px;">
+              <% locals.insightsDaily.topics.forEach(function(t) { %>
+                <li><%= t[0] %> <span style="color: var(--text-muted); font-size: 0.9em;">(<%= t[1] %>)</span></li>
+              <% }); %>
+            </ul>
           </div>
         <% } %>
-      <% }); %>
-    </div>
-  <% } %>
 
-  <h2 class="section-title">Topics</h2>
-  <div class="topics" id="obs-topics-container">
-    <% if (data.topics && data.topics.length > 0) { %>
-      <% data.topics.forEach(function(topic) { %>
-        <div class="topic">
-          <h3><%= topic.title %></h3>
-          <% if (topic.summary) { %>
-            <p><%= topic.summary %></p>
-          <% } %>
-          <p><strong>Sources:</strong> <%= topic.sources ? topic.sources.length : 0 %></p>
+        <% if (locals.insightsDaily.questions && locals.insightsDaily.questions.length > 0) { %>
+          <div style="margin-top: 15px;">
+            <h4>Open Questions</h4>
+            <ul style="margin-top: 8px;">
+              <% locals.insightsDaily.questions.forEach(function(q) { %>
+                <li><%= q %></li>
+              <% }); %>
+            </ul>
+          </div>
+        <% } %>
+
+        <% if (locals.insightsDaily.deltas && locals.insightsDaily.deltas.length > 0) { %>
+          <div style="margin-top: 15px;">
+            <h4>Deltas (Changes)</h4>
+            <ul style="margin-top: 8px;">
+              <% locals.insightsDaily.deltas.forEach(function(d) { %>
+                <li><%= d %></li>
+              <% }); %>
+            </ul>
+          </div>
+        <% } %>
+
+      <% } else { %>
+        <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+          <p style="color: var(--fail); font-weight: 600;">No published insights available (Strict Mode - Artifact missing).</p>
+        <% } else { %>
+          <p style="color: var(--text-secondary); font-style: italic;">No daily insights published yet (Dev Fallback).</p>
+        <% } %>
+      <% } %>
+    </div>
+
+    <!-- RAW KNOWLEDGE SECTION -->
+    <div class="section">
+      <h2>Erkenntnisraum (Raw Observatory)</h2>
+
+      <% if (data.insights && data.insights.length > 0) { %>
+        <h3>Insights / Conflicts</h3>
+        <div style="margin-top: 15px;">
+          <% data.insights.forEach(function(insight) { %>
+            <% if (insight.type === 'insight.negation') { %>
+              <div class="insight-card negation">
+                <h4>Conflict Detected</h4>
+                <div class="insight-meta">ID: <code><%= insight.id %></code></div>
+                <div class="verdict">Verdict: <%= insight.verdict %></div>
+                <% if (insight.relation) { %>
+                  <div class="relation">
+                    <span class="relation-item"><strong>Thesis:</strong> <%= insight.relation.thesis %></span>
+                    <span class="relation-item"><strong>Antithesis:</strong> <%= insight.relation.antithesis %></span>
+                  </div>
+                <% } %>
+              </div>
+            <% } else { %>
+              <div class="insight-card">
+                <h4><%= insight.type || 'Generic Insight' %></h4>
+                <div class="insight-meta">ID: <code><%= insight.id %></code></div>
+              </div>
+            <% } %>
+          <% }); %>
         </div>
-      <% }); %>
-    <% } else { %>
-      <p>No topics available.</p>
-    <% } %>
-  </div>
+      <% } %>
+
+      <h3 style="margin-top: 25px;">Topics</h3>
+      <div id="obs-topics-container" style="margin-top: 15px;">
+        <% if (data.topics && data.topics.length > 0) { %>
+          <% data.topics.forEach(function(topic) { %>
+            <div class="topic-card">
+              <h3 style="margin-top: 0;"><%= topic.title %></h3>
+              <% if (topic.summary) { %>
+                <p><%= topic.summary %></p>
+              <% } %>
+              <p><strong>Sources:</strong> <%= topic.sources ? topic.sources.length : 0 %></p>
+            </div>
+          <% }); %>
+        <% } else { %>
+          <p style="color: var(--text-secondary); font-style: italic;">No topics available.</p>
+        <% } %>
+      </div>
+    </div>
 
   <% } else { %>
     <!-- EMPTY STATE -->
     <div class="empty-state">
-        <h3>Leitstand: No Observation Data</h3>
-        <p>
-            <% if (locals.view_meta && locals.view_meta.is_strict) { %>
-                Strict Mode is ON. Artifacts are missing, and fixture fallback is disabled.
-            <% } else { %>
-                No data available.
-            <% } %>
+      <h3>Leitstand: No Observation Data</h3>
+      <p>
+        <% if (locals.view_meta && locals.view_meta.is_strict) { %>
+          Strict Mode is ON. Artifacts are missing, and fixture fallback is disabled.
+        <% } else { %>
+          No data available.
+        <% } %>
+      </p>
+      <% if (locals.view_meta && locals.view_meta.missing_reason) { %>
+        <p style="margin-top:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
+          raw_reason: <strong><%= locals.view_meta.missing_reason %></strong>
         </p>
-        <% if (locals.view_meta && locals.view_meta.missing_reason) { %>
-          <p style="margin-top:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
-            raw_reason: <strong><%= locals.view_meta.missing_reason %></strong>
-          </p>
-        <% } %>
-        <% if (locals.view_meta && locals.view_meta.insights_missing_reason) { %>
-          <p style="margin-top:5px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
-            daily_reason: <strong><%= locals.view_meta.insights_missing_reason %></strong>
-          </p>
-        <% } %>
+      <% } %>
+      <% if (locals.view_meta && locals.view_meta.insights_missing_reason) { %>
+        <p style="margin-top:5px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
+          daily_reason: <strong><%= locals.view_meta.insights_missing_reason %></strong>
+        </p>
+      <% } %>
     </div>
   <% } %>
+
+  </div><!-- /.main-wrapper -->
 </body>
 </html>
