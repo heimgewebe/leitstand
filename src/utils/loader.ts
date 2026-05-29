@@ -76,3 +76,38 @@ export async function loadWithFallback<T>(
     }
   }
 }
+
+/**
+ * Best-effort load of a *supplementary* artifact (artifact → fixture fallback).
+ *
+ * Unlike {@link loadWithFallback}, this never throws and never participates in
+ * strict-mode aborts: a missing or corrupt supplementary artifact (e.g. the
+ * previous day's insights used only for a comparison) must never break the page
+ * or trip strict-fail. Returns the first readable JSON payload, or a `missing`
+ * result if none can be read.
+ */
+export async function loadOptional<T>(
+  artifactPath: string,
+  fixturePath: string,
+  name = 'Artifact'
+): Promise<LoadResult<T>> {
+  const candidates: Array<{ path: string; source: 'artifact' | 'fixture' }> = [
+    { path: artifactPath, source: 'artifact' },
+    { path: fixturePath, source: 'fixture' },
+  ];
+
+  for (const { path, source } of candidates) {
+    try {
+      const data = await readJsonFile<T>(path);
+      return { data, source, reason: 'ok' };
+    } catch (err) {
+      // ENOENT / empty → silently try the next candidate.
+      // Corrupt JSON is non-fatal here but worth a log so it is not lost silently.
+      if (err instanceof InvalidJsonError) {
+        console.warn(`[${name}] Ignoring corrupt optional artifact at ${path}: ${err.message}`);
+      }
+    }
+  }
+
+  return { data: null, source: 'missing', reason: 'enoent' };
+}

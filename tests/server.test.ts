@@ -635,6 +635,113 @@ describe('GET /insights', () => {
     expect(res.text).toContain('Neue Observatory-Quelle verfügbar.');
   });
 
+  it('should render the data-bound previous-day comparison when available', async () => {
+    const insightsController = await import('../src/controllers/insights.js');
+    vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({
+      insights: {
+        ts: '2025-12-28',
+        topics: [['observatory', 0.9], ['leitstand-ui', 0.5]],
+        questions: ['Welche Deltas sind echte Trendwechsel?'],
+        deltas: ['Producer-Notiz zum Tag.'],
+      },
+      comparison: {
+        current_ts: '2025-12-28',
+        previous_ts: '2025-12-27',
+        topics: {
+          added: [{ name: 'leitstand-ui', score: 0.5 }],
+          removed: [{ name: 'chronik-events', score: 0.6 }],
+          changed: [{ name: 'observatory', previous: 0.8, current: 0.9, diff: 0.1, direction: 'up' }],
+          unchanged: 1,
+        },
+        questions: {
+          added: ['Welche Deltas sind echte Trendwechsel?'],
+          resolved: ['Ist die Observatory-Quelle erreichbar?'],
+        },
+        has_changes: true,
+      },
+      comparison_meta: {
+        available: true,
+        source_kind: 'fixture',
+        reason: 'ok',
+        previous_date: '2025-12-27',
+        previous_ts: '2025-12-27',
+      },
+      view_meta: {
+        source_kind: 'fixture',
+        missing_reason: 'enoent',
+        is_strict: false,
+        data_timestamp: '2025-12-28T00:00:00.000Z',
+        data_age_minutes: 60,
+        freshness_state: 'fresh',
+        freshness_source: 'ts',
+        freshness_degraded: false,
+        stale_after_hours: 30,
+        uncertainty: null,
+        observatory_ref: null,
+      },
+    });
+
+    const res = await request(app).get('/insights');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('data-testid="vortagsvergleich"');
+    expect(res.text).toContain('berechnet');
+    // Range header references both dates of the bound artifacts
+    expect(res.text).toContain('2025-12-27 → 2025-12-28');
+    // Topic transitions
+    expect(res.text).toContain('leitstand-ui');
+    expect(res.text).toContain('chronik-events');
+    expect(res.text).toContain('observatory');
+    expect(res.text).toContain('80% → 90%');
+    expect(res.text).toContain('1 Topic(s) unverändert');
+    // Question transitions
+    expect(res.text).toContain('Ist die Observatory-Quelle erreichbar?');
+    // Producer deltas remain, but clearly separated
+    expect(res.text).toContain('Vom Producer gemeldet');
+    expect(res.text).toContain('Producer-Notiz zum Tag.');
+  });
+
+  it('should note a missing previous-day artifact instead of faking a comparison', async () => {
+    const insightsController = await import('../src/controllers/insights.js');
+    vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({
+      insights: {
+        ts: '2025-12-28',
+        topics: [['observatory', 0.9]],
+        questions: [],
+        deltas: ['Producer-only delta'],
+      },
+      comparison: null,
+      comparison_meta: {
+        available: false,
+        source_kind: 'missing',
+        reason: 'enoent',
+        previous_date: '2025-12-27',
+        previous_ts: null,
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: '2025-12-28T00:00:00.000Z',
+        data_age_minutes: 60,
+        freshness_state: 'fresh',
+        freshness_source: 'ts',
+        freshness_degraded: false,
+        stale_after_hours: 30,
+        uncertainty: null,
+        observatory_ref: null,
+      },
+    });
+
+    const res = await request(app).get('/insights');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Kein belastbares Vortags-Artefakt gebunden');
+    expect(res.text).toContain('2025-12-27');
+    expect(res.text).toContain('Producer-only delta');
+    expect(res.text).not.toContain('data-testid="vortagsvergleich"');
+  });
+
   it('should render evidence path without observatory node when ref is absent', async () => {
     const insightsController = await import('../src/controllers/insights.js');
     vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({

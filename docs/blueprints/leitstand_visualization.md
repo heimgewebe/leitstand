@@ -59,7 +59,7 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [x] Zwei-Schichten-Sicht implementieren: Beobachtungsebene (Raw) klar getrennt von Interpretation (Insights).
 - [x] Unsicherheits- und Confidence-Darstellung für Insight-Elemente einbauen.
 - [x] Sichtbaren Herkunftspfad anzeigen (Observatorium -> Analyse-Quelle -> insights.daily -> UI).
-- [~] Tagesverdichtung (`insights.daily`) plus Delta zum Vortag visualisieren (UI-Label vorhanden; belastbarer Vortagsvergleich als Datenbindung noch offen).
+- [x] Tagesverdichtung (`insights.daily`) plus Delta zum Vortag visualisieren: belastbarer Vortagsvergleich als Datenbindung gegen das konkrete Vortags-Artefakt (`insights.daily.<YYYY-MM-DD>.json`) implementiert; berechnet neue/entfallene/verschobene Topics und neue/beantwortete Fragen.
 - [~] Akzeptanztest: Jede Insight-Kachel ist bis auf Rohdatenebene zurückverfolgbar (UI/Payload unterstützen per-Insight-`data_refs`; flächendeckende Producer-Befüllung noch offen).
 
 ### 6) Phase 5 umsetzen: Reflexion (Meta-Analyse)
@@ -98,7 +98,7 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 - [x] Insights-Ansicht zeigt Zwei-Schichten-Sicht: Beobachtungsebene (Digest-Datum, Analyse-Quelle, Observatory-Referenz, Link zur Zeitachse) klar getrennt von der Interpretationsebene (Topics, Fragen, Deltas).
 - [x] Konfidenzbalken in der Beobachtungsebene berechnet aus globalem Unsicherheitswert (`1 - uncertainty`).
 - [x] Sichtbarer Herkunftspfad: Kette Observatorium -> Analyse-Quelle -> insights.daily -> Erkenntnisse-Ansicht mit klickbarem Observatory-Link.
-- [~] Deltas-Sektion als Tagesverdichtung mit Datum gekennzeichnet ("Veränderungen zum Vortag · Stand: …"); ein belastbarer Vergleich auf konkretes Vortags-Artefakt ist noch nicht separat ausgewiesen.
+- [x] Deltas-Sektion als Tagesverdichtung mit Datum gekennzeichnet ("Veränderungen zum Vortag · Stand: …"); zusätzlich ein belastbarer, datengebundener Vergleich auf das konkrete Vortags-Artefakt separat ausgewiesen (siehe Implementierungsstand 2026-05-29).
 - [x] Unsicherheits- und Konfidenzwert in Evidenzpfad-Karte als globale Aussage ausgewiesen.
 - [x] Tests für Zwei-Schichten-Rendering, Evidenzpfad, Konfidenz und Tagesverdichtung in `tests/server.test.ts` ergänzt.
 - [x] Per-Insight-Rohdatenreferenzen (`data_refs`/Drilldown-Ziele) werden im Insights-Payload akzeptiert und pro Topic/Frage/Delta im UI dargestellt.
@@ -135,6 +135,33 @@ Technische Referenzen:
 - `src/views/index.ejs` (Landing-Seite im Dark-Theme mit ARIA-Labels und Phase-Tiles)
 - `tests/utils/eventKind.test.ts` (Event-Familien-Stabilität und Fallback)
 - `tests/controllers/dashboard.test.ts` (Phase-Tiles und Fehler-Isolation)
+
+### Implementierungsstand (2026-05-29)
+
+- [x] Belastbarer Vortagsvergleich als Datenbindung: Die Erkenntnisse-Ansicht lädt
+  zusätzlich zum heutigen `insights.daily` das konkrete Vortags-Artefakt
+  (`insights.daily.<YYYY-MM-DD>.json`, abgeleitet aus `ts − 1 Tag`, analog zur
+  datierten WGX-Metrics-Konvention) und berechnet daraus ein strukturiertes Delta:
+  neue/entfallene/gewichtsveränderte Topics sowie neue/beantwortete Fragen.
+- [x] Das Vortags-Artefakt ist rein supplementär: Es wird über einen
+  nicht-werfenden Optional-Loader geladen, umgeht Strict-Mode-Abbrüche und
+  degradiert bei fehlendem/korruptem Artefakt sichtbar ("Kein belastbares
+  Vortags-Artefakt gebunden") statt stiller Datenverluste.
+- [x] Vom Producer gemeldete `deltas[]` bleiben erhalten, werden aber klar von der
+  berechneten Datenbindung getrennt ("Vom Producer gemeldet").
+- [x] Read-only-Invariante gewahrt: Der Vergleich liest ausschließlich zwei
+  Artefakte und stellt deren Differenz dar; keine Generierung, keine Mutation.
+- [x] Tests: reine Vergleichslogik (`tests/insightsComparison.test.ts`),
+  Controller-Bindung inkl. Fallback-/Invalid-Pfade (`tests/controllers/insights.test.ts`),
+  Render des Vergleichs in der View (`tests/server.test.ts`).
+
+Technische Referenzen:
+
+- `src/insightsComparison.ts` (reine Delta-Berechnung + `previousDateOf`)
+- `src/controllers/insights.ts` (`buildComparison`, Bindung an das Vortags-Artefakt)
+- `src/utils/loader.ts` (`loadOptional` – supplementärer, nicht-werfender Loader)
+- `src/views/insights.ejs` (Vortagsvergleich-Block in der Deltas-Sektion)
+- `src/fixtures/insights.daily.2025-12-27.json` (Vortags-Fixture für Dev/Fixture-Modus)
 
 ## Phase 1: Anatomie (Strukturelle Übersicht)
 
