@@ -30,7 +30,7 @@ export interface ComparisonMeta {
   /** True only when a previous-day artifact was found and yielded a comparison. */
   available: boolean;
   source_kind: 'artifact' | 'fixture' | 'missing';
-  /** 'ok' | 'no-base-date' | 'enoent' | 'invalid-shape'. */
+  /** 'ok' | 'no-base-date' | 'enoent' | 'invalid-json' | 'invalid-shape'. */
   reason: string;
   /** Date we looked up (today's ts minus one day), or null when undeterminable. */
   previous_date: string | null;
@@ -155,8 +155,8 @@ async function buildComparison(
       comparison: null,
       comparison_meta: {
         available: false,
-        source_kind: 'missing',
-        reason: 'enoent',
+        source_kind: loaded.source,
+        reason: loaded.reason,
         previous_date: previousDate,
         previous_ts: null,
       },

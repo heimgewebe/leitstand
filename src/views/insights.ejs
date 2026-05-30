@@ -806,7 +806,7 @@
           <% } %>
         </div>
         <% } else if (cmpMeta && !cmpMeta.available && insights.ts) { %>
-        <div class="comparison-missing">Kein belastbares Vortags-Artefakt gebunden<% if (cmpMeta.previous_date) { %> (gesucht: <%= cmpMeta.previous_date %>)<% } %> – unten nur die vom Producer gemeldeten Deltas.</div>
+        <div class="comparison-missing">Kein belastbares Vortags-Artefakt gebunden<% if (cmpMeta.previous_date) { %> (gesucht: <%= cmpMeta.previous_date %>)<% } %><% if (insights.deltas.length > 0) { %> – unten nur die vom Producer gemeldeten Deltas<% } else { %> – keine berechneten Vortagsdaten verfügbar<% } %>.</div>
         <% } %>
 
         <% if (insights.deltas.length > 0) { %>

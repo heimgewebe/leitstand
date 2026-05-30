@@ -473,5 +473,28 @@ describe('getInsightsData controller', () => {
         previous_date: '2025-12-27',
       });
     });
+
+    it('propagates invalid-json reason when previous-day artifact is corrupt', async () => {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: { ...fixtureInsights, ts: '2025-12-28' },
+        source: 'artifact',
+        reason: 'ok',
+      });
+      vi.mocked(loadOptional).mockResolvedValue({
+        data: null,
+        source: 'missing',
+        reason: 'invalid-json',
+      });
+
+      const result = await getInsightsData();
+
+      expect(result.comparison).toBeNull();
+      expect(result.comparison_meta).toMatchObject({
+        available: false,
+        reason: 'invalid-json',
+        previous_date: '2025-12-27',
+        source_kind: 'missing',
+      });
+    });
   });
 });
