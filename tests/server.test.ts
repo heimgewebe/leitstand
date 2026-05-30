@@ -701,6 +701,46 @@ describe('GET /insights', () => {
     expect(res.text).toContain('Producer-Notiz zum Tag.');
   });
 
+  it('should show missing-artifact note even when deltas array is empty', async () => {
+    const insightsController = await import('../src/controllers/insights.js');
+    vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({
+      insights: {
+        ts: '2025-12-28',
+        topics: [['observatory', 0.9]],
+        questions: ['Stabil?'],
+        deltas: [],
+      },
+      comparison: null,
+      comparison_meta: {
+        available: false,
+        source_kind: 'missing',
+        reason: 'enoent',
+        previous_date: '2025-12-27',
+        previous_ts: null,
+      },
+      view_meta: {
+        source_kind: 'artifact',
+        missing_reason: 'ok',
+        is_strict: false,
+        data_timestamp: '2025-12-28T00:00:00.000Z',
+        data_age_minutes: 60,
+        freshness_state: 'fresh',
+        freshness_source: 'ts',
+        freshness_degraded: false,
+        stale_after_hours: 30,
+        uncertainty: null,
+        observatory_ref: null,
+      },
+    });
+
+    const res = await request(app).get('/insights');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Kein belastbares Vortags-Artefakt gebunden');
+    expect(res.text).toContain('2025-12-27');
+    expect(res.text).not.toContain('data-testid="vortagsvergleich"');
+  });
+
   it('should note a missing previous-day artifact instead of faking a comparison', async () => {
     const insightsController = await import('../src/controllers/insights.js');
     vi.spyOn(insightsController, 'getInsightsData').mockResolvedValueOnce({

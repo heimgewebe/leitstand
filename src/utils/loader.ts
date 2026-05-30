@@ -96,6 +96,7 @@ export async function loadOptional<T>(
     { path: fixturePath, source: 'fixture' },
   ];
 
+  let hadCorruption = false;
   for (const { path, source } of candidates) {
     try {
       const data = await readJsonFile<T>(path);
@@ -104,10 +105,11 @@ export async function loadOptional<T>(
       // ENOENT / empty → silently try the next candidate.
       // Corrupt JSON is non-fatal here but worth a log so it is not lost silently.
       if (err instanceof InvalidJsonError) {
+        hadCorruption = true;
         console.warn(`[${name}] Ignoring corrupt optional artifact at ${path}: ${err.message}`);
       }
     }
   }
 
-  return { data: null, source: 'missing', reason: 'enoent' };
+  return { data: null, source: 'missing', reason: hadCorruption ? 'invalid-json' : 'enoent' };
 }

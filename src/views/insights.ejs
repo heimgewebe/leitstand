@@ -629,6 +629,8 @@
         const cmp = (typeof comparison !== 'undefined') ? comparison : null;
         const cmpMeta = (typeof comparison_meta !== 'undefined') ? comparison_meta : null;
         const hasCmpChanges = !!(cmp && cmp.has_changes);
+        const showComparisonMissing = !!(cmpMeta && !cmpMeta.available && insights.ts);
+        const showDeltaSection = insights.deltas.length > 0 || !!cmp || showComparisonMissing;
         const pct = (v) => Math.round(Math.min(Math.max(Number(v), 0), 1) * 100);
         const srcLabel = (k) => k === 'artifact' ? 'Artefakt' : k === 'fixture' ? 'Fixture' : 'unbekannt';
       %>
@@ -744,7 +746,7 @@
       </div>
       <% } %>
 
-      <% if (insights.deltas.length > 0 || cmp) { %>
+      <% if (showDeltaSection) { %>
       <div class="section">
         <div class="layer-header" style="margin-bottom:4px;">
           <span class="layer-label interp">Deltas</span>
