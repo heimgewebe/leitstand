@@ -77,31 +77,47 @@ export async function loadWithFallback<T>(
   }
 }
 
+export interface LoadOptionalOptions {
+  /** Whether to try fixture as fallback. If false, only the artifact path is tried. */
+  allowFixtureFallback?: boolean;
+}
+
 /**
- * Best-effort load of a *supplementary* artifact (artifact → fixture fallback).
+ * Best-effort load of a *supplementary* artifact (artifact → fixture fallback, or artifact-only).
  *
  * Unlike {@link loadWithFallback}, this never throws and never participates in
  * strict-mode aborts: a missing or corrupt supplementary artifact (e.g. the
  * previous day's insights used only for a comparison) must never break the page
  * or trip strict-fail. Returns the first readable JSON payload, or a `missing`
  * result if none can be read.
+ *
+ * Supports source coherence: when `allowFixtureFallback` is false, only the artifact
+ * path is tried, enabling enforcement of artifact→artifact or fixture→fixture pairings.
  */
 export async function loadOptional<T>(
   artifactPath: string,
-  fixturePath: string,
-  name = 'Artifact'
+  fixturePath: string | null,
+  name = 'Artifact',
+  options: LoadOptionalOptions = {}
 ): Promise<LoadResult<T>> {
+  const { allowFixtureFallback = true } = options;
+
   const candidates: Array<{ path: string; source: 'artifact' | 'fixture' }> = [
     { path: artifactPath, source: 'artifact' },
-    { path: fixturePath, source: 'fixture' },
   ];
 
+  if (allowFixtureFallback && fixturePath !== null) {
+    candidates.push({ path: fixturePath, source: 'fixture' });
+  }
+
+  let lastErr: unknown;
   let hadCorruption = false;
   for (const { path, source } of candidates) {
     try {
       const data = await readJsonFile<T>(path);
       return { data, source, reason: 'ok' };
     } catch (err) {
+      lastErr = err;
       // ENOENT / empty → silently try the next candidate.
       // Corrupt JSON is non-fatal here but worth a log so it is not lost silently.
       if (err instanceof InvalidJsonError) {
@@ -111,5 +127,18 @@ export async function loadOptional<T>(
     }
   }
 
-  return { data: null, source: 'missing', reason: hadCorruption ? 'invalid-json' : 'enoent' };
+  // Determine precise reason: distinguish ENOENT vs EmptyFile vs other errors
+  let reason = 'enoent';
+  if (hadCorruption) {
+    reason = 'invalid-json';
+  } else if (lastErr instanceof EmptyFileError) {
+    reason = 'empty';
+  } else if (typeof lastErr === 'object' && lastErr !== null && 'code' in lastErr && (lastErr as { code: unknown }).code === 'ENOENT') {
+    reason = 'enoent';
+  } else if (lastErr) {
+    // For other errors (EACCES, etc), use a generic error code
+    reason = 'error';
+  }
+
+  return { data: null, source: 'missing', reason };
 }

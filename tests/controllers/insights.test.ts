@@ -373,7 +373,7 @@ describe('getInsightsData controller', () => {
   });
 
   describe('previous-day comparison (Vortagsvergleich)', () => {
-    it('binds against the previous-day artifact and computes a structured delta', async () => {
+   it('binds against the previous-day artifact and computes a structured delta', async () => {
       vi.mocked(loadWithFallback).mockResolvedValue({
         data: { ...fixtureInsights, ts: '2025-12-28' },
         source: 'artifact',
@@ -397,9 +397,12 @@ describe('getInsightsData controller', () => {
       const result = await getInsightsData();
 
       // Looks up the day before today's ts via the dated-artifact convention.
+      // When today is from artifact, fixturePath is null (enforcing source coherence).
       const optionalArgs = vi.mocked(loadOptional).mock.calls[0];
       expect(optionalArgs[0]).toContain('insights.daily.2025-12-27.json');
-      expect(optionalArgs[1]).toContain('insights.daily.2025-12-27.json');
+      expect(optionalArgs[1]).toBe(null);
+      // allowFixtureFallback option should be false (artifact-only when today is artifact)
+      expect(optionalArgs[3]).toMatchObject({ allowFixtureFallback: false });
 
       expect(result.comparison_meta).toMatchObject({
         available: true,
@@ -433,7 +436,8 @@ describe('getInsightsData controller', () => {
       expect(result.comparison).toBeNull();
       expect(result.comparison_meta).toMatchObject({
         available: false,
-        reason: 'enoent',
+        // When today is from artifact but previous is missing, report no-source-coherence instead of enoent
+        reason: 'no-source-coherence',
         previous_date: '2025-12-27',
       });
     });
@@ -491,7 +495,8 @@ describe('getInsightsData controller', () => {
       expect(result.comparison).toBeNull();
       expect(result.comparison_meta).toMatchObject({
         available: false,
-        reason: 'invalid-json',
+        // When today is from artifact but previous is invalid, report no-source-coherence instead of invalid-json
+        reason: 'no-source-coherence',
         previous_date: '2025-12-27',
         source_kind: 'missing',
       });

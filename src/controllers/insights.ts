@@ -30,7 +30,17 @@ export interface ComparisonMeta {
   /** True only when a previous-day artifact was found and yielded a comparison. */
   available: boolean;
   source_kind: 'artifact' | 'fixture' | 'missing';
-  /** 'ok' | 'no-base-date' | 'enoent' | 'invalid-json' | 'invalid-shape'. */
+  /**
+   * Status code: 'ok' | 'no-base-date' | 'no-source-coherence' | 'enoent' | 'empty' | 'invalid-json' | 'error' | 'invalid-shape'.
+   * - 'ok': Comparison available.
+   * - 'no-base-date': Today's ts is invalid/unparseable, so no previous date could be derived.
+   * - 'no-source-coherence': Today is artifact but previous-day artifact missing/invalid (fixture not allowed).
+   * - 'enoent': Previous artifact file not found.
+   * - 'empty': Previous artifact file is empty.
+   * - 'invalid-json': Previous artifact contains invalid JSON.
+   * - 'error': Other read error (e.g., permission denied).
+   * - 'invalid-shape': Previous artifact loaded but failed sanitization (wrong schema).
+   */
   reason: string;
   /** Date we looked up (today's ts minus one day), or null when undeterminable. */
   previous_date: string | null;
@@ -131,32 +141,55 @@ function noComparison(reason: string): Pick<InsightsViewData, 'comparison' | 'co
  * never blocks the page (it is loaded via {@link loadOptional}, bypassing
  * strict-mode aborts).
  *
+ * Enforces source coherence: if today's insights came from an artifact, the
+ * previous day's insights must also come from an artifact (no fixture fallback).
+ * If today is from a fixture, the previous day is loaded from fixture. If today
+ * is missing, no comparison is possible.
+ *
  * Convention (mirrors the dated WGX metrics snapshots): the previous day's
  * payload lives at `insights.daily.<YYYY-MM-DD>.json`, derived from today's ts.
  */
 async function buildComparison(
   current: DailyInsights,
   paths: { artifacts: string; fixtures: string },
+  currentSource: 'artifact' | 'fixture' | 'missing',
 ): Promise<Pick<InsightsViewData, 'comparison' | 'comparison_meta'>> {
+  // If today's insights are missing, no comparison is possible.
+  if (currentSource === 'missing') {
+    return noComparison('no-insights');
+  }
+
   const previousDate = previousDateOf(current.ts);
   if (!previousDate) {
     return noComparison('no-base-date');
   }
 
   const fileName = `insights.daily.${previousDate}.json`;
+
+  // Enforce source coherence: artifact → artifact, fixture → fixture.
+  const allowFixtureFallback = currentSource === 'fixture';
+  const fixturePath = currentSource === 'fixture' ? join(paths.fixtures, fileName) : null;
+
   const loaded = await loadOptional<unknown>(
     join(paths.artifacts, fileName),
-    join(paths.fixtures, fileName),
+    fixturePath,
     'Insights(prev)',
+    { allowFixtureFallback },
   );
 
   if (loaded.data === null) {
+    // If today is from artifact but previous-day artifact is missing/invalid,
+    // report no-source-coherence to distinguish from general unavailability.
+    const reason = currentSource === 'artifact' && loaded.reason !== 'ok'
+      ? 'no-source-coherence'
+      : loaded.reason;
+
     return {
       comparison: null,
       comparison_meta: {
         available: false,
         source_kind: loaded.source,
-        reason: loaded.reason,
+        reason,
         previous_date: previousDate,
         previous_ts: null,
       },
@@ -166,12 +199,17 @@ async function buildComparison(
   const previous = sanitizeDailyInsights(loaded.data);
   if (!previous) {
     console.warn(`[Insights] Ignoring invalid previous-day insights from ${loaded.source} source.`);
+
+    const reason = currentSource === 'artifact'
+      ? 'no-source-coherence'
+      : 'invalid-shape';
+
     return {
       comparison: null,
       comparison_meta: {
         available: false,
         source_kind: loaded.source,
-        reason: 'invalid-shape',
+        reason,
         previous_date: previousDate,
         previous_ts: null,
       },
@@ -185,7 +223,7 @@ async function buildComparison(
       source_kind: loaded.source,
       reason: 'ok',
       previous_date: previousDate,
-      previous_ts: previous.ts || null,
+      previous_ts: previous.ts.trim() || null,
     },
   };
 }
@@ -259,7 +297,7 @@ export async function getInsightsData(): Promise<InsightsViewData> {
     }
   }
 
-  const comparison = await buildComparison(insights, paths);
+  const comparison = await buildComparison(insights, paths, loaded.source);
 
   return {
     insights,

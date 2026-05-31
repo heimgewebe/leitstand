@@ -629,7 +629,9 @@
         const cmp = (typeof comparison !== 'undefined') ? comparison : null;
         const cmpMeta = (typeof comparison_meta !== 'undefined') ? comparison_meta : null;
         const hasCmpChanges = !!(cmp && cmp.has_changes);
-        const showComparisonMissing = !!(cmpMeta && !cmpMeta.available && insights.ts);
+        // Show missing note only when comparison is unavailable AND we have a valid previous_date to have searched
+        // (i.e., not when reason is 'no-base-date' which means we couldn't derive a previous date at all).
+        const showComparisonMissing = !!(cmpMeta && !cmpMeta.available && insights.ts && cmpMeta.reason !== 'no-base-date');
         const showDeltaSection = insights.deltas.length > 0 || !!cmp || showComparisonMissing;
         const pct = (v) => Math.round(Math.min(Math.max(Number(v), 0), 1) * 100);
         const srcLabel = (k) => k === 'artifact' ? 'Artefakt' : k === 'fixture' ? 'Fixture' : 'unbekannt';
@@ -835,7 +837,7 @@
       </div>
       <% } %>
 
-      <% if (insights.topics.length === 0 && insights.questions.length === 0 && insights.deltas.length === 0 && !hasCmpChanges) { %>
+      <% if (insights.topics.length === 0 && insights.questions.length === 0 && !showDeltaSection) { %>
       <div class="empty-state">
         <div class="icon">◎</div>
         <h2>Erkenntnisdaten leer</h2>

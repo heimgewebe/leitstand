@@ -171,8 +171,8 @@ export function compareInsights(current: DailyInsights, previous: DailyInsights)
     questions.resolved.length > 0;
 
   return {
-    current_ts: current.ts.trim() !== '' ? current.ts : null,
-    previous_ts: previous.ts.trim() !== '' ? previous.ts : null,
+    current_ts: current.ts.trim() !== '' ? current.ts.trim() : null,
+    previous_ts: previous.ts.trim() !== '' ? previous.ts.trim() : null,
     topics: { added, removed, changed, unchanged },
     questions,
     has_changes: hasChanges,
