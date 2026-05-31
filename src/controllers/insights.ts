@@ -180,7 +180,7 @@ async function buildComparison(
   if (loaded.data === null) {
     // If today is from artifact but previous-day artifact is missing/invalid,
     // report no-source-coherence to distinguish from general unavailability.
-    const reason = currentSource === 'artifact' && loaded.reason !== 'ok'
+    const reason = currentSource === 'artifact'
       ? 'no-source-coherence'
       : loaded.reason;
 
