@@ -133,7 +133,7 @@ export async function loadOptional<T>(
     reason = 'invalid-json';
   } else if (lastErr instanceof EmptyFileError) {
     reason = 'empty';
-  } else if (lastErr instanceof Error && 'code' in lastErr && (lastErr as NodeJS.ErrnoException).code === 'ENOENT') {
+  } else if (lastErr instanceof Error && (lastErr as NodeJS.ErrnoException).code === 'ENOENT') {
     reason = 'enoent';
   } else if (lastErr) {
     // For other errors (EACCES, etc), use a generic error code
