@@ -807,7 +807,7 @@
 
           <% } %>
         </div>
-        <% } else if (cmpMeta && !cmpMeta.available && insights.ts) { %>
+        <% } else if (showComparisonMissing) { %>
         <div class="comparison-missing">Kein belastbares Vortags-Artefakt gebunden<% if (cmpMeta.previous_date) { %> (gesucht: <%= cmpMeta.previous_date %>)<% } %><% if (insights.deltas.length > 0) { %> – unten nur die vom Producer gemeldeten Deltas<% } else { %> – keine berechneten Vortagsdaten verfügbar<% } %>.</div>
         <% } %>
 
