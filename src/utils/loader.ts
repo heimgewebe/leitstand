@@ -116,6 +116,8 @@ export async function loadOptional<T>(
 
   let lastErr: unknown;
   let hadCorruption = false;
+  let hadEmpty = false;
+  let hadEnoent = false;
   for (const { path, source } of candidates) {
     try {
       const data = await readJsonFile<T>(path);
@@ -127,21 +129,26 @@ export async function loadOptional<T>(
       if (err instanceof InvalidJsonError) {
         hadCorruption = true;
         console.warn(`[${name}] Ignoring corrupt optional artifact at ${path}: ${err.message}`);
+      } else if (err instanceof EmptyFileError) {
+        hadEmpty = true;
+      } else if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+        hadEnoent = true;
       }
     }
   }
 
-  // Determine precise reason: distinguish ENOENT vs EmptyFile vs other errors
-  let reason = 'enoent';
+  // Determine precise reason: prioritize by error class severity
+  // (corruption > empty > enoent > other)
+  let reason = 'error'; // default for unknown errors
   if (hadCorruption) {
     reason = 'invalid-json';
-  } else if (lastErr instanceof EmptyFileError) {
+  } else if (hadEmpty) {
     reason = 'empty';
-  } else if (lastErr instanceof Error && (lastErr as NodeJS.ErrnoException).code === 'ENOENT') {
+  } else if (hadEnoent) {
     reason = 'enoent';
-  } else if (lastErr) {
-    // For other errors (EACCES, etc), use a generic error code
-    reason = 'error';
+  } else if (!lastErr) {
+    // No error occurred (shouldn't happen, but safety check)
+    reason = 'enoent';
   }
 
   return { data: null, source: 'missing', reason };
