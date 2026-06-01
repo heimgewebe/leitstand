@@ -434,6 +434,105 @@
       margin-bottom: 14px;
     }
 
+    /* Data-bound day-over-day comparison (Vortagsvergleich) */
+    .comparison-block {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+
+    .comparison-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 0.74em;
+      color: var(--text-muted);
+    }
+
+    .comparison-pill {
+      font-size: 0.92em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      color: var(--accent);
+    }
+
+    .comparison-range {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .comparison-source { margin-left: auto; }
+
+    .comparison-group { margin-bottom: 12px; }
+    .comparison-group:last-child { margin-bottom: 0; }
+
+    .comparison-group-label {
+      font-size: 0.66em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .comparison-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+
+    .cmp {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 0.82em;
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+    }
+
+    .cmp-mark {
+      font-size: 0.78em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .cmp-added .cmp-mark { color: #22c55e; }
+    .cmp-removed .cmp-mark { color: #ef4444; }
+    .cmp-up .cmp-mark { color: #22c55e; }
+    .cmp-down .cmp-mark { color: #f59e0b; }
+
+    .cmp-name { color: var(--text-primary); font-weight: 500; }
+    .cmp-val { color: var(--text-muted); font-size: 0.92em; }
+    .cmp-diff { color: var(--text-muted); font-size: 0.88em; }
+    .cmp-text { color: var(--text-secondary); }
+
+    .comparison-note,
+    .comparison-empty {
+      font-size: 0.74em;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    .comparison-missing {
+      font-size: 0.74em;
+      color: var(--warn);
+      margin-bottom: 14px;
+    }
+
     /* Evidence path */
     .evidenz-card {
       background: rgba(15, 23, 42, 0.5);
@@ -526,6 +625,16 @@
         const topicDataRefs = insights.data_refs?.topics ?? {};
         const questionDataRefs = insights.data_refs?.questions ?? {};
         const deltaDataRefs = insights.data_refs?.deltas ?? {};
+        // Data-bound previous-day comparison (optional; absent in lightweight mocks).
+        const cmp = (typeof comparison !== 'undefined') ? comparison : null;
+        const cmpMeta = (typeof comparison_meta !== 'undefined') ? comparison_meta : null;
+        const hasCmpChanges = !!(cmp && cmp.has_changes);
+        // Show missing note only when comparison is unavailable AND we have a valid previous_date to have searched
+        // (i.e., not when reason is 'no-base-date' which means we couldn't derive a previous date at all).
+        const showComparisonMissing = !!(cmpMeta && !cmpMeta.available && cmpMeta.reason !== 'no-base-date');
+        const showDeltaSection = insights.deltas.length > 0 || !!cmp || showComparisonMissing;
+        const pct = (v) => Math.round(Math.min(Math.max(Number(v), 0), 1) * 100);
+        const srcLabel = (k) => k === 'artifact' ? 'Artefakt' : k === 'fixture' ? 'Fixture' : 'unbekannt';
       %>
 
       <!-- ── Beobachtungsebene ───────────────────────────────── -->
@@ -639,7 +748,7 @@
       </div>
       <% } %>
 
-      <% if (insights.deltas.length > 0) { %>
+      <% if (showDeltaSection) { %>
       <div class="section">
         <div class="layer-header" style="margin-bottom:4px;">
           <span class="layer-label interp">Deltas</span>
@@ -648,6 +757,62 @@
         <% if (insights.ts) { %>
         <div class="delta-date-note">Veränderungen zum Vortag · Stand: <%= insights.ts %></div>
         <% } %>
+
+        <% if (cmp) { %>
+        <!-- Belastbarer, datengebundener Vortagsvergleich gegen das konkrete Vortags-Artefakt -->
+        <div class="comparison-block" data-testid="vortagsvergleich">
+          <div class="comparison-head">
+            <span class="comparison-pill">berechnet</span>
+            <span class="comparison-range"><%= cmp.previous_ts || (cmpMeta && cmpMeta.previous_date) || 'Vortag' %> → <%= cmp.current_ts || insights.ts %></span>
+            <% if (cmpMeta) { %><span class="comparison-source">Quelle: <%= srcLabel(cmpMeta.source_kind) %></span><% } %>
+          </div>
+
+          <% if (!cmp.has_changes) { %>
+          <div class="comparison-empty">Keine strukturellen Änderungen gegenüber dem Vortag – Topics und Fragen sind stabil.</div>
+          <% } else { %>
+
+            <% if (cmp.topics.added.length || cmp.topics.removed.length || cmp.topics.changed.length) { %>
+            <div class="comparison-group">
+              <div class="comparison-group-label">Topics</div>
+              <ul class="comparison-list">
+                <% for (const t of cmp.topics.added) { %>
+                <li class="cmp cmp-added"><span class="cmp-mark">＋ neu</span> <span class="cmp-name"><%= t.name %></span> <span class="cmp-val"><%= pct(t.score) %>%</span></li>
+                <% } %>
+                <% for (const t of cmp.topics.changed) { %>
+                <li class="cmp cmp-<%= t.direction %>"><span class="cmp-mark"><%= t.direction === 'up' ? '▲' : '▼' %></span> <span class="cmp-name"><%= t.name %></span> <span class="cmp-val"><%= pct(t.previous) %>% → <%= pct(t.current) %>%</span> <span class="cmp-diff">(<%= t.diff > 0 ? '+' : '' %><%= Math.round(t.diff * 100) %> pp)</span></li>
+                <% } %>
+                <% for (const t of cmp.topics.removed) { %>
+                <li class="cmp cmp-removed"><span class="cmp-mark">－ entfallen</span> <span class="cmp-name"><%= t.name %></span> <span class="cmp-val"><%= pct(t.score) %>%</span></li>
+                <% } %>
+              </ul>
+              <% if (cmp.topics.unchanged > 0) { %>
+              <div class="comparison-note"><%= cmp.topics.unchanged %> Topic(s) unverändert</div>
+              <% } %>
+            </div>
+            <% } %>
+
+            <% if (cmp.questions.added.length || cmp.questions.resolved.length) { %>
+            <div class="comparison-group">
+              <div class="comparison-group-label">Offene Fragen</div>
+              <ul class="comparison-list">
+                <% for (const q of cmp.questions.added) { %>
+                <li class="cmp cmp-added"><span class="cmp-mark">＋ neu</span> <span class="cmp-text"><%= q %></span></li>
+                <% } %>
+                <% for (const q of cmp.questions.resolved) { %>
+                <li class="cmp cmp-removed"><span class="cmp-mark">－ entfallen</span> <span class="cmp-text"><%= q %></span></li>
+                <% } %>
+              </ul>
+            </div>
+            <% } %>
+
+          <% } %>
+        </div>
+        <% } else if (showComparisonMissing) { %>
+        <div class="comparison-missing">Kein belastbares Vortags-Artefakt gebunden<% if (cmpMeta.previous_date) { %> (gesucht: <%= cmpMeta.previous_date %>)<% } %><% if (insights.deltas.length > 0) { %> – unten nur die vom Producer gemeldeten Deltas<% } else { %> – keine berechneten Vortagsdaten verfügbar<% } %>.</div>
+        <% } %>
+
+        <% if (insights.deltas.length > 0) { %>
+        <% if (cmp) { %><div class="comparison-group-label" style="margin-top:14px;">Vom Producer gemeldet</div><% } %>
         <ul class="item-list deltas-list">
           <% for (let idx = 0; idx < insights.deltas.length; idx++) { %>
           <% const delta = insights.deltas[idx]; %>
@@ -668,10 +833,11 @@
           </li>
           <% } %>
         </ul>
+        <% } %>
       </div>
       <% } %>
 
-      <% if (insights.topics.length === 0 && insights.questions.length === 0 && insights.deltas.length === 0) { %>
+      <% if (insights.topics.length === 0 && insights.questions.length === 0 && !showDeltaSection) { %>
       <div class="empty-state">
         <div class="icon">◎</div>
         <h2>Erkenntnisdaten leer</h2>

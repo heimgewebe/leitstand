@@ -76,3 +76,88 @@ export async function loadWithFallback<T>(
     }
   }
 }
+
+export interface LoadOptionalOptions {
+  /** Whether to try fixture as fallback. If false, only the artifact path is tried. */
+  allowFixtureFallback?: boolean;
+  /** Source label for the primary path. Defaults to 'artifact'. */
+  primarySource?: 'artifact' | 'fixture';
+}
+
+/**
+ * Best-effort load of a *supplementary* artifact (artifact → fixture fallback, or artifact-only).
+ *
+ * Unlike {@link loadWithFallback}, this never throws and never participates in
+ * strict-mode aborts: a missing or corrupt supplementary artifact (e.g. the
+ * previous day's insights used only for a comparison) must never break the page
+ * or trip strict-fail. Returns the first readable JSON payload, or a `missing`
+ * result if none can be read.
+ *
+ * Supports source coherence: when `allowFixtureFallback` is false, only the primary path
+ * is tried, enabling enforcement of artifact→artifact or fixture→fixture pairings.
+ * The `primarySource` option specifies how the primary path should be labeled,
+ * enabling correct source tracking even when passing fixture paths as the primary.
+ */
+export async function loadOptional<T>(
+  artifactPath: string,
+  fixturePath: string | null,
+  name = 'Artifact',
+  options: LoadOptionalOptions = {}
+): Promise<LoadResult<T>> {
+  const { allowFixtureFallback = true, primarySource = 'artifact' } = options;
+
+  const candidates: Array<{ path: string; source: 'artifact' | 'fixture' }> = [
+    { path: artifactPath, source: primarySource },
+  ];
+
+  if (allowFixtureFallback && fixturePath !== null) {
+    candidates.push({ path: fixturePath, source: 'fixture' });
+  }
+
+  let lastErr: unknown;
+  let hadCorruption = false;
+  let hadEmpty = false;
+  let hadEnoent = false;
+  let hadOtherError = false;
+  for (const { path, source } of candidates) {
+    try {
+      const data = await readJsonFile<T>(path);
+      return { data, source, reason: 'ok' };
+    } catch (err) {
+      lastErr = err;
+      // ENOENT / empty → silently try the next candidate.
+      // Corrupt JSON is non-fatal here but worth a log so it is not lost silently.
+      if (err instanceof InvalidJsonError) {
+        hadCorruption = true;
+        console.warn(`[${name}] Ignoring corrupt optional artifact at ${path}: ${err.message}`);
+      } else if (err instanceof EmptyFileError) {
+        hadEmpty = true;
+      } else if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+        hadEnoent = true;
+      } else {
+        hadOtherError = true;
+      }
+    }
+  }
+
+  // Determine precise reason: prioritize by error class severity.
+  // System-level errors (EACCES etc) take priority over corruption because they're
+  // operationally more critical—they may indicate infrastructure issues or security
+  // problems that must not be silently masked by other failures.
+  // Priority: error (system/ops) > invalid-json (corruption) > empty > enoent
+  let reason = 'error'; // default for unknown errors
+  if (hadOtherError) {
+    reason = 'error';
+  } else if (hadCorruption) {
+    reason = 'invalid-json';
+  } else if (hadEmpty) {
+    reason = 'empty';
+  } else if (hadEnoent) {
+    reason = 'enoent';
+  } else if (!lastErr) {
+    // No error occurred (shouldn't happen, but safety check)
+    reason = 'enoent';
+  }
+
+  return { data: null, source: 'missing', reason };
+}

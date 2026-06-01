@@ -43,3 +43,16 @@ implementations:
       - tests/server.test.ts
     supersedes: []
     deprecated_by: []
+
+  - id: impl.insights.comparison
+    path: src/insightsComparison.ts
+    impl_type: util
+    status: active
+    documented_by:
+      - docs/blueprints/leitstand_visualization.md
+    verified_by:
+      - tests/insightsComparison.test.ts
+      - tests/controllers/insights.test.ts
+      - tests/server.test.ts
+    supersedes: []
+    deprecated_by: []

@@ -1,0 +1,20 @@
+{
+  "ts": "2025-12-27",
+  "topics": [
+    ["observatory", 0.8],
+    ["insights.daily", 0.7],
+    ["chronik-events", 0.6]
+  ],
+  "questions": [
+    "Welche Topics aus knowledge.observatory sind stabil über 3 Tage?",
+    "Ist die Observatory-Quelle nach dem Ausfall wieder erreichbar?"
+  ],
+  "deltas": [
+    "Observatory-Quelle nach Wartungsfenster wiederhergestellt."
+  ],
+  "source": "semantAH.daily",
+  "metadata": {
+    "observatory_ref": "obs-example-000",
+    "uncertainty": 0.18
+  }
+}

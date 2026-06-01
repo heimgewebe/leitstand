@@ -1,8 +1,9 @@
 import { join } from 'path';
 import { envConfig } from '../config.js';
 import { sanitizeDailyInsights, type DailyInsights } from '../insights.js';
+import { compareInsights, previousDateOf, type DayComparison } from '../insightsComparison.js';
 import { getTransportTimestamp } from '../utils/fs.js';
-import { loadWithFallback } from '../utils/loader.js';
+import { loadOptional, loadWithFallback } from '../utils/loader.js';
 
 /**
  * Freshness contract (from contracts/consumers/leitstand.insights.daily.consumer.md):
@@ -21,8 +22,37 @@ interface FreshnessResult {
   freshness_degraded: boolean;
 }
 
+/**
+ * Result of binding today's insights against the previous day's artifact.
+ * Optional: present in the live controller, omitted by lightweight test mocks.
+ */
+export interface ComparisonMeta {
+  /** True only when a previous-day artifact was found and yielded a comparison. */
+  available: boolean;
+  source_kind: 'artifact' | 'fixture' | 'missing';
+  /**
+   * Status code indicating availability and failure reason.
+   * - 'ok': Comparison available.
+   * - 'no-insights': Today's insights are missing or invalid.
+   * - 'no-base-date': Today's ts is invalid/unparseable, so no previous date could be derived.
+   * - 'no-source-coherence': Today is artifact but previous-day artifact missing/invalid (fixture not allowed).
+   * - 'invalid-shape': Previous artifact loaded but failed sanitization (wrong schema).
+   * - 'enoent': Previous artifact file not found.
+   * - 'empty': Previous artifact file is empty.
+   * - 'invalid-json': Previous artifact contains invalid JSON.
+   * - 'error': Other read error (e.g., permission denied).
+   */
+  reason: string;
+  /** Date we looked up (today's ts minus one day), or null when undeterminable. */
+  previous_date: string | null;
+  /** Actual ts found in the previous-day artifact, or null. */
+  previous_ts: string | null;
+}
+
 export interface InsightsViewData {
   insights: DailyInsights | null;
+  comparison?: DayComparison | null;
+  comparison_meta?: ComparisonMeta;
   view_meta: {
     source_kind: 'artifact' | 'fixture' | 'missing';
     missing_reason: string;
@@ -92,6 +122,116 @@ function computeFreshness(raw: DailyInsights): FreshnessResult {
   };
 }
 
+function noComparison(reason: string): Pick<InsightsViewData, 'comparison' | 'comparison_meta'> {
+  return {
+    comparison: null,
+    comparison_meta: {
+      available: false,
+      source_kind: 'missing',
+      reason,
+      previous_date: null,
+      previous_ts: null,
+    },
+  };
+}
+
+/**
+ * Binds today's insights against the previous day's artifact to produce a
+ * verifiable day-over-day delta. The previous artifact is supplementary: its
+ * absence or corruption degrades gracefully to "no comparison available" and
+ * never blocks the page (it is loaded via {@link loadOptional}, bypassing
+ * strict-mode aborts).
+ *
+ * Enforces source coherence: if today's insights came from an artifact, the
+ * previous day's insights must also come from an artifact (no fixture fallback).
+ * If today is from a fixture, the previous day is loaded from fixture. If today
+ * is missing, no comparison is possible.
+ *
+ * Convention (mirrors the dated WGX metrics snapshots): the previous day's
+ * payload lives at `insights.daily.<YYYY-MM-DD>.json`, derived from today's ts.
+ */
+async function buildComparison(
+  current: DailyInsights,
+  paths: { artifacts: string; fixtures: string },
+  currentSource: 'artifact' | 'fixture' | 'missing',
+): Promise<Pick<InsightsViewData, 'comparison' | 'comparison_meta'>> {
+  // If today's insights are missing, no comparison is possible.
+  if (currentSource === 'missing') {
+    return noComparison('no-insights');
+  }
+
+  const previousDate = previousDateOf(current.ts);
+  if (!previousDate) {
+    return noComparison('no-base-date');
+  }
+
+  const fileName = `insights.daily.${previousDate}.json`;
+
+  // Enforce source coherence: artifact → artifact, fixture → fixture.
+  // For fixture source, load from fixture path only (no artifact fallback).
+  // For artifact source, load from artifact path only (no fixture fallback).
+  const primaryPath = currentSource === 'fixture'
+    ? join(paths.fixtures, fileName)
+    : join(paths.artifacts, fileName);
+
+  const loaded = await loadOptional<unknown>(
+    primaryPath,
+    null,
+    'Insights(prev)',
+    { allowFixtureFallback: false, primarySource: currentSource },
+  );
+
+  if (loaded.data === null) {
+    // If today is from artifact but previous-day artifact is missing/invalid,
+    // report no-source-coherence to distinguish from general unavailability.
+    const reason = currentSource === 'artifact'
+      ? 'no-source-coherence'
+      : loaded.reason;
+
+    return {
+      comparison: null,
+      comparison_meta: {
+        available: false,
+        source_kind: loaded.source,
+        reason,
+        previous_date: previousDate,
+        previous_ts: null,
+      },
+    };
+  }
+
+  const previous = sanitizeDailyInsights(loaded.data);
+  if (!previous) {
+    console.warn(`[Insights] Ignoring invalid previous-day insights from ${loaded.source} source.`);
+
+    const reason = currentSource === 'artifact'
+      ? 'no-source-coherence'
+      : 'invalid-shape';
+
+    return {
+      comparison: null,
+      comparison_meta: {
+        available: false,
+        source_kind: loaded.source,
+        reason,
+        previous_date: previousDate,
+        previous_ts: null,
+      },
+    };
+  }
+
+  return {
+    comparison: compareInsights(current, previous),
+    comparison_meta: {
+      available: true,
+      source_kind: loaded.source,
+      reason: 'ok',
+      previous_date: previousDate,
+      previous_ts: previous.ts.trim() || null,
+    },
+  };
+}
+
 export async function getInsightsData(): Promise<InsightsViewData> {
   const { isStrict, isStrictFail, paths } = envConfig;
 
@@ -107,6 +247,7 @@ export async function getInsightsData(): Promise<InsightsViewData> {
   if (loaded.data === null) {
     return {
       insights: null,
+      ...noComparison('no-insights'),
       view_meta: {
         source_kind: loaded.source,
         missing_reason: loaded.reason,
@@ -128,6 +269,7 @@ export async function getInsightsData(): Promise<InsightsViewData> {
     console.warn(`[Insights] Ignoring invalid insights payload from ${loaded.source} source.`);
     return {
       insights: null,
+      ...noComparison('no-insights'),
       view_meta: {
         source_kind: loaded.source,
         missing_reason: 'invalid-shape',
@@ -159,8 +301,11 @@ export async function getInsightsData(): Promise<InsightsViewData> {
     }
   }
 
+  const comparison = await buildComparison(insights, paths, loaded.source);
+
   return {
     insights,
+    ...comparison,
     view_meta: {
       source_kind: loaded.source,
       missing_reason: loaded.reason,
