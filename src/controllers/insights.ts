@@ -170,26 +170,15 @@ async function buildComparison(
   // Enforce source coherence: artifact → artifact, fixture → fixture.
   // For fixture source, load from fixture path only (no artifact fallback).
   // For artifact source, load from artifact path only (no fixture fallback).
-  let primaryPath: string;
-  let secondaryPath: string | null;
-  let allowFixtureFallback: boolean;
-
-  if (currentSource === 'fixture') {
-    primaryPath = join(paths.fixtures, fileName);
-    secondaryPath = null; // No fallback to artifact
-    allowFixtureFallback = false;
-  } else {
-    // artifact source
-    primaryPath = join(paths.artifacts, fileName);
-    secondaryPath = null; // No fallback to fixture
-    allowFixtureFallback = false;
-  }
+  const primaryPath = currentSource === 'fixture'
+    ? join(paths.fixtures, fileName)
+    : join(paths.artifacts, fileName);
 
   const loaded = await loadOptional<unknown>(
     primaryPath,
-    secondaryPath,
+    null,
     'Insights(prev)',
-    { allowFixtureFallback },
+    { allowFixtureFallback: false },
   );
 
   if (loaded.data === null) {
