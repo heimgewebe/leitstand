@@ -3,6 +3,7 @@ import { mkdtemp, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { loadWithFallback, loadOptional } from '../../src/utils/loader.js';
+import { EmptyFileError } from '../../src/utils/fs.js';
 
 describe('loadWithFallback', () => {
   let testDir: string;
@@ -140,6 +141,29 @@ describe('loadWithFallback', () => {
       warnSpy.mockRestore();
     });
 
+    it('correctly labels source as fixture when primarySource is fixture', async () => {
+      await createFixture('{"val": 123}');
+      const result = await loadOptional(artifactPath, fixturePath, 'Test', {
+        primarySource: 'fixture',
+      });
+      expect(result).toEqual({
+        data: { val: 123 },
+        source: 'fixture',
+        reason: 'ok',
+      });
+    });
+
+    it('returns missing with correct source when primarySource is fixture and path missing', async () => {
+      const result = await loadOptional(artifactPath, fixturePath, 'Test', {
+        primarySource: 'fixture',
+      });
+      expect(result).toEqual({
+        data: null,
+        source: 'missing',
+        reason: 'enoent',
+      });
+    });
+
     it('prioritizes other errors (e.g., EACCES) over enoent and empty', async () => {
       // Simulate a permission error on the artifact path
       vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -187,7 +211,7 @@ describe('loadWithFallback', () => {
         if (path === artifactPath) {
           throw permissionError;
         } else {
-          throw new Error('Empty file');
+          throw new EmptyFileError(path);
         }
       });
 
