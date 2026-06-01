@@ -178,7 +178,7 @@ async function buildComparison(
     primaryPath,
     null,
     'Insights(prev)',
-    { allowFixtureFallback: false },
+    { allowFixtureFallback: false, primarySource: currentSource },
   );
 
   if (loaded.data === null) {

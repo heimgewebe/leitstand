@@ -80,6 +80,8 @@ export async function loadWithFallback<T>(
 export interface LoadOptionalOptions {
   /** Whether to try fixture as fallback. If false, only the artifact path is tried. */
   allowFixtureFallback?: boolean;
+  /** Source label for the primary path. Defaults to 'artifact'. */
+  primarySource?: 'artifact' | 'fixture';
 }
 
 /**
@@ -91,8 +93,10 @@ export interface LoadOptionalOptions {
  * or trip strict-fail. Returns the first readable JSON payload, or a `missing`
  * result if none can be read.
  *
- * Supports source coherence: when `allowFixtureFallback` is false, only the artifact
- * path is tried, enabling enforcement of artifact→artifact or fixture→fixture pairings.
+ * Supports source coherence: when `allowFixtureFallback` is false, only the primary path
+ * is tried, enabling enforcement of artifact→artifact or fixture→fixture pairings.
+ * The `primarySource` option specifies how the primary path should be labeled,
+ * enabling correct source tracking even when passing fixture paths as the primary.
  */
 export async function loadOptional<T>(
   artifactPath: string,
@@ -100,10 +104,10 @@ export async function loadOptional<T>(
   name = 'Artifact',
   options: LoadOptionalOptions = {}
 ): Promise<LoadResult<T>> {
-  const { allowFixtureFallback = true } = options;
+  const { allowFixtureFallback = true, primarySource = 'artifact' } = options;
 
   const candidates: Array<{ path: string; source: 'artifact' | 'fixture' }> = [
-    { path: artifactPath, source: 'artifact' },
+    { path: artifactPath, source: primarySource },
   ];
 
   if (allowFixtureFallback && fixturePath !== null) {
