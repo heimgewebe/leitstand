@@ -141,14 +141,15 @@ export async function loadOptional<T>(
   }
 
   // Determine precise reason: prioritize by error class severity.
-  // (corruption > other errors like EACCES > empty > enoent)
-  // This ensures system-level errors are surfaced with high priority, not masked by
-  // missing-file scenarios.
+  // System-level errors (EACCES etc) take priority over corruption because they're
+  // operationally more critical—they may indicate infrastructure issues or security
+  // problems that must not be silently masked by other failures.
+  // Priority: error (system/ops) > invalid-json (corruption) > empty > enoent
   let reason = 'error'; // default for unknown errors
-  if (hadCorruption) {
-    reason = 'invalid-json';
-  } else if (hadOtherError) {
+  if (hadOtherError) {
     reason = 'error';
+  } else if (hadCorruption) {
+    reason = 'invalid-json';
   } else if (hadEmpty) {
     reason = 'empty';
   } else if (hadEnoent) {
