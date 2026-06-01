@@ -631,7 +631,7 @@
         const hasCmpChanges = !!(cmp && cmp.has_changes);
         // Show missing note only when comparison is unavailable AND we have a valid previous_date to have searched
         // (i.e., not when reason is 'no-base-date' which means we couldn't derive a previous date at all).
-        const showComparisonMissing = !!(cmpMeta && !cmpMeta.available && insights.ts && cmpMeta.reason !== 'no-base-date');
+        const showComparisonMissing = !!(cmpMeta && !cmpMeta.available && cmpMeta.reason !== 'no-base-date');
         const showDeltaSection = insights.deltas.length > 0 || !!cmp || showComparisonMissing;
         const pct = (v) => Math.round(Math.min(Math.max(Number(v), 0), 1) * 100);
         const srcLabel = (k) => k === 'artifact' ? 'Artefakt' : k === 'fixture' ? 'Fixture' : 'unbekannt';

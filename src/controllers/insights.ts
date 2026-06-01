@@ -31,15 +31,16 @@ export interface ComparisonMeta {
   available: boolean;
   source_kind: 'artifact' | 'fixture' | 'missing';
   /**
-   * Status code: 'ok' | 'no-base-date' | 'no-source-coherence' | 'enoent' | 'empty' | 'invalid-json' | 'error' | 'invalid-shape'.
+   * Status code indicating availability and failure reason.
    * - 'ok': Comparison available.
+   * - 'no-insights': Today's insights are missing or invalid.
    * - 'no-base-date': Today's ts is invalid/unparseable, so no previous date could be derived.
    * - 'no-source-coherence': Today is artifact but previous-day artifact missing/invalid (fixture not allowed).
+   * - 'invalid-shape': Previous artifact loaded but failed sanitization (wrong schema).
    * - 'enoent': Previous artifact file not found.
    * - 'empty': Previous artifact file is empty.
    * - 'invalid-json': Previous artifact contains invalid JSON.
    * - 'error': Other read error (e.g., permission denied).
-   * - 'invalid-shape': Previous artifact loaded but failed sanitization (wrong schema).
    */
   reason: string;
   /** Date we looked up (today's ts minus one day), or null when undeterminable. */
@@ -167,12 +168,26 @@ async function buildComparison(
   const fileName = `insights.daily.${previousDate}.json`;
 
   // Enforce source coherence: artifact → artifact, fixture → fixture.
-  const allowFixtureFallback = currentSource === 'fixture';
-  const fixturePath = currentSource === 'fixture' ? join(paths.fixtures, fileName) : null;
+  // For fixture source, load from fixture path only (no artifact fallback).
+  // For artifact source, load from artifact path only (no fixture fallback).
+  let primaryPath: string;
+  let secondaryPath: string | null;
+  let allowFixtureFallback: boolean;
+
+  if (currentSource === 'fixture') {
+    primaryPath = join(paths.fixtures, fileName);
+    secondaryPath = null; // No fallback to artifact
+    allowFixtureFallback = false;
+  } else {
+    // artifact source
+    primaryPath = join(paths.artifacts, fileName);
+    secondaryPath = null; // No fallback to fixture
+    allowFixtureFallback = false;
+  }
 
   const loaded = await loadOptional<unknown>(
-    join(paths.artifacts, fileName),
-    fixturePath,
+    primaryPath,
+    secondaryPath,
     'Insights(prev)',
     { allowFixtureFallback },
   );
