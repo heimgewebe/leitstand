@@ -118,6 +118,7 @@ export async function loadOptional<T>(
   let hadCorruption = false;
   let hadEmpty = false;
   let hadEnoent = false;
+  let hadOtherError = false;
   for (const { path, source } of candidates) {
     try {
       const data = await readJsonFile<T>(path);
@@ -133,15 +134,21 @@ export async function loadOptional<T>(
         hadEmpty = true;
       } else if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'ENOENT') {
         hadEnoent = true;
+      } else {
+        hadOtherError = true;
       }
     }
   }
 
-  // Determine precise reason: prioritize by error class severity
-  // (corruption > empty > enoent > other)
+  // Determine precise reason: prioritize by error class severity.
+  // (corruption > other errors like EACCES > empty > enoent)
+  // This ensures system-level errors are surfaced with high priority, not masked by
+  // missing-file scenarios.
   let reason = 'error'; // default for unknown errors
   if (hadCorruption) {
     reason = 'invalid-json';
+  } else if (hadOtherError) {
+    reason = 'error';
   } else if (hadEmpty) {
     reason = 'empty';
   } else if (hadEnoent) {

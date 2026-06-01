@@ -139,6 +139,70 @@ describe('loadWithFallback', () => {
       await expect(loadOptional(artifactPath, fixturePath, 'Test')).resolves.not.toThrow();
       warnSpy.mockRestore();
     });
+
+    it('prioritizes other errors (e.g., EACCES) over enoent and empty', async () => {
+      // Simulate a permission error on the artifact path
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const permissionError = new Error('EACCES: permission denied');
+      (permissionError as NodeJS.ErrnoException).code = 'EACCES';
+      
+      // Mock readJsonFile to throw EACCES for artifact, then ENOENT for fixture
+      const fsModule = await import('../../src/utils/fs.js');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const readJsonFileMock = vi.spyOn(fsModule, 'readJsonFile' as any);
+      
+      readJsonFileMock.mockImplementation(async (path: string) => {
+        if (path === artifactPath) {
+          throw permissionError;
+        } else {
+          const enoentError = new Error('ENOENT: no such file');
+          (enoentError as NodeJS.ErrnoException).code = 'ENOENT';
+          throw enoentError;
+        }
+      });
+
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+      
+      // Should report 'error' (the permission denied) rather than 'enoent'
+      expect(result).toMatchObject({
+        data: null,
+        source: 'missing',
+        reason: 'error',
+      });
+      
+      readJsonFileMock.mockRestore();
+      vi.restoreAllMocks();
+    });
+
+    it('prioritizes other errors over empty', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const permissionError = new Error('EACCES: permission denied');
+      (permissionError as NodeJS.ErrnoException).code = 'EACCES';
+      
+      const fsModule = await import('../../src/utils/fs.js');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const readJsonFileMock = vi.spyOn(fsModule, 'readJsonFile' as any);
+      
+      readJsonFileMock.mockImplementation(async (path: string) => {
+        if (path === artifactPath) {
+          throw permissionError;
+        } else {
+          throw new Error('Empty file');
+        }
+      });
+
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+      
+      // Should report 'error' (permission denied) rather than 'empty'
+      expect(result).toMatchObject({
+        data: null,
+        source: 'missing',
+        reason: 'error',
+      });
+      
+      readJsonFileMock.mockRestore();
+      vi.restoreAllMocks();
+    });
   });
 
   describe('Strict Fail: ON (strictFail=true)', () => {
