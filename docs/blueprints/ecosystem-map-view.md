@@ -1,5 +1,6 @@
 ---
 id: blueprint.ecosystem-map-view
+title: Ecosystem Map View Blueprint
 status: draft
 doc_type: blueprint
 canonicality: supporting
