@@ -82,6 +82,10 @@ The daily digest generator combines:
    - Status breakdown (ok/warn/fail)
    - Latest metrics timestamp
 
+## Ecosystem Map View
+
+Leitstand is the right dashboard surface for a future read-only view of the Cabinet-owned ecosystem map. The boundary is documented in [Ecosystem Map View Blueprint](docs/blueprints/ecosystem-map-view.md): Cabinet owns map semantics; Leitstand may render and display pinned Cabinet Mermaid artifacts with freshness metadata.
+
 ## Installation
 
 This project uses [pnpm](https://pnpm.io/) for package management.
