@@ -62,8 +62,10 @@ so agents can pick up work without re-reading the full roadmap.
 
 - **Phase 0/1 governance**: Scope, source inventory and DoD checklist still need
   to be formally documented (`docs/blueprints/leitstand_visualization.md` §0-§1).
-- **Phase 5 Vortagsvergleich**: Delta-Sektion zeigt heutige Daten, der belastbare
-  Vortagsvergleich auf das konkrete Vortags-Artefakt fehlt als Datenbindung.
+- **Phase 4/5 Vortagsvergleich**: ✅ Umgesetzt — die Erkenntnisse-Ansicht bindet
+  das konkrete Vortags-Artefakt (`insights.daily.<YYYY-MM-DD>.json`) und berechnet
+  ein strukturiertes Delta (Topics/Fragen). Verbleibende Abhängigkeit: produzentseitige
+  Bereitstellung datierter Vortags-Artefakte im Echtbetrieb (Dev/Fixture deckt es ab).
 - **Phase 6 Reflexion-Producer-Contract**: Producer-Contract für
   `heimgeist.reflexion.bundle.v1` ist im Leitstand defensiv geprüft, aber noch
   nicht End-to-End mit dem Producer-Repo abgestimmt.

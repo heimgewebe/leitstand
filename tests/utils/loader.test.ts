@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtemp, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadWithFallback } from '../../src/utils/loader.js';
+import { loadWithFallback, loadOptional } from '../../src/utils/loader.js';
 
 describe('loadWithFallback', () => {
   let testDir: string;
@@ -86,6 +86,117 @@ describe('loadWithFallback', () => {
       await createArtifact('{ invalid }');
       await expect(loadWithFallback(artifactPath, fixturePath, options))
         .rejects.toThrow('Strict: Test artifact contains invalid JSON');
+    });
+  });
+
+  describe('loadOptional', () => {
+    it('returns artifact data when artifact is valid', async () => {
+      await createArtifact('{"val": 42}');
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+      expect(result).toEqual({ data: { val: 42 }, source: 'artifact', reason: 'ok' });
+    });
+
+    it('falls back to fixture when artifact is missing', async () => {
+      await createFixture('{"val": 99}');
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+      expect(result).toEqual({ data: { val: 99 }, source: 'fixture', reason: 'ok' });
+    });
+
+    it('returns enoent when both artifact and fixture are missing', async () => {
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+      expect(result).toEqual({ data: null, source: 'missing', reason: 'enoent' });
+    });
+
+    it('returns invalid-json when artifact is corrupt and fixture is missing', async () => {
+      await createArtifact('{ not valid json }');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+      expect(result).toEqual({ data: null, source: 'missing', reason: 'invalid-json' });
+      warnSpy.mockRestore();
+    });
+
+    it('returns invalid-json when both artifact and fixture are corrupt', async () => {
+      await createArtifact('{ bad }');
+      await createFixture('{ also bad }');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+      expect(result).toEqual({ data: null, source: 'missing', reason: 'invalid-json' });
+      warnSpy.mockRestore();
+    });
+
+    it('succeeds with fixture when only artifact is corrupt', async () => {
+      await createArtifact('{ bad }');
+      await createFixture('{"val": 7}');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+      expect(result).toEqual({ data: { val: 7 }, source: 'fixture', reason: 'ok' });
+      warnSpy.mockRestore();
+    });
+
+    it('never throws even when both candidates fail', async () => {
+      await createArtifact('{ bad }');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await expect(loadOptional(artifactPath, fixturePath, 'Test')).resolves.not.toThrow();
+      warnSpy.mockRestore();
+    });
+
+    it('correctly labels source as fixture when primarySource is fixture', async () => {
+      await createFixture('{"val": 123}');
+      const result = await loadOptional(artifactPath, fixturePath, 'Test', {
+        primarySource: 'fixture',
+      });
+      expect(result).toEqual({
+        data: { val: 123 },
+        source: 'fixture',
+        reason: 'ok',
+      });
+    });
+
+    it('returns missing with correct source when primarySource is fixture and path missing', async () => {
+      const result = await loadOptional(artifactPath, fixturePath, 'Test', {
+        primarySource: 'fixture',
+      });
+      expect(result).toEqual({
+        data: null,
+        source: 'missing',
+        reason: 'enoent',
+      });
+    });
+
+    it('returns empty when artifact is empty and fixture is missing', async () => {
+      // Create an empty artifact file (only whitespace)
+      await createArtifact('   \n  \t  ');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+
+      // Should report 'empty' reason
+      expect(result).toMatchObject({
+        data: null,
+        source: 'missing',
+        reason: 'empty',
+      });
+
+      warnSpy.mockRestore();
+    });
+
+    it('loads fixture when artifact is empty and fixture has valid data', async () => {
+      // Create an empty artifact
+      await createArtifact('   ');
+      // Create a valid fixture
+      await createFixture('{"val": 88}');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await loadOptional(artifactPath, fixturePath, 'Test');
+
+      // Should load from fixture successfully
+      expect(result).toMatchObject({
+        data: { val: 88 },
+        source: 'fixture',
+        reason: 'ok',
+      });
+
+      warnSpy.mockRestore();
     });
   });
 

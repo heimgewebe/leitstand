@@ -2,10 +2,11 @@ import { stat } from 'fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetEnvConfig } from '../../src/config.js';
 import { getInsightsData } from '../../src/controllers/insights.js';
-import { loadWithFallback } from '../../src/utils/loader.js';
+import { loadOptional, loadWithFallback } from '../../src/utils/loader.js';
 
 vi.mock('../../src/utils/loader.js', () => ({
   loadWithFallback: vi.fn(),
+  loadOptional: vi.fn(),
 }));
 
 vi.mock('fs/promises', () => ({
@@ -32,6 +33,8 @@ describe('getInsightsData controller', () => {
     resetEnvConfig();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.mocked(stat).mockResolvedValue({ mtime: new Date('2026-03-30T00:00:00.000Z') } as Awaited<ReturnType<typeof stat>>);
+    // By default no previous-day artifact is available; comparison stays null.
+    vi.mocked(loadOptional).mockResolvedValue({ data: null, source: 'missing', reason: 'enoent' });
   });
 
   afterEach(() => {
@@ -367,5 +370,216 @@ describe('getInsightsData controller', () => {
     const result = await getInsightsData();
 
     expect(result.view_meta.is_strict).toBe(true);
+  });
+
+  describe('previous-day comparison (Vortagsvergleich)', () => {
+   it('binds against the previous-day artifact and computes a structured delta', async () => {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: { ...fixtureInsights, ts: '2025-12-28' },
+        source: 'artifact',
+        reason: 'ok',
+      });
+      vi.mocked(loadOptional).mockResolvedValue({
+        data: {
+          ts: '2025-12-27',
+          topics: [
+            ['observatory', 0.8],
+            ['insights.daily', 0.7],
+            ['chronik-events', 0.6],
+          ],
+          questions: ['Welche Topics sind stabil?'],
+          deltas: [],
+        },
+        source: 'artifact',
+        reason: 'ok',
+      });
+
+      const result = await getInsightsData();
+
+      // Looks up the day before today's ts via the dated-artifact convention.
+      // When today is from artifact, fixturePath is null (enforcing source coherence).
+      const optionalArgs = vi.mocked(loadOptional).mock.calls[0];
+      expect(optionalArgs[0]).toContain('insights.daily.2025-12-27.json');
+      expect(optionalArgs[1]).toBe(null);
+      // allowFixtureFallback option should be false (artifact-only when today is artifact)
+      expect(optionalArgs[3]).toMatchObject({ allowFixtureFallback: false });
+
+      expect(result.comparison_meta).toMatchObject({
+        available: true,
+        source_kind: 'artifact',
+        reason: 'ok',
+        previous_date: '2025-12-27',
+        previous_ts: '2025-12-27',
+      });
+
+      const cmp = result.comparison;
+      expect(cmp).not.toBeNull();
+      expect(cmp?.has_changes).toBe(true);
+      // observatory 0.8 → 0.9, insights.daily unchanged, leitstand-ui added, chronik-events removed
+      expect(cmp?.topics.added.map((t) => t.name)).toEqual(['leitstand-ui']);
+      expect(cmp?.topics.removed.map((t) => t.name)).toEqual(['chronik-events']);
+      expect(cmp?.topics.changed).toHaveLength(1);
+      expect(cmp?.topics.changed[0]).toMatchObject({ name: 'observatory', direction: 'up' });
+      expect(cmp?.topics.unchanged).toBe(1);
+    });
+
+    it('reports comparison unavailable when no previous-day artifact exists', async () => {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: { ...fixtureInsights, ts: '2025-12-28' },
+        source: 'artifact',
+        reason: 'ok',
+      });
+      vi.mocked(loadOptional).mockResolvedValue({ data: null, source: 'missing', reason: 'enoent' });
+
+      const result = await getInsightsData();
+
+      expect(result.comparison).toBeNull();
+      expect(result.comparison_meta).toMatchObject({
+        available: false,
+        // When today is from artifact but previous is missing, report no-source-coherence instead of enoent
+        reason: 'no-source-coherence',
+        previous_date: '2025-12-27',
+      });
+    });
+
+    it('skips comparison when today has no parseable base date', async () => {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: { ...fixtureInsights, ts: '', metadata: { generated_at: '2026-03-30T02:00:00.000Z' } },
+        source: 'artifact',
+        reason: 'ok',
+      });
+
+      const result = await getInsightsData();
+
+      expect(result.comparison).toBeNull();
+      expect(result.comparison_meta).toMatchObject({ available: false, reason: 'no-base-date' });
+      expect(loadOptional).not.toHaveBeenCalled();
+    });
+
+    it('degrades to unavailable when the previous-day artifact is invalid', async () => {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: { ...fixtureInsights, ts: '2025-12-28' },
+        source: 'fixture',
+        reason: 'enoent',
+      });
+      vi.mocked(loadOptional).mockResolvedValue({
+        data: { ts: 123, topics: 'nope' },
+        source: 'fixture',
+        reason: 'ok',
+      });
+
+      const result = await getInsightsData();
+
+      expect(result.comparison).toBeNull();
+      expect(result.comparison_meta).toMatchObject({
+        available: false,
+        reason: 'invalid-shape',
+        previous_date: '2025-12-27',
+      });
+    });
+
+    it('propagates invalid-json reason when previous-day artifact is corrupt', async () => {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: { ...fixtureInsights, ts: '2025-12-28' },
+        source: 'artifact',
+        reason: 'ok',
+      });
+      vi.mocked(loadOptional).mockResolvedValue({
+        data: null,
+        source: 'missing',
+        reason: 'invalid-json',
+      });
+
+      const result = await getInsightsData();
+
+      expect(result.comparison).toBeNull();
+      expect(result.comparison_meta).toMatchObject({
+        available: false,
+        // When today is from artifact but previous is invalid, report no-source-coherence instead of invalid-json
+        reason: 'no-source-coherence',
+        previous_date: '2025-12-27',
+        source_kind: 'missing',
+      });
+    });
+
+    it('enforces source coherence: artifact→artifact (no fixture fallback)', async () => {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: { ...fixtureInsights, ts: '2025-12-28' },
+        source: 'artifact',
+        reason: 'ok',
+      });
+      vi.mocked(loadOptional).mockResolvedValue({
+        data: {
+          ts: '2025-12-27',
+          topics: [['observatory', 0.8]],
+          questions: [],
+          deltas: [],
+        },
+        source: 'artifact',
+        reason: 'ok',
+      });
+
+      const result = await getInsightsData();
+
+      // Verify that when today is artifact, loadOptional is called with:
+      // - artifact path as primary
+      // - null as fixturePath (no fallback allowed)
+      // - allowFixtureFallback: false
+      // - primarySource: 'artifact'
+      const optionalCall = vi.mocked(loadOptional).mock.calls[0];
+      expect(optionalCall[0]).toContain('artifacts');
+      expect(optionalCall[0]).toContain('insights.daily.2025-12-27.json');
+      expect(optionalCall[1]).toBe(null); // No fixture fallback
+      expect(optionalCall[3]).toMatchObject({
+        allowFixtureFallback: false,
+        primarySource: 'artifact',
+      });
+
+      // Comparison should succeed with artifact source
+      expect(result.comparison_meta).toMatchObject({
+        available: true,
+        source_kind: 'artifact',
+      });
+    });
+
+    it('enforces source coherence: fixture→fixture (with correct source tracking)', async () => {
+      vi.mocked(loadWithFallback).mockResolvedValue({
+        data: { ...fixtureInsights, ts: '2025-12-28' },
+        source: 'fixture', // Today from fixture
+        reason: 'enoent',
+      });
+      vi.mocked(loadOptional).mockResolvedValue({
+        data: {
+          ts: '2025-12-27',
+          topics: [['observatory', 0.8]],
+          questions: [],
+          deltas: [],
+        },
+        source: 'fixture',
+        reason: 'ok',
+      });
+
+      const result = await getInsightsData();
+
+      // Verify that when today is fixture, loadOptional is called with:
+      // - fixture path as primary (not artifact path)
+      // - null as fixturePath (no dual candidates)
+      // - allowFixtureFallback: false
+      // - primarySource: 'fixture'
+      const optionalCall = vi.mocked(loadOptional).mock.calls[0];
+      expect(optionalCall[0]).toContain('fixtures');
+      expect(optionalCall[0]).toContain('insights.daily.2025-12-27.json');
+      expect(optionalCall[1]).toBe(null); // No additional candidates
+      expect(optionalCall[3]).toMatchObject({
+        allowFixtureFallback: false,
+        primarySource: 'fixture',
+      });
+
+      // Comparison should succeed with fixture source
+      expect(result.comparison_meta).toMatchObject({
+        available: true,
+        source_kind: 'fixture',
+      });
+    });
   });
 });
