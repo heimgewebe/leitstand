@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>RepoBriefs – Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; color: #f1f5f9; margin: 0; }
+    nav { position: sticky; top: 0; display: flex; gap: 4px; padding: 10px 20px; background: rgba(10,14,26,.92); border-bottom: 1px solid rgba(255,255,255,.08); }
+    nav a { color: #94a3b8; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: .82em; }
+    nav a.active, nav a:hover { color: #3b82f6; background: rgba(59,130,246,.1); }
+    nav .title { color: #f1f5f9; font-weight: 700; margin-right: 16px; }
+    main { max-width: 1180px; margin: 0 auto; padding: 42px 24px 80px; }
+    .subtitle, .muted, li { color: #94a3b8; line-height: 1.55; }
+    .notice, .card, .meta-item { background: rgba(17,24,39,.88); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; }
+    .notice strong { color: #3b82f6; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 22px 0; }
+    .label { color: #64748b; font-size: .72em; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+    .value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82em; overflow-wrap: anywhere; }
+    .status-ok { color: #22c55e; }
+    .status-warn, .status-unknown { color: #f59e0b; }
+    .status-fail { color: #ef4444; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #dbeafe; }
+    ul { margin-left: 20px; }
+  </style>
+</head>
+<body>
+  <nav aria-label="Hauptnavigation">
+    <span class="title">Leitstand</span>
+    <a href="/">Home</a>
+    <a href="/ecosystem-map">Ecosystem Map</a>
+    <a href="/repobriefs" class="active" aria-current="page">RepoBriefs</a>
+    <a href="/anatomy">Anatomie</a>
+    <a href="/timeline">Zeitachse</a>
+    <a href="/insights">Erkenntnisse</a>
+    <a href="/reflexion">Reflexion</a>
+    <a href="/ops">Ops</a>
+  </nav>
+
+  <main>
+    <h1>RepoBrief / rLens Observability</h1>
+    <p class="subtitle">Read-only surface for repository snapshot bundles. This view shows status, required artifacts and export-safety warnings; it does not generate bundles or claim repository understanding.</p>
+
+    <section class="notice">
+      <strong>View only.</strong> Local bundle paths are operator pointers. Export-safety failures must remain visible and block public-share framing.
+    </section>
+
+    <section class="meta-grid" aria-label="RepoBrief source metadata">
+      <div class="meta-item"><div class="label">Source state</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
+      <div class="meta-item"><div class="label">Source path</div><div class="value"><%= view_meta.source_path %></div></div>
+      <div class="meta-item"><div class="label">Generated</div><div class="value"><%= view_meta.generated_at || '—' %></div></div>
+      <div class="meta-item"><div class="label">Bundles</div><div class="value"><%= view_meta.bundle_count %></div></div>
+      <div class="meta-item"><div class="label">Public export ready</div><div class="value"><%= view_meta.public_export_ready_count %></div></div>
+      <div class="meta-item"><div class="label">Warnings</div><div class="value"><%= view_meta.warning_count %></div></div>
+    </section>
+
+    <% if (bundles.length === 0) { %>
+      <section class="card"><p class="muted">No RepoBrief bundle index is available. This is a degraded read-only state, not a green status.</p></section>
+    <% } %>
+
+    <% for (const bundle of bundles) { %>
+      <section class="card" data-repo="<%= bundle.repo %>">
+        <h2><%= bundle.repo %> · <%= bundle.bundle_stem %></h2>
+        <p class="muted"><%= bundle.summary %></p>
+        <div class="meta-grid">
+          <div class="meta-item"><div class="label">Snapshot</div><div class="value status-<%= bundle.snapshot_status %>"><%= bundle.snapshot_status %></div></div>
+          <div class="meta-item"><div class="label">Preflight</div><div class="value status-<%= bundle.preflight_status %>"><%= bundle.preflight_status %></div></div>
+          <div class="meta-item"><div class="label">Export safety</div><div class="value status-<%= bundle.export_safety %>"><%= bundle.export_safety %></div></div>
+          <div class="meta-item"><div class="label">Public export ready</div><div class="value"><%= bundle.public_export_ready ? 'yes' : 'no' %></div></div>
+          <div class="meta-item"><div class="label">Source commit</div><div class="value"><%= bundle.source_commit || '—' %></div></div>
+          <div class="meta-item"><div class="label">Manifest</div><div class="value"><%= bundle.bundle_manifest %></div></div>
+        </div>
+        <h3>Local operator pointers</h3>
+        <ul>
+          <li>Bundle directory: <code><%= bundle.bundle_directory %></code></li>
+          <li>Agent reading pack: <code><%= bundle.agent_reading_pack %></code></li>
+          <li>Canonical dump: <code><%= bundle.canonical_dump %></code></li>
+        </ul>
+        <h3>Required artifacts</h3>
+        <ul>
+          <% for (const item of bundle.required_artifacts) { %><li><%= item %></li><% } %>
+        </ul>
+        <% if (bundle.warnings.length > 0) { %>
+          <h3>Warnings</h3>
+          <ul>
+            <% for (const warning of bundle.warnings) { %><li class="status-warn"><%= warning %></li><% } %>
+          </ul>
+        <% } %>
+      </section>
+    <% } %>
+
+    <section class="card">
+      <h2>Does not establish</h2>
+      <ul>
+        <% for (const item of view_meta.does_not_establish) { %><li><%= item %></li><% } %>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
