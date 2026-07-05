@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "kind": "leitstand_repobrief_bundle_index",
+  "generatedAt": "2026-07-05T06:43:00Z",
+  "source": "local_operator_index",
+  "doesNotEstablish": [
+    "repo_understanding",
+    "public_export_safety",
+    "review_completeness",
+    "runtime_correctness",
+    "test_sufficiency"
+  ],
+  "bundles": [
+    {
+      "repo": "leitstand",
+      "bundleStem": "leitstand-max-260705-0443",
+      "bundleDirectory": "/home/alex/repos/merges/leitstand-max-260705-0643",
+      "bundleManifest": "/home/alex/repos/merges/leitstand-max-260705-0643/leitstand-max-260705-0443_merge.bundle.manifest.json",
+      "agentReadingPack": "/home/alex/repos/merges/leitstand-max-260705-0643/leitstand-max-260705-0443_merge.agent_reading_pack.md",
+      "canonicalDump": "/home/alex/repos/merges/leitstand-max-260705-0643/leitstand-max-260705-0443_merge.md",
+      "sourceCommit": "0aeb59942d4b70d92129516139b4f46d3e07ec1d",
+      "snapshotStatus": "ok",
+      "preflightStatus": "warn",
+      "exportSafety": "fail",
+      "publicExportReady": false,
+      "summary": "Fresh Leitstand origin/main RepoBrief used as evidence for visualization-layer planning. Export-safety is not public-ready even though redaction was observed.",
+      "requiredArtifacts": [
+        "bundle_manifest",
+        "canonical_dump",
+        "agent_reading_pack",
+        "chunk_index",
+        "sqlite_index"
+      ],
+      "warnings": [
+        "claim-evidence sidecars skipped; no missing required artifacts",
+        "export gate missing or not pass; treat as internal analysis only"
+      ]
+    }
+  ]
+}

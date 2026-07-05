@@ -78,16 +78,26 @@
     {
       "nodeId": "repo:lenskit",
       "label": "Lenskit / RepoBrief implementation",
-      "status": "unmapped",
-      "reason": "RepoBrief observability view is planned but not implemented yet.",
-      "links": []
+      "status": "linked",
+      "links": [
+        {
+          "view": "repobriefs",
+          "href": "/repobriefs",
+          "title": "RepoBrief bundle observability"
+        }
+      ]
     },
     {
       "nodeId": "concept:repobrief",
       "label": "RepoBrief",
-      "status": "unmapped",
-      "reason": "RepoBrief observability view is planned but not implemented yet.",
-      "links": []
+      "status": "linked",
+      "links": [
+        {
+          "view": "repobriefs",
+          "href": "/repobriefs",
+          "title": "RepoBrief bundle observability"
+        }
+      ]
     }
   ]
 }

@@ -14,6 +14,7 @@ import { getTimelineData } from './controllers/timeline.js';
 import { getReflexionData } from './controllers/reflexion.js';
 import { getDashboardData } from './controllers/dashboard.js';
 import { getEcosystemMapData } from './controllers/ecosystemMap.js';
+import { getRepoBriefData } from './controllers/repoBrief.js';
 import { getEventFamily, listEventFamilies } from './utils/eventKind.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
@@ -303,6 +304,19 @@ app.get('/', async (_req, res) => {
   }
 });
 
+
+
+app.get('/repobriefs', async (_req, res) => {
+  try {
+    const data = await getRepoBriefData();
+    res.render('repobriefs', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[RepoBriefs] Error:', error);
+      res.status(500).send('Error loading RepoBrief data');
+    }
+  }
+});
 
 app.get('/ecosystem-map', async (_req, res) => {
   try {
