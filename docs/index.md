@@ -48,7 +48,11 @@ Tools that enforce the rules automatically.
 - [Leitstand Visualization Blueprint](blueprints/leitstand_visualization.md)
 - [Ecosystem Map View Blueprint](blueprints/ecosystem-map-view.md)
 
-## 5. Deployment Modes
+## 5. Reports
+
+- [Visualization Pilot Evidence 2026-07-05](reports/visualization-pilot-2026-07-05.md)
+
+## 6. Deployment Modes
 
 Each Leitstand deployment instance operates in exactly one of two explicit modes. A project may run a canonical runtime and an optional static mirror as separate instances in parallel.
 
