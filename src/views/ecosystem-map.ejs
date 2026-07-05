@@ -50,6 +50,29 @@
       <div class="meta-item"><div class="label">Freshness</div><div class="value"><%= view_meta.freshness_state %><% if (view_meta.data_age_minutes !== null) { %> · <%= view_meta.data_age_minutes %> min<% } %></div></div>
     </section>
 
+    <section class="panel" aria-label="Cross-view identity mapping">
+      <h2>Cross-view links</h2>
+      <p class="artifact-meta">Contract: <%= cross_link_meta.source_kind %> / <%= cross_link_meta.missing_reason %> · <%= cross_link_meta.source_path %></p>
+      <% if (cross_links.length === 0) { %>
+        <p class="empty">No cross-view mapping contract is available. Unknown nodes remain unlinked.</p>
+      <% } else { %>
+        <ul>
+          <% for (const link of cross_links) { %>
+            <li>
+              <strong><%= link.node_id %></strong> — <%= link.label %> — <%= link.status %>
+              <% if (link.links.length > 0) { %>
+                <% for (const target of link.links) { %>
+                  · <a href="<%= target.href %>"><%= target.title %></a>
+                <% } %>
+              <% } else { %>
+                · <%= link.reason || 'unmapped' %>
+              <% } %>
+            </li>
+          <% } %>
+        </ul>
+      <% } %>
+    </section>
+
     <section class="panel">
       <h2>Readable overview</h2>
       <% if (overview && overview.content) { %>

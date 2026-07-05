@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "kind": "leitstand_ecosystem_map_cross_view_links",
+  "source": "cabinet.ecosystem_map.v0.node_ids",
+  "doesNotEstablish": [
+    "relation_truth",
+    "runtime_dependency",
+    "change_impact",
+    "claim_truth",
+    "dispatch_readiness"
+  ],
+  "mappings": [
+    {
+      "nodeId": "artifact:ecosystem-map",
+      "label": "Ecosystem Map v0",
+      "status": "linked",
+      "links": [
+        {
+          "view": "ecosystem-map",
+          "href": "/ecosystem-map",
+          "title": "Cabinet map source view"
+        }
+      ]
+    },
+    {
+      "nodeId": "repo:cabinet",
+      "label": "Cabinet",
+      "status": "linked",
+      "links": [
+        {
+          "view": "ecosystem-map",
+          "href": "/ecosystem-map",
+          "title": "Cabinet-owned map artifacts"
+        }
+      ]
+    },
+    {
+      "nodeId": "repo:chronik",
+      "label": "Chronik",
+      "status": "linked",
+      "links": [
+        {
+          "view": "timeline",
+          "href": "/timeline?node=repo%3Achronik",
+          "title": "Chronik timeline context"
+        }
+      ]
+    },
+    {
+      "nodeId": "repo:weltgewebe",
+      "label": "Weltgewebe",
+      "status": "linked",
+      "links": [
+        {
+          "view": "anatomy",
+          "href": "/anatomy?node=repo%3Aweltgewebe",
+          "title": "Weltgewebe structural context"
+        },
+        {
+          "view": "timeline",
+          "href": "/timeline?node=repo%3Aweltgewebe",
+          "title": "Weltgewebe timeline context"
+        }
+      ]
+    },
+    {
+      "nodeId": "repo:schauwerk",
+      "label": "Schauwerk",
+      "status": "linked",
+      "links": [
+        {
+          "view": "ecosystem-map",
+          "href": "/ecosystem-map?node=repo%3Aschauwerk",
+          "title": "Visualization handoff context"
+        }
+      ]
+    },
+    {
+      "nodeId": "repo:lenskit",
+      "label": "Lenskit / RepoBrief implementation",
+      "status": "unmapped",
+      "reason": "RepoBrief observability view is planned but not implemented yet.",
+      "links": []
+    },
+    {
+      "nodeId": "concept:repobrief",
+      "label": "RepoBrief",
+      "status": "unmapped",
+      "reason": "RepoBrief observability view is planned but not implemented yet.",
+      "links": []
+    }
+  ]
+}
