@@ -3,7 +3,6 @@ import { mkdtemp, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { loadWithFallback, loadOptional } from '../../src/utils/loader.js';
-import { EmptyFileError } from '../../src/utils/fs.js';
 
 describe('loadWithFallback', () => {
   let testDir: string;
@@ -168,16 +167,16 @@ describe('loadWithFallback', () => {
       // Create an empty artifact file (only whitespace)
       await createArtifact('   \n  \t  ');
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
+
       const result = await loadOptional(artifactPath, fixturePath, 'Test');
-      
+
       // Should report 'empty' reason
       expect(result).toMatchObject({
         data: null,
         source: 'missing',
         reason: 'empty',
       });
-      
+
       warnSpy.mockRestore();
     });
 
@@ -187,16 +186,16 @@ describe('loadWithFallback', () => {
       // Create a valid fixture
       await createFixture('{"val": 88}');
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
+
       const result = await loadOptional(artifactPath, fixturePath, 'Test');
-      
+
       // Should load from fixture successfully
       expect(result).toMatchObject({
         data: { val: 88 },
         source: 'fixture',
         reason: 'ok',
       });
-      
+
       warnSpy.mockRestore();
     });
   });
