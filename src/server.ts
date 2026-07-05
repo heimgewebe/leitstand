@@ -13,6 +13,7 @@ import { getInsightsData } from './controllers/insights.js';
 import { getTimelineData } from './controllers/timeline.js';
 import { getReflexionData } from './controllers/reflexion.js';
 import { getDashboardData } from './controllers/dashboard.js';
+import { getEcosystemMapData } from './controllers/ecosystemMap.js';
 import { getEventFamily, listEventFamilies } from './utils/eventKind.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
@@ -299,6 +300,19 @@ app.get('/', async (_req, res) => {
     // than crashing the landing page.
     console.error('[Dashboard] Unexpected error:', error);
     res.render('index', { phases: [] });
+  }
+});
+
+
+app.get('/ecosystem-map', async (_req, res) => {
+  try {
+    const data = await getEcosystemMapData();
+    res.render('ecosystem-map', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[EcosystemMap] Error:', error);
+      res.status(500).send('Error loading ecosystem map data');
+    }
   }
 });
 
