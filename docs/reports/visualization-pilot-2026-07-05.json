@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "leitstand_visualization_pilot_evidence",
+  "generatedAt": "2026-07-05T15:50:00Z",
+  "repos": {
+    "cabinet": "2ccd62b83a69ffc311efa8132741a83c1b994542",
+    "schauwerk": "b712c9f59f635df8fbceafd6511d435e0377094d",
+    "leitstand": "bc61b28c06fd02c9d2b97088bf80c1e8a4f45d40"
+  },
+  "pilotChecks": {
+    "cabinetManifestGenerated": true,
+    "cabinetManifestSourceCommit": "2ccd62b83a69ffc311efa8132741a83c1b994542",
+    "schauwerkHandoffGenerated": true,
+    "schauwerkHandoffKind": "schauwerk_ecosystem_map_html_handoff",
+    "schauwerkHandoffMode": "source_html",
+    "schauwerkHandoffSha256": "355b43858d83ca82a7bb5866f31312066f3c6de562ada7c4b845fdef03bb9046",
+    "schauwerkHandoffBytes": 8079,
+    "diagramRendered": false,
+    "leitstandEcosystemMapRoutePresent": true,
+    "leitstandRepoBriefRoutePresent": true,
+    "crossViewContractKind": "leitstand_ecosystem_map_cross_view_links",
+    "crossViewMappingCount": 7,
+    "repoBriefIndexKind": "leitstand_repobrief_bundle_index",
+    "repoBriefBundleCount": 1
+  },
+  "repoBriefBundle": {
+    "repo": "leitstand",
+    "sourceCommit": "0aeb59942d4b70d92129516139b4f46d3e07ec1d",
+    "currentLeitstandCommit": "bc61b28c06fd02c9d2b97088bf80c1e8a4f45d40",
+    "isCurrent": false,
+    "snapshotStatus": "ok",
+    "preflightStatus": "warn",
+    "exportSafety": "fail",
+    "publicExportReady": false,
+    "warningCount": 2,
+    "warnings": [
+      "claim-evidence sidecars skipped; no missing required artifacts",
+      "export gate missing or not pass; treat as internal analysis only"
+    ]
+  },
+  "degradedStatesObserved": [
+    "RepoBrief source commit is stale relative to current Leitstand main.",
+    "RepoBrief exportSafety is fail and publicExportReady is false."
+  ],
+  "doesNotEstablish": [
+    "runtime_correctness",
+    "claim_truth",
+    "merge_readiness",
+    "review_completeness",
+    "public_export_safety",
+    "test_sufficiency"
+  ]
+}
