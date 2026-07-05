@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Ecosystem Map – Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; color: #f1f5f9; margin: 0; }
+    nav { position: sticky; top: 0; display: flex; gap: 4px; padding: 10px 20px; background: rgba(10, 14, 26, 0.92); border-bottom: 1px solid rgba(255,255,255,.08); }
+    nav a { color: #94a3b8; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: .82em; }
+    nav a.active, nav a:hover { color: #3b82f6; background: rgba(59,130,246,.1); }
+    nav .title { color: #f1f5f9; font-weight: 700; margin-right: 16px; }
+    main { max-width: 1180px; margin: 0 auto; padding: 42px 24px 80px; }
+    h1 { font-size: 1.9em; margin-bottom: 10px; }
+    .subtitle, .empty, .artifact-meta, li { color: #94a3b8; line-height: 1.55; }
+    .notice, .panel, .meta-item { background: rgba(17,24,39,.88); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; }
+    .notice strong { color: #3b82f6; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 22px; }
+    .label { color: #64748b; font-size: .72em; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+    .value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82em; overflow-wrap: anywhere; }
+    pre { background: rgba(2,6,23,.72); color: #dbeafe; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 16px; overflow: auto; font-size: .78em; line-height: 1.45; max-height: 520px; }
+  </style>
+</head>
+<body>
+  <nav aria-label="Hauptnavigation">
+    <span class="title">Leitstand</span>
+    <a href="/">Home</a>
+    <a href="/ecosystem-map" class="active" aria-current="page">Ecosystem Map</a>
+    <a href="/anatomy">Anatomie</a>
+    <a href="/timeline">Zeitachse</a>
+    <a href="/insights">Erkenntnisse</a>
+    <a href="/reflexion">Reflexion</a>
+    <a href="/ops">Ops</a>
+  </nav>
+
+  <main>
+    <h1>Ecosystem Map</h1>
+    <p class="subtitle">Read-only source view for the Cabinet-owned Heimgewebe ecosystem map.</p>
+
+    <section class="notice" aria-label="Boundary">
+      <strong>View only.</strong> Canonical map semantics live in Cabinet. Leitstand displays pinned artifacts and freshness metadata; it does not edit the map, infer claim truth, dispatch tasks, or prove runtime correctness or merge readiness.
+    </section>
+
+    <section class="meta-grid" aria-label="Source metadata">
+      <div class="meta-item"><div class="label">Source state</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
+      <div class="meta-item"><div class="label">Manifest</div><div class="value"><%= view_meta.manifest_path %></div></div>
+      <div class="meta-item"><div class="label">Source root</div><div class="value"><%= view_meta.source_root || '—' %></div></div>
+      <div class="meta-item"><div class="label">Repository</div><div class="value"><%= view_meta.source_repository || '—' %></div></div>
+      <div class="meta-item"><div class="label">Commit</div><div class="value"><%= view_meta.source_commit || '—' %></div></div>
+      <div class="meta-item"><div class="label">Freshness</div><div class="value"><%= view_meta.freshness_state %><% if (view_meta.data_age_minutes !== null) { %> · <%= view_meta.data_age_minutes %> min<% } %></div></div>
+    </section>
+
+    <section class="panel">
+      <h2>Readable overview</h2>
+      <% if (overview && overview.content) { %>
+        <div class="artifact-meta"><%= overview.path %> · <%= overview.bytes %> bytes · sha256 <%= overview.sha256 %></div>
+        <pre><%= overview.content %></pre>
+      <% } else { %>
+        <p class="empty">Overview Mermaid source is not available. Reason: <%= overview ? overview.missing_reason : view_meta.missing_reason %>.</p>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <h2>Generated registry projection</h2>
+      <% if (registry_projection && registry_projection.content) { %>
+        <div class="artifact-meta"><%= registry_projection.path %> · <%= registry_projection.bytes %> bytes · sha256 <%= registry_projection.sha256 %></div>
+        <pre><%= registry_projection.content %></pre>
+      <% } else { %>
+        <p class="empty">Registry projection Mermaid source is not available. Reason: <%= registry_projection ? registry_projection.missing_reason : view_meta.missing_reason %>.</p>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <h2>Does not establish</h2>
+      <ul>
+        <% for (const item of view_meta.does_not_establish) { %>
+          <li><%= item %></li>
+        <% } %>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
