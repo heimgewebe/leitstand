@@ -46,6 +46,7 @@ Tools that enforce the rules automatically.
 - [WGX Leitstand Decision](decisions/wgx-leitstand.md)
 - [Leitstand Manifest Blueprint](blueprints/leitstand_manifest.md)
 - [Leitstand Visualization Blueprint](blueprints/leitstand_visualization.md)
+- [Ecosystem Map View Blueprint](blueprints/ecosystem-map-view.md)
 
 ## 5. Deployment Modes
 
