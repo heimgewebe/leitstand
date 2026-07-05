@@ -1,5 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve, relative } from 'node:path';
+import {
+  loadEcosystemCrossLinks,
+  type EcosystemCrossLinkData,
+  type EcosystemCrossViewLink,
+} from './ecosystemMapLinks.js';
 
 const MANIFEST_KIND = 'cabinet_ecosystem_map_artifact_manifest';
 const DEFAULT_STALE_AFTER_HOURS = 168;
@@ -42,6 +47,13 @@ export interface EcosystemMapArtifactView {
 export interface EcosystemMapViewData {
   overview: EcosystemMapArtifactView | null;
   registry_projection: EcosystemMapArtifactView | null;
+  cross_links: EcosystemCrossViewLink[];
+  cross_link_meta: {
+    source_kind: string;
+    source_path: string;
+    missing_reason: string;
+    does_not_establish: string[];
+  };
   view_meta: {
     source_kind: EcosystemMapSourceKind;
     missing_reason: string;
@@ -88,10 +100,17 @@ function classifyError(error: unknown): { kind: EcosystemMapSourceKind; reason: 
   return { kind: 'corrupt', reason: 'manifest_load_failed' };
 }
 
-function emptyData(kind: EcosystemMapSourceKind, reason: string, manifestPath: string): EcosystemMapViewData {
+function emptyData(
+  kind: EcosystemMapSourceKind,
+  reason: string,
+  manifestPath: string,
+  crossLinks: EcosystemCrossLinkData,
+): EcosystemMapViewData {
   return {
     overview: null,
     registry_projection: null,
+    cross_links: crossLinks.links,
+    cross_link_meta: crossLinks.meta,
     view_meta: {
       source_kind: kind,
       missing_reason: reason,
@@ -203,6 +222,7 @@ async function readArtifact(sourceRoot: string, artifact: MapManifestArtifact | 
 export async function getEcosystemMapData(): Promise<EcosystemMapViewData> {
   const manifestPath = resolve(configuredManifestPath());
   const staleAfterHours = configuredStaleAfterHours();
+  const crossLinks = await loadEcosystemCrossLinks();
   try {
     const raw = JSON.parse(await readFile(manifestPath, 'utf-8')) as unknown;
     const manifest = parseManifest(raw);
@@ -220,6 +240,8 @@ export async function getEcosystemMapData(): Promise<EcosystemMapViewData> {
     return {
       overview,
       registry_projection: registryProjection,
+      cross_links: crossLinks.links,
+      cross_link_meta: crossLinks.meta,
       view_meta: {
         source_kind: missingReason === 'ok' ? 'artifact' : 'missing',
         missing_reason: missingReason,
@@ -236,6 +258,6 @@ export async function getEcosystemMapData(): Promise<EcosystemMapViewData> {
     };
   } catch (error) {
     const classified = classifyError(error);
-    return emptyData(classified.kind, classified.reason, manifestPath);
+    return emptyData(classified.kind, classified.reason, manifestPath, crossLinks);
   }
 }

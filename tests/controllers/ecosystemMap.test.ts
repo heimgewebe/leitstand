@@ -3,10 +3,12 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getEcosystemMapData } from '../../src/controllers/ecosystemMap.js';
+import { loadEcosystemCrossLinks, resolveEcosystemCrossLink } from '../../src/controllers/ecosystemMapLinks.js';
 
 const OLD_MANIFEST = process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH;
 const OLD_ROOT = process.env.LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT;
 const OLD_STALE = process.env.LEITSTAND_ECOSYSTEM_MAP_STALE_AFTER_HOURS;
+const OLD_LINKS = process.env.LEITSTAND_ECOSYSTEM_MAP_LINKS_PATH;
 
 let tempRoots: string[] = [];
 
@@ -17,6 +19,8 @@ afterEach(async () => {
   else process.env.LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT = OLD_ROOT;
   if (OLD_STALE === undefined) delete process.env.LEITSTAND_ECOSYSTEM_MAP_STALE_AFTER_HOURS;
   else process.env.LEITSTAND_ECOSYSTEM_MAP_STALE_AFTER_HOURS = OLD_STALE;
+  if (OLD_LINKS === undefined) delete process.env.LEITSTAND_ECOSYSTEM_MAP_LINKS_PATH;
+  else process.env.LEITSTAND_ECOSYSTEM_MAP_LINKS_PATH = OLD_LINKS;
 
   for (const root of tempRoots) {
     await rm(root, { recursive: true, force: true });
@@ -103,4 +107,17 @@ describe('getEcosystemMapData', () => {
     expect(data.view_meta.freshness_state).toBe('stale');
     expect(data.view_meta.source_kind).toBe('artifact');
   });
+
+  it('loads deterministic cross-view links and degrades unknown node IDs', async () => {
+    const links = await loadEcosystemCrossLinks();
+    const cabinet = resolveEcosystemCrossLink(links, 'repo:cabinet');
+    const unknown = resolveEcosystemCrossLink(links, 'repo:unknown');
+
+    expect(links.meta.source_kind).toBe('artifact');
+    expect(cabinet.status).toBe('linked');
+    expect(cabinet.links[0].href).toBe('/ecosystem-map');
+    expect(unknown.status).toBe('unmapped');
+    expect(unknown.reason).toBe('node_id_not_in_cross_view_contract');
+  });
+
 });
