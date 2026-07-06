@@ -1,9 +1,29 @@
 repo_name: leitstand
 repo_type: service
-role: dashboard_and_digest_generator
+role: observer_digest_view_surface
 status: active
 summary: >
-  Dashboard and control-room for the heimgewebe organism - daily system digest generator.
+  Read-only observer, digest and view surface for the Heimgewebe operator ecosystem.
+
+role_contract:
+  name: observer_digest_view_surface
+  authority: read_only_projection
+  owns:
+    - dashboards
+    - digests
+    - view_routes
+  consumes:
+    - chronik_events
+    - bureau_state
+    - plexer_delivery_reports
+  produces:
+    - rendered_views
+    - daily_digests
+  limits:
+    - no_task_ownership
+    - no_worker_execution
+    - no_ledger_writes
+  unavailable_effect: execution_truth_continues_without_leitstand
 
 owners:
   - heimgewebe-team
@@ -84,9 +104,15 @@ related_repos:
   - semantAH
   - chronik
   - hausKI
+  - bureau
+  - grabowski
+  - plexer
+  - heimlern
 
 keywords:
   - dashboard
   - digest
-  - control-room
+  - read-only
+  - observer
+  - view-surface
   - agent-ready
