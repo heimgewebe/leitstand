@@ -5,6 +5,8 @@ status: active
 doc_type: guide
 canonicality: supporting
 owner: leitstand
+summary: >
+  Read-only Leitstand boundary in the Heimgewebe role map.
 ---
 
 # Operator ecosystem alignment
