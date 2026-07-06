@@ -32,6 +32,10 @@ jobs:
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
 
+    - name: Check vendored contracts
+      if: success()
+      run: pnpm run check:vendor-contracts
+
     - name: Lint
       if: success()
       run: pnpm run lint

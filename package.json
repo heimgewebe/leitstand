@@ -18,7 +18,8 @@
     "lint": "eslint . --ext .ts",
     "daily-digest": "node dist/cli.js",
     "start:server": "node dist/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:vendor-contracts": "node scripts/check-vendored-contracts.mjs"
   },
   "bin": {
     "leitstand": "./dist/cli.js"
