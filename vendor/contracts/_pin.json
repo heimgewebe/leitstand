@@ -1,14 +1,16 @@
 {
   "source": "https://raw.githubusercontent.com/heimgewebe/metarepo/main",
-  "fetched_at": "2026-01-20T17:18:21.007Z",
+  "fetched_at": "2026-07-06T10:00:00.000Z",
   "contracts": {
-    "contracts/knowledge/observatory.schema.json": {
-      "sha256": "7087c9ac966bd13cb07fbc32b8938f635bd699c4d0d0e25d8a8ed1079c8761bf",
-      "url": "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts/knowledge/observatory.schema.json"
+    "contracts/knowledge.observatory.schema.json": {
+      "sha256": "8da4fe8f04a010f957f9ba1769d444991eaf2ddb378c8f696cd6d026e7c9d153",
+      "url": "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts/knowledge.observatory.schema.json",
+      "vendor_path": "knowledge/observatory.schema.json"
     },
     "contracts/plexer/delivery.report.v1.schema.json": {
-      "sha256": "0e1687448db943b031c792f0619a3ce25a3b7b6be7b339f3826fcac75c821c5a",
-      "url": "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts/plexer/delivery.report.v1.schema.json"
+      "sha256": "e92d70b919352e3106649cfe8afa1cd499cfdccf351e38e65b2248a7afc115f9",
+      "url": "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts/plexer/delivery.report.v1.schema.json",
+      "vendor_path": "plexer/delivery.report.v1.schema.json"
     }
   }
 }

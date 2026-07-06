@@ -20,10 +20,10 @@ describe('scripts/fetch-observatory.mjs', () => {
     // Deterministic content for SHA test
     const staticContent = JSON.stringify({
         generated_at: "2023-01-01T00:00:00.000Z",
-        source: "test-static",
+        source: { component: "test-static" },
         observatory_id: "test-static-id",
-        topics: [{ name: "t1" }],
-        signals: {},
+        topics: [{ topic: "t1", confidence: 0.9 }],
+        signals: [{ type: "trend", description: "static fixture signal" }],
         blind_spots: [],
         considered_but_rejected: []
     });
@@ -35,10 +35,10 @@ describe('scripts/fetch-observatory.mjs', () => {
         app.get('/valid.json', (req, res) => {
             res.json({
                 generated_at: new Date().toISOString(),
-                source: "test-source",
+                source: { component: "test-source" },
                 observatory_id: "test-obs",
-                topics: [{ name: "t1" }],
-                signals: {},
+                topics: [{ topic: "t1", confidence: 0.9 }],
+                signals: [{ type: "trend", description: "valid fixture signal" }],
                 blind_spots: [],
                 considered_but_rejected: []
             });

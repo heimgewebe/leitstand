@@ -10,8 +10,14 @@ const TARGET_DIR = path.resolve(__dirname, "..", "vendor", "contracts");
 const METAREPO_BASE = process.env.METAREPO_BASE_URL || "https://raw.githubusercontent.com/heimgewebe/metarepo/main";
 
 const CONTRACTS = [
-    "contracts/knowledge/observatory.schema.json",
-    "contracts/plexer/delivery.report.v1.schema.json"
+    {
+        sourcePath: "contracts/knowledge.observatory.schema.json",
+        vendorPath: "knowledge/observatory.schema.json"
+    },
+    {
+        sourcePath: "contracts/plexer/delivery.report.v1.schema.json",
+        vendorPath: "plexer/delivery.report.v1.schema.json"
+    }
 ];
 
 async function fetchContract(url, dest) {
@@ -42,20 +48,17 @@ async function main() {
         contracts: {}
     };
 
-    for (const contractPath of CONTRACTS) {
+    for (const contractSpec of CONTRACTS) {
+        const contractPath = contractSpec.sourcePath;
+        const relativePath = contractSpec.vendorPath;
         const url = `${METAREPO_BASE}/${contractPath}`;
-
-        // Map "contracts/knowledge/observatory.schema.json" -> "vendor/contracts/knowledge/observatory.schema.json"
-        // We strip "contracts/" prefix relative to TARGET_DIR if TARGET_DIR implies vendor/contracts
-        // Actually, let's keep the structure under vendor/contracts/ as-is from metarepo/contracts/
-        const relativePath = contractPath.replace(/^contracts\//, '');
         const dest = path.join(TARGET_DIR, relativePath);
 
         await fs.promises.mkdir(path.dirname(dest), { recursive: true });
 
         try {
             const sha = await fetchContract(url, dest);
-            pin.contracts[contractPath] = { sha256: sha, url };
+            pin.contracts[contractPath] = { sha256: sha, url, vendor_path: relativePath };
             console.log(`[vendor] Updated ${relativePath} (SHA: ${sha.substring(0, 8)}...)`);
         } catch (e) {
             console.warn(`[vendor] Failed to fetch ${contractPath}: ${e.message}`);
@@ -64,7 +67,7 @@ async function main() {
             if (fs.existsSync(dest)) {
                 const content = fs.readFileSync(dest);
                 const sha = createHash('sha256').update(content).digest('hex');
-                pin.contracts[contractPath] = { sha256: sha, url, status: "cached_fallback", warning: e.message };
+                pin.contracts[contractPath] = { sha256: sha, url, vendor_path: relativePath, status: "cached_fallback", warning: e.message };
             } else {
                  console.error(`[vendor] Fatal: Contract ${contractPath} missing and fetch failed.`);
                  process.exit(1);
@@ -77,8 +80,8 @@ async function main() {
 
     // Post-processing: Check canonical IDs
     console.log("[vendor] verifying canonical IDs...");
-    for (const contractPath of CONTRACTS) {
-        const relativePath = contractPath.replace(/^contracts\//, '');
+    for (const contractSpec of CONTRACTS) {
+        const relativePath = contractSpec.vendorPath;
         const dest = path.join(TARGET_DIR, relativePath);
 
         if (fs.existsSync(dest)) {
