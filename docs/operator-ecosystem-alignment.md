@@ -1,3 +1,14 @@
+---
+id: docs.operator-ecosystem-alignment
+title: Operator Ecosystem Alignment
+status: active
+doc_type: guide
+canonicality: supporting
+owner: leitstand
+summary: >
+  Read-only Leitstand boundary in the Heimgewebe role map.
+---
+
 # Operator ecosystem alignment
 
 Leitstand is a read-only observer surface in the Heimgewebe operator ecosystem.
