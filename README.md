@@ -1,5 +1,11 @@
 # Leitstand
 
+## Operator ecosystem correction
+
+Leitstand is a read-only observer surface in the new operator ecosystem. Chronik owns event history; Plexer transports bounded operational events; Bureau owns tasks and claims; Grabowski owns local execution and receipts; Heimlern produces learning and proposal reports. Leitstand renders views and digests and does not execute or orchestrate.
+
+This correction supersedes older local role lists that mention only metarepo, wgx, semantAH, chronik, hausKI and leitstand.
+
 Dashboard and control-room for the **heimgewebe** organism.
 
 ## Overview
@@ -325,7 +331,7 @@ MIT
 This repository is part of the **Heimgewebe Organism**.
 
 The overarching architecture, axes, roles, and contracts are centrally described in:
-👉 [`metarepo/docs/heimgewebe-organismus.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-organismus.md)
+👉 [`metarepo/docs/system/heimgewebe-organismus.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-organismus.md)
 and the target vision:
 👉 [`metarepo/docs/heimgewebe-zielbild.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-zielbild.md).
 
