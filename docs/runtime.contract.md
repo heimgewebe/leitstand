@@ -36,8 +36,12 @@ Der Leitstand ist ausschließlich unter folgendem FQDN erreichbar:
 Der Dienst gilt als gesund ("grün"), wenn:
 
 - **HTTP Status:** 200 OK auf `/` und `/health`
+- **Health Receipt:** `/health` liefert `kind=leitstand_runtime_health_receipt` und `status=ok`
+- **Snapshots:** Bureau- und Checkout-Snapshots sind vorhanden und nach Runtime-Schwelle frisch
 - **Host:** Kein Mixed Content (HTTPS-Only Policy)
 - **Zugriff:** Direkter IP-Zugriff ist nicht Teil des Contracts; Zugriff erfolgt per FQDN Host-Match via Reverse Proxy.
+
+`/health` ist eine read-only In-Process-Fläche. Sie belegt, dass der aktuelle Node-Prozess antwortet und seine lokalen Snapshots/Git-Daten lesen kann. Sie belegt nicht DNS-Korrektheit, Caddyfile-Persistenz, Task-Wahrheit oder externe Erreichbarkeit; diese Punkte müssen durch Gateway-/DNS-Smokes belegt werden.
 
 ## 5. Deployment-Status
 
