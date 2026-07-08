@@ -3,11 +3,12 @@
 # It acts strictly as a "Mode B" public mirror/preview.
 # It does NOT represent the canonical Mode A internal runtime.
 # Consequently, dynamic endpoints (/events, /ops) are not available here.
+# GitHub Pages is intentionally manual-only. Cloudflare Pages is the primary
+# static preview path; GitHub Pages must not keep main red when the repository
+# has no enabled Pages environment.
 name: Deploy to Pages
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:

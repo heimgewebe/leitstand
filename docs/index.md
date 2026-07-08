@@ -44,6 +44,7 @@ Tools that enforce the rules automatically.
 ## 4. Architecture Decisions & Blueprints
 
 - [WGX Leitstand Decision](decisions/wgx-leitstand.md)
+- [Static Mirror Boundary Decision](decisions/static-mirror-boundary.md)
 - [Leitstand Manifest Blueprint](blueprints/leitstand_manifest.md)
 - [Leitstand Visualization Blueprint](blueprints/leitstand_visualization.md)
 - [Ecosystem Map View Blueprint](blueprints/ecosystem-map-view.md)
@@ -65,7 +66,8 @@ Each Leitstand deployment instance operates in exactly one of two explicit modes
 
 **Mode B — Public Static Mirror / Preview**
 - Scope: optional, read-only public mirror or PR preview.
-- Topology: static host (Cloudflare Pages, GitHub Pages).
-- Features: static build only. No active runtime, no `/events` ingestion, no `/ops` dynamic fallbacks.
+- Topology: static host. Cloudflare Pages is the primary preview path; GitHub Pages is manual-only.
+- Supported routes: `/`, `/observatory`, `/intent`; the build emits `dist/site/_static-boundary.json` with the exact route contract.
+- Dynamic-only routes: `/events`, `/ops`, `/bureau`, `/checkouts`, `/ecosystem-map`, `/repobriefs`, `/anatomy`, `/insights`, `/timeline`, `/reflexion`.
 - Nature: derived projection of Mode A; may be stale and is not an operational source of truth.
-- Documentation: [Cloudflare Deployment](deploy-cloudflare.md), [../.github/workflows/pages.yml](../.github/workflows/pages.yml)
+- Documentation: [Static Mirror Boundary Decision](decisions/static-mirror-boundary.md), [Cloudflare Deployment](deploy-cloudflare.md), [../.github/workflows/pages.yml](../.github/workflows/pages.yml)
