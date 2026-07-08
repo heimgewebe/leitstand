@@ -11,7 +11,7 @@ summary: >
 # Deploying Leitstand to Cloudflare Pages
 
 > **Deployment Mode: B (Public Static Mirror)**
-> This mode acts purely as a static read-only mirror. Dynamic endpoints (`/events`, `/ops` fallbacks) are inactive.
+> This mode acts purely as a static read-only mirror. Dynamic endpoints (`/events`, `/ops` fallbacks) are inactive. The supported static routes are `/`, `/observatory` and `/intent`; `dist/site/_static-boundary.json` records the exact route boundary.
 
 Leitstand relies on a deterministic build process where data artifacts are fetched *before* the static site generation.
 
@@ -34,7 +34,7 @@ The build command must explicitly fetch both artifacts before generating the sta
 pnpm build:cf
 ```
 
-This command runs `fetch:observatory` and `fetch:insights` (populating the `artifacts/` directory) followed by `build:static`.
+This command runs `fetch:observatory` and `fetch:insights` (populating the `artifacts/` directory) followed by `build:static`. The static build emits `dist/site/_static-boundary.json`; it is the machine-readable contract for the route set.
 
 ## Strict Mode Behavior
 
@@ -51,3 +51,7 @@ A `_meta.json` file is also generated in `artifacts/` to provide a forensic trai
 
 1.  **Strict Mode without Fetch**: Setting `LEITSTAND_STRICT=1` but running only `pnpm build:static` (skipping fetch). This will cause the build to fail because artifacts are missing. **Always use `pnpm build:cf`**.
 2.  **Missing URLs**: If `OBSERVATORY_URL` or `INSIGHTS_DAILY_URL` are not set, the fetch step will fallback to defaults (GitHub Releases), which might not be desired for private setups.
+
+## GitHub Pages Boundary
+
+GitHub Pages is intentionally manual-only in this repository. The workflow exists as an optional smoke for Mode B output, not as the primary public mirror and not as evidence of Mode A runtime health. Main pushes must not depend on a repository-level Pages environment being enabled.
