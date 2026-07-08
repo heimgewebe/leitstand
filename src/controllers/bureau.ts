@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 
 /**
  * Bureau task-board controller — Phase "Ausführungs-Achse".
@@ -44,6 +44,7 @@ export interface BureauViewData {
   view_meta: {
     source_kind: BureauSourceKind;
     source_path: string;
+    source_path_display: string;
     missing_reason: string;
     generated_at: string | null;
     freshness_state: BureauFreshness;
@@ -197,6 +198,13 @@ function buildColumns(tasks: BureauTaskView[]): BureauViewData['columns'] {
   }));
 }
 
+
+function displaySourcePath(sourcePath: string): string {
+  const rel = relative(resolve(process.cwd()), resolve(sourcePath));
+  if (rel && !rel.startsWith('..') && !rel.startsWith('/')) return rel;
+  return '<external snapshot>';
+}
+
 function emptyData(kind: BureauSourceKind, reason: string, sourcePath: string): BureauViewData {
   return {
     tasks: [],
@@ -204,6 +212,7 @@ function emptyData(kind: BureauSourceKind, reason: string, sourcePath: string): 
     view_meta: {
       source_kind: kind,
       source_path: sourcePath,
+      source_path_display: displaySourcePath(sourcePath),
       missing_reason: reason,
       generated_at: null,
       freshness_state: 'unknown',
@@ -228,6 +237,7 @@ function dataFromParsed(
     view_meta: {
       source_kind: sourceKind,
       source_path: sourcePath,
+      source_path_display: displaySourcePath(sourcePath),
       missing_reason: missingReason,
       generated_at: parsed.generatedAt,
       freshness_state: freshnessOf(parsed.generatedAt),

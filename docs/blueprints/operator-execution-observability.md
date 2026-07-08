@@ -71,16 +71,18 @@ snapshot.
 Two local view contracts (`schemaVersion: 1`), pinned by the bridge:
 
 - **`leitstand_bureau_task_snapshot`** — `tasks[]` with normalised lifecycle
-  states (`queued|claimed|running|blocked|done|failed`), claimant, repo,
+  states (`queued|claimed|running|blocked|done|failed|unknown`), claimant, repo,
   timestamps and optional receipt reference. Rendered as a lifecycle board.
 - **`leitstand_checkout_inventory`** — `checkouts[]` with a retention verdict
-  (`retained|archivable|orphan`), process/lease/runtime-match flags. Surfaces
+  (`retained|archivable|orphan|unknown`), process/lease/runtime-match flags. Surfaces
   worktree **sprawl** (checkouts with no retention owner, process, or lease).
 
 Both controllers degrade visibly on a missing/corrupt snapshot ("degraded
 read-only state, not a green status") rather than hiding data loss. Preview
 fixtures are also visibly marked as degraded/demo data and do not establish
-execution truth.
+execution truth. Demo fixtures must use synthetic example paths; internal source
+artifact paths are rendered through a display label rather than exposed verbatim
+in public/degraded notices.
 
 ## Implementation status (2026-07-07)
 

@@ -72,9 +72,9 @@
     </section>
 
     <% if (view_meta.source_kind === 'fixture') { %>
-      <section class="card"><p class="muted">Fixture-Fallback aktiv (<code><%= view_meta.missing_reason %></code>). Dies ist Demo-/Preview-Datenmaterial, kein operativer grüner Status. Pfad: <code><%= view_meta.source_path %></code></p></section>
+      <section class="card"><p class="muted">Fixture-Fallback aktiv (<code><%= view_meta.missing_reason %></code>). Dies ist Demo-/Preview-Datenmaterial, kein operativer grüner Status. Pfad: <code><%= view_meta.source_path_display %></code></p></section>
     <% } else if (view_meta.source_kind !== 'artifact') { %>
-      <section class="card"><p class="muted">Kein Bureau-Snapshot verfügbar (<code><%= view_meta.missing_reason %></code>). Degradierter Read-only-Zustand, kein grüner Status. Pfad: <code><%= view_meta.source_path %></code></p></section>
+      <section class="card"><p class="muted">Kein Bureau-Snapshot verfügbar (<code><%= view_meta.missing_reason %></code>). Degradierter Read-only-Zustand, kein grüner Status. Pfad: <code><%= view_meta.source_path_display %></code></p></section>
     <% } %>
 
     <section class="board" aria-label="Task board columns">

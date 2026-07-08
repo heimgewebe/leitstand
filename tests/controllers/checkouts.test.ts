@@ -49,6 +49,7 @@ describe('getCheckoutData', () => {
     const data = await getCheckoutData();
     expect(data.view_meta.source_kind).toBe('missing');
     expect(data.view_meta.missing_reason).toBe('checkout_inventory_missing');
+    expect(data.view_meta.source_path_display.startsWith('artifacts/')).toBe(true);
     expect(data.view_meta.source_path.endsWith('/artifacts/checkout-inventory.json')).toBe(true);
   });
 
@@ -58,6 +59,7 @@ describe('getCheckoutData', () => {
     const data = await getCheckoutData();
     expect(data.view_meta.source_kind).toBe('fixture');
     expect(data.view_meta.missing_reason).toBe('checkout_inventory_missing_fixture_fallback');
+    expect(data.view_meta.source_path_display.startsWith('src/fixtures/')).toBe(true);
     expect(data.view_meta.source_path.endsWith('/src/fixtures/checkout-inventory.json')).toBe(true);
   });
 

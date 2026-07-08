@@ -128,7 +128,7 @@ Details: siehe [Operator Execution Observability Blueprint](blueprints/operator-
 - `insights.daily` – 1× täglich, bereit bis 08:00
 - `event.line` – kontinuierlich, Append-only
 
-Leitstand verarbeitet diese Daten asynchron; fehlende Quellen werden angezeigt, nicht verschwiegen. Fixture-Fallbacks werden als `fixture` angezeigt und gelten nicht als operative Wahrheit.
+Leitstand verarbeitet diese Daten asynchron; fehlende Quellen werden angezeigt, nicht verschwiegen. Fixture-Fallbacks werden als `fixture` angezeigt und gelten nicht als operative Wahrheit. Demo-Fixtures verwenden synthetische Beispielpfade; Source-Pfade werden in den Views als Anzeigename gerendert, nicht als rohe interne Operator-Pfade.
 
 ---
 

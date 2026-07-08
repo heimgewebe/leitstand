@@ -51,6 +51,7 @@ describe('getBureauData', () => {
     const data = await getBureauData();
     expect(data.view_meta.source_kind).toBe('missing');
     expect(data.view_meta.missing_reason).toBe('bureau_snapshot_missing');
+    expect(data.view_meta.source_path_display.startsWith('artifacts/')).toBe(true);
     expect(data.view_meta.source_path.endsWith('/artifacts/bureau-tasks.json')).toBe(true);
   });
 
@@ -60,6 +61,7 @@ describe('getBureauData', () => {
     const data = await getBureauData();
     expect(data.view_meta.source_kind).toBe('fixture');
     expect(data.view_meta.missing_reason).toBe('bureau_snapshot_missing_fixture_fallback');
+    expect(data.view_meta.source_path_display.startsWith('src/fixtures/')).toBe(true);
     expect(data.view_meta.source_path.endsWith('/src/fixtures/bureau-tasks.json')).toBe(true);
   });
 

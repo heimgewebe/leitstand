@@ -53,12 +53,31 @@ const CHECKOUT_NON_CLAIMS = [
   'checkout_ownership', 'cleanup_authority', 'branch_deletion', 'retention_decision', 'process_control',
 ];
 
+function normalizeBureauState(value) {
+  const v = typeof value === 'string' ? value.toLowerCase() : '';
+  if (v === 'queued' || v === 'pending' || v === 'open') return 'queued';
+  if (v === 'claimed' || v === 'assigned') return 'claimed';
+  if (v === 'running' || v === 'in_progress' || v === 'active') return 'running';
+  if (v === 'blocked' || v === 'waiting' || v === 'stalled') return 'blocked';
+  if (v === 'done' || v === 'completed' || v === 'complete') return 'done';
+  if (v === 'failed' || v === 'error' || v === 'cancelled' || v === 'canceled') return 'failed';
+  return 'unknown';
+}
+
+function normalizeCheckoutRetention(value) {
+  const v = typeof value === 'string' ? value.toLowerCase() : '';
+  if (v === 'retained' || v === 'kept' || v === 'owned') return 'retained';
+  if (v === 'archivable' || v === 'archived' || v === 'stale') return 'archivable';
+  if (v === 'orphan' || v === 'orphaned' || v === 'untracked') return 'orphan';
+  return 'unknown';
+}
+
 /** Map a raw Bureau task record → contract task. Unknown fields are dropped. */
 function mapBureauTask(raw) {
   return {
     id: String(raw.id ?? raw.task_id ?? ''),
     title: raw.title ?? raw.name ?? raw.summary ?? String(raw.id ?? ''),
-    state: raw.state ?? raw.status ?? 'unknown',
+    state: normalizeBureauState(raw.state ?? raw.status),
     claimant: raw.claimant ?? raw.owner ?? raw.assignee ?? null,
     repo: raw.repo ?? raw.repository ?? null,
     createdAt: raw.createdAt ?? raw.created_at ?? null,
@@ -87,8 +106,8 @@ function mapCheckout(raw, runtimeHead) {
 
   let retention;
   if (retentionRecord) retention = 'retained';
-  else if (typeof raw.retention === 'string') retention = raw.retention;
   else if (raw.cleanup_candidate) retention = 'archivable';
+  else if (typeof raw.retention === 'string') retention = normalizeCheckoutRetention(raw.retention);
   else if (!hasProcess && !hasLease && !hasTask) retention = 'orphan';
   else retention = 'unknown';
 
