@@ -280,26 +280,23 @@ The command generates two files in the output directory:
 
 ## Development
 
-### Run Tests
+### Local validation and CI test truth
+
+GitHub CI is the source of truth for the full Vitest suite. The CI workflow runs `pnpm test` on Node 20.
+
+On the Heim-PC, the local Node 22 runtime may crash before application code runs unless Node is started with `NODE_OPTIONS=--jitless`. That workaround is suitable for lint, typecheck and build, but not for full Vitest because Vite/Vitest requires WebAssembly. See [Local Test Runner Compatibility](docs/runbooks/local-test-runner.md).
 
 ```bash
-# Run all tests
+# Local Heim-PC preflight when the Node/V8 crash is present
+NODE_OPTIONS=--jitless pnpm lint
+NODE_OPTIONS=--jitless pnpm typecheck
+NODE_OPTIONS=--jitless pnpm build
+
+# Full test suite when the local Node runtime supports it; otherwise rely on CI
 pnpm test
 
-# Run tests in watch mode
+# Watch mode when the local Node runtime supports it
 pnpm test:watch
-```
-
-### Type Checking
-
-```bash
-pnpm typecheck
-```
-
-### Linting
-
-```bash
-pnpm lint
 ```
 
 ## Project Structure
