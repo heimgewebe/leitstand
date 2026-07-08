@@ -4,13 +4,13 @@
 
 Leitstand is a read-only observer surface in the new operator ecosystem. Chronik owns event history; Plexer transports bounded operational events; Bureau owns tasks and claims; Grabowski owns local execution and receipts; Heimlern produces learning and proposal reports. Leitstand renders views and digests and does not execute or orchestrate.
 
-This correction supersedes older local role lists that mention only metarepo, wgx, semantAH, chronik, hausKI and leitstand.
+This correction is the current role boundary for this repository and supersedes older, incomplete local role lists.
 
-Dashboard and control-room for the **heimgewebe** organism.
+Read-only dashboard, digest and observation surface for the **heimgewebe** operator ecosystem.
 
 ## Overview
 
-`leitstand` is the central monitoring and reporting system for the heimgewebe multi-repo ecosystem. In this initial iteration, it provides a **daily system digest generator** that combines data from multiple sources into a unified markdown report.
+`leitstand` is the central read-only monitoring and reporting surface for the heimgewebe multi-repo ecosystem. It combines digest generation with browser views for knowledge, fleet and operator-observation artifacts. Execution authority stays with Bureau, Grabowski, Plexer and the runtime operators; Leitstand renders their exported state only.
 
 ## Purpose
 
@@ -31,13 +31,16 @@ Lokale Artefaktschreibvorgänge (Caches, Digests, Build-Outputs) sind zulässig,
 
 ### The Heimgewebe Organism
 
-The heimgewebe organization consists of several interconnected repositories:
-- **metarepo**: Control-plane, contracts, and reusable CI
-- **wgx**: Fleet CLI and metrics snapshot generator
-- **semantAH**: Semantic index and daily insights
-- **chronik**: Event log / audit store (JSONL format)
-- **hausKI**: AI orchestrator (writes events to chronik, consumes insights)
-- **leitstand**: This repository - dashboard and digest generator
+The heimgewebe organization consists of several interconnected repositories and organs:
+- **Bureau**: Task registry, claims and queue truth.
+- **Grabowski**: Local execution, worktrees, receipts and operator-side tooling.
+- **Plexer**: Bounded operational event transport.
+- **Chronik**: Event history and audit/event store.
+- **WGX**: Fleet CLI and metrics snapshot generator.
+- **semantAH**: Semantic index and daily insights.
+- **Heimlern**: Learning/proposal reports from operational friction.
+- **metarepo**: Shared contracts, documentation and reusable CI.
+- **Leitstand**: This repository — read-only dashboard, digest and operator-observation view surface.
 
 ## Security & Public Usage
 
@@ -88,6 +91,15 @@ The daily digest generator combines:
    - Status breakdown (ok/warn/fail)
    - Latest metrics timestamp
 
+4. **Operator Observation Snapshots** from Bureau and Grabowski
+   - Bureau task/claim lifecycle board (`/bureau`)
+   - Checkout/worktree health view (`/checkouts`)
+   - Explicitly read-only; no task dispatch or cleanup actions
+
+## WGX Profile
+
+Leitstand intentionally tracks `.wgx/profile.yml` as documented in [WGX Leitstand Decision](docs/decisions/wgx-leitstand.md). The profile is minimal and points WGX at existing pnpm-based checks; it is not an execution-authority grant.
+
 ## Ecosystem Map View
 
 Leitstand is the right dashboard surface for a future read-only view of the Cabinet-owned ecosystem map. The boundary is documented in [Ecosystem Map View Blueprint](docs/blueprints/ecosystem-map-view.md): Cabinet owns map semantics; Leitstand may render and display pinned Cabinet Mermaid artifacts with freshness metadata.
@@ -103,8 +115,14 @@ corepack enable
 # Install dependencies (strictly respecting lockfile)
 pnpm install --frozen-lockfile
 
-# Start development server
-pnpm dev
+# Build TypeScript
+pnpm build
+
+# Start the compiled internal server
+pnpm start:server
+
+# Build the static preview/mirror
+pnpm build:static
 ```
 
 ## Configuration
@@ -145,7 +163,7 @@ Create a `leitstand.config.json` file in your project root:
 
 ## Ops Viewer Setup
 
-The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the `agent-control-surface` (acs). It is designed as a strict viewer but can optionally trigger audit jobs if configured. This integration adheres to the established architectural roles: Leitstand visualizes, acs orchestrates.
+The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the `agent-control-surface` (acs). In the default safe mode it is a strict viewer. A legacy opt-in job fallback may request audit jobs from acs, but that behavior is outside the core Observer Invariant and must not be treated as Leitstand execution authority.
 
 ### Naming & Compatibility
 
@@ -187,36 +205,39 @@ Leitstand is the **visual monitoring center** of the Heimgewebe organism. To pro
 
 ```mermaid
 flowchart TD
-    FEEDS[aussensensor<br/>Feeds & News] --> CHRONIK[chronik<br/>Events (JSONL)]
+    PLEXER[Plexer<br/>Bounded Events] --> CHRONIK[Chronik<br/>Events / History]
     CHRONIK --> SEMANTAH[semantAH<br/>Semantic Index]
-    CHRONIK --> LEITSTAND[leitstand<br/>Daily Digest & Ops Viewer]
-
+    WGX[WGX<br/>Fleet Metrics] --> LEITSTAND[Leitstand<br/>Read-only Views / Digests]
     SEMANTAH --> LEITSTAND
-    WGX[wgx<br/>Fleet Metrics] --> CHRONIK
-
-    LEITSTAND --> HAUSKI[hausKI<br/>Decision Engine]
-    HAUSKI --> CHRONIK
-
-    ACS[agent-control-surface] -.-> LEITSTAND
+    CHRONIK --> LEITSTAND
+    BUREAU[Bureau<br/>Tasks / Claims Snapshot] --> LEITSTAND
+    GRABOWSKI[Grabowski<br/>Checkout Inventory Snapshot] --> LEITSTAND
+    HEIMLERN[Heimlern<br/>Learning Proposals] -. future artifact .-> LEITSTAND
+    ACS[agent-control-surface<br/>Ops Audit Data] -. optional viewer input .-> LEITSTAND
 ```
 
 ### Roles in the flow
 
-- **leitstand**: Visualizes state by reading artifacts from `semantAH` and `chronik`. The Ops Viewer (`/ops`) may additionally fetch live operational data from `agent-control-surface` (acs) when configured.
-- **chronik**: Event log and audit store.
+- **Leitstand**: Visualizes state by reading artifacts from `semantAH`, `chronik`, WGX snapshots, Bureau task snapshots and Grabowski checkout snapshots.
+- **Bureau**: Owns task and claim truth; Leitstand may render exported `leitstand_bureau_task_snapshot` artifacts.
+- **Grabowski**: Owns local execution and worktree/receipt state; Leitstand may render exported `leitstand_checkout_inventory` artifacts.
+- **Chronik**: Event log and audit store.
+- **Plexer**: Bounded event transport feeding operational event surfaces.
 - **semantAH**: Builds the semantic index and writes daily insights.
-- **wgx**: Generates fleet metrics snapshots.
-- **hausKI**: Consumes digests/insights for decision-making.
-- **agent-control-surface** (acs): Provides real-time operational state (e.g., Git health audits) consumed by Leitstand's Ops Viewer.
+- **WGX**: Generates fleet metrics snapshots.
+- **Heimlern**: Emits learning/proposal reports; Leitstand may later render derived artifacts.
+- **agent-control-surface** (acs): Provides operational audit data consumed by the Ops Viewer when configured.
 
 ### Central Inputs
 
 The authoritative view of the data streams is documented in `docs/data-flow.md`. The central inputs are:
 
-- `fleet.health` – Fleet health (wgx / metarepo contracts)
+- `fleet.health` – Fleet health (WGX / metarepo contracts)
 - `insights.daily` – Semantic daily insights from semantAH
-- `event.line` – Event backbone from chronik
-- `audit.git.v1` – Live ops data from acs (Ops Viewer only; not part of chronik event backbone unless explicitly exported)
+- `event.line` – Event backbone from Chronik
+- `leitstand_bureau_task_snapshot` – Bureau task/claim lifecycle snapshot rendered by `/bureau`
+- `leitstand_checkout_inventory` – Grabowski checkout/worktree snapshot rendered by `/checkouts`
+- `audit.git.v1` – Ops Viewer data from acs (not part of the Chronik event backbone unless explicitly exported)
 
 ### JSON Schemas
 
