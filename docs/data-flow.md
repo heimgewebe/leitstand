@@ -118,7 +118,7 @@ Verwendung:
   - Checkout Health (`/checkouts`): Retention-Ampel und **Sprawl**-Erkennung
     (Worktrees ohne Retention-Owner, Prozess oder Lease).
 
-Details: siehe [Operator Execution Observability Blueprint](blueprints/operator-execution-observability.md).
+Details: siehe [Operator Execution Observability Blueprint](blueprints/operator-execution-observability.md) und [Operator Snapshot Producer Runbook](runbooks/operator-snapshots.md).
 
 ---
 
