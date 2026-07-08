@@ -83,6 +83,8 @@ The controller thresholds are encoded in:
 - `src/controllers/bureau.ts` — 6 hour stale threshold.
 - `src/controllers/checkouts.ts` — 24 hour stale threshold.
 
+The runtime health receipt at `/health` is intentionally stricter: it warns when either operator snapshot is older than 20 minutes. The running service uses this tighter threshold to detect bridge/timer drift early; the human-facing boards remain renderable for longer.
+
 A stale snapshot remains renderable, but it is not a green status. Operators should refresh the raw producer export and rerun the bridge before treating the view as current.
 
 ## Failure semantics

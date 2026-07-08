@@ -17,6 +17,7 @@ import { getEcosystemMapData } from './controllers/ecosystemMap.js';
 import { getRepoBriefData } from './controllers/repoBrief.js';
 import { getBureauData } from './controllers/bureau.js';
 import { getCheckoutData } from './controllers/checkouts.js';
+import { getRuntimeHealthData } from './runtimeHealth.js';
 import { getEventFamily, listEventFamilies } from './utils/eventKind.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
@@ -291,6 +292,22 @@ app.get('/ops', (_req, res) => {
     allowJobFallback: envConfig.allowJobFallback,
     acsViewerToken: envConfig.acsViewerToken
   });
+});
+
+// Runtime Health Receipt – read-only in-process proof surface for service and snapshot freshness.
+app.get('/health', async (_req, res) => {
+  try {
+    const data = await getRuntimeHealthData();
+    res.status(data.status === 'fail' ? 503 : 200).send(data);
+  } catch (error) {
+    console.error('[Health] Error:', error);
+    res.status(500).send({
+      schemaVersion: 1,
+      kind: 'leitstand_runtime_health_receipt',
+      status: 'fail',
+      reason: 'runtime_health_unexpected_error',
+    });
+  }
 });
 
 app.get('/', async (_req, res) => {
