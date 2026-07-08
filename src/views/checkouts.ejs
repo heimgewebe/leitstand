@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Checkout Health – Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; color: #f1f5f9; margin: 0; }
+    nav { position: sticky; top: 0; display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 20px; background: rgba(10,14,26,.92); border-bottom: 1px solid rgba(255,255,255,.08); }
+    nav a { color: #94a3b8; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: .82em; }
+    nav a.active, nav a:hover { color: #3b82f6; background: rgba(59,130,246,.1); }
+    nav a:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+    nav .title { color: #f1f5f9; font-weight: 700; margin-right: 16px; }
+    main { max-width: 1180px; margin: 0 auto; padding: 42px 24px 80px; }
+    .subtitle, .muted { color: #94a3b8; line-height: 1.55; }
+    .notice, .meta-item, .card { background: rgba(17,24,39,.88); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; }
+    .notice strong { color: #3b82f6; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 22px 0; }
+    .label { color: #64748b; font-size: .72em; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+    .value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82em; overflow-wrap: anywhere; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: .82em; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,.07); vertical-align: top; }
+    th { color: #64748b; font-size: .82em; text-transform: uppercase; letter-spacing: .06em; }
+    td.path { font-family: ui-monospace, monospace; overflow-wrap: anywhere; max-width: 380px; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .9em; border: 1px solid transparent; }
+    .r-orphan { color: #ef4444; border-color: rgba(239,68,68,.3); }
+    .r-archivable { color: #f59e0b; border-color: rgba(245,158,11,.3); }
+    .r-retained { color: #22c55e; border-color: rgba(34,197,94,.3); }
+    .r-unknown { color: #64748b; border-color: rgba(100,116,139,.3); }
+    .flag { color: #94a3b8; font-family: ui-monospace, monospace; }
+    .flag.on { color: #3b82f6; }
+    .fresh { color: #22c55e; } .stale { color: #f59e0b; } .fr-unknown { color: #64748b; }
+    .k-missing .value { color: #ef4444; }
+    .k-fixture .value { color: #f59e0b; }
+    .sprawl-warn { color: #f59e0b; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #dbeafe; }
+    ul { margin-left: 20px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <nav aria-label="Hauptnavigation">
+    <span class="title">Leitstand</span>
+    <a href="/">Home</a>
+    <a href="/bureau">Bureau</a>
+    <a href="/checkouts" class="active" aria-current="page">Checkouts</a>
+    <a href="/repobriefs">RepoBriefs</a>
+    <a href="/anatomy">Anatomie</a>
+    <a href="/timeline">Zeitachse</a>
+    <a href="/insights">Erkenntnisse</a>
+    <a href="/reflexion">Reflexion</a>
+    <a href="/ops">Ops</a>
+  </nav>
+
+  <main>
+    <h1>Checkout / Worktree Health</h1>
+    <p class="subtitle">Read-only Projektion des Grabowski-Linked-Checkout-Inventars. Sprawl (viele langlebige, nicht retenierte Worktrees) ist ein Gesundheitssignal — diese Ansicht macht es sichtbar, entscheidet aber nichts und räumt nichts auf.</p>
+
+    <section class="notice">
+      <strong>View only.</strong> Retention-/Cleanup-Entscheidungen gehören Grabowski. Leitstand liest ein Snapshot-Artefakt und stellt es dar.
+    </section>
+
+    <section class="meta-grid" aria-label="Checkout source metadata">
+      <div class="meta-item <%= view_meta.source_kind === 'artifact' ? '' : view_meta.source_kind === 'fixture' ? 'k-fixture' : 'k-missing' %>"><div class="label">Source state</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
+      <div class="meta-item"><div class="label">Generated</div><div class="value"><%= view_meta.generated_at || '—' %></div></div>
+      <div class="meta-item"><div class="label">Freshness</div><div class="value <%= view_meta.freshness_state === 'fresh' ? 'fresh' : view_meta.freshness_state === 'stale' ? 'stale' : 'fr-unknown' %>"><%= view_meta.freshness_state %></div></div>
+      <div class="meta-item"><div class="label">Checkouts</div><div class="value"><%= view_meta.checkout_count %></div></div>
+      <div class="meta-item"><div class="label">Retained / Archivable / Orphan</div><div class="value"><%= view_meta.retained_count %> / <%= view_meta.archivable_count %> / <%= view_meta.orphan_count %></div></div>
+      <div class="meta-item"><div class="label">Sprawl-Kandidaten</div><div class="value <%= view_meta.sprawl_count > 0 ? 'sprawl-warn' : '' %>"><%= view_meta.sprawl_count %></div></div>
+    </section>
+
+    <% if (view_meta.source_kind === 'fixture') { %>
+      <section class="card"><p class="muted">Fixture-Fallback aktiv (<code><%= view_meta.missing_reason %></code>). Dies ist Demo-/Preview-Datenmaterial, kein operativer grüner Status. Pfad: <code><%= view_meta.source_path %></code></p></section>
+    <% } else if (view_meta.source_kind !== 'artifact') { %>
+      <section class="card"><p class="muted">Kein Checkout-Inventar verfügbar (<code><%= view_meta.missing_reason %></code>). Degradierter Read-only-Zustand, kein grüner Status. Pfad: <code><%= view_meta.source_path %></code></p></section>
+    <% } %>
+
+    <% if (checkouts.length > 0) { %>
+    <section class="card table-wrap">
+      <table>
+        <thead>
+          <tr><th>Retention</th><th>Path</th><th>Repo / Branch</th><th>Head</th><th>Proc</th><th>Lease</th><th>Runtime</th></tr>
+        </thead>
+        <tbody>
+          <% checkouts.forEach(function(c) { %>
+            <tr data-path="<%= c.path %>">
+              <td><span class="pill r-<%= c.retention %>"><%= c.retention %></span></td>
+              <td class="path"><%= c.path %><% if (c.note) { %><div class="muted" style="font-size:.85em;"><%= c.note %></div><% } %></td>
+              <td><%= c.repo || '—' %><% if (c.branch) { %><div class="muted" style="font-size:.85em;"><%= c.branch %></div><% } %></td>
+              <td class="value"><%= c.head || '—' %></td>
+              <td><span class="flag <%= c.has_process ? 'on' : '' %>"><%= c.has_process ? '●' : '○' %></span></td>
+              <td><span class="flag <%= c.has_resource_lease ? 'on' : '' %>"><%= c.has_resource_lease ? '●' : '○' %></span></td>
+              <td><span class="flag <%= c.matches_runtime ? 'on' : '' %>"><%= c.matches_runtime ? '✓' : '·' %></span></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </section>
+    <% } %>
+
+    <section class="card">
+      <h2>Does not establish</h2>
+      <ul>
+        <% view_meta.does_not_establish.forEach(function(item) { %><li><%= item %></li><% }); %>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "kind": "leitstand_checkout_inventory",
+  "generatedAt": "2026-07-07T06:30:00Z",
+  "source": "grabowski_checkout_inventory",
+  "doesNotEstablish": [
+    "checkout_ownership",
+    "cleanup_authority",
+    "branch_deletion",
+    "retention_decision",
+    "process_control"
+  ],
+  "checkouts": [
+    {
+      "path": "/home/alex/repos/.grabowski-worktrees/pr-check-readiness-v2",
+      "repo": "grabowski",
+      "branch": null,
+      "head": "ceab86514eaf",
+      "retention": "retained",
+      "hasProcess": true,
+      "hasResourceLease": true,
+      "matchesRuntime": true,
+      "note": "active runtime-matching worktree"
+    },
+    {
+      "path": "/home/alex/repos/grabowski",
+      "repo": "grabowski",
+      "branch": "fix/reconcile-observe-permission-v1",
+      "head": "09d0f92d48cd",
+      "retention": "retained",
+      "hasProcess": false,
+      "hasResourceLease": false,
+      "matchesRuntime": false,
+      "note": "canonical checkout; does not match deployed runtime"
+    },
+    {
+      "path": "/home/alex/grabowski-workspace/gopt002-validate",
+      "repo": "grabowski",
+      "branch": null,
+      "head": "deb6715a7e2e",
+      "retention": "archivable",
+      "hasProcess": false,
+      "hasResourceLease": false,
+      "matchesRuntime": false,
+      "note": "detached, clean, no owner"
+    },
+    {
+      "path": "/home/alex/grabowski-workspace/checkout-process-scope-v1",
+      "repo": "grabowski",
+      "branch": null,
+      "head": "775f8603b799",
+      "retention": "archivable",
+      "hasProcess": false,
+      "hasResourceLease": false,
+      "matchesRuntime": false,
+      "note": "detached, clean, no owner"
+    },
+    {
+      "path": "/home/alex/repos/.grabowski-worktrees/gopt002-icloud-apply",
+      "repo": "grabowski",
+      "branch": "feat/gopt002-icloud-apply",
+      "head": "01073c37c893",
+      "retention": "orphan",
+      "hasProcess": false,
+      "hasResourceLease": false,
+      "matchesRuntime": false,
+      "note": "no retention owner, no coordination state"
+    },
+    {
+      "path": "/home/alex/repos/.grabowski-worktrees/branch-publish-v1",
+      "repo": "grabowski",
+      "branch": "feat/grip-branch-publish-v1",
+      "head": "6c0de58b029a",
+      "retention": "orphan",
+      "hasProcess": false,
+      "hasResourceLease": false,
+      "matchesRuntime": false,
+      "note": "no retention owner"
+    },
+    {
+      "path": "/home/alex/grabowski-workspace/continuity-bootstrap-v1",
+      "repo": "grabowski",
+      "branch": "feat/continuity-bootstrap-v1",
+      "head": "105f15dce0ba",
+      "retention": "retained",
+      "hasProcess": false,
+      "hasResourceLease": false,
+      "matchesRuntime": false,
+      "note": "owner-retained feature worktree"
+    }
+  ]
+}

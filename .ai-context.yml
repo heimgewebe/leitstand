@@ -22,6 +22,8 @@ interfaces:
     - "event.line"
     - "fleet.health"
     - "insights.daily"
+    - "leitstand_bureau_task_snapshot"
+    - "leitstand_checkout_inventory"
   produces:
     - "insights.digest"
     - "dashboard.view"

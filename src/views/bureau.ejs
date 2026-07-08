@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Bureau Task Board – Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; color: #f1f5f9; margin: 0; }
+    nav { position: sticky; top: 0; display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 20px; background: rgba(10,14,26,.92); border-bottom: 1px solid rgba(255,255,255,.08); }
+    nav a { color: #94a3b8; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: .82em; }
+    nav a.active, nav a:hover { color: #3b82f6; background: rgba(59,130,246,.1); }
+    nav a:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+    nav .title { color: #f1f5f9; font-weight: 700; margin-right: 16px; }
+    main { max-width: 1180px; margin: 0 auto; padding: 42px 24px 80px; }
+    .subtitle, .muted { color: #94a3b8; line-height: 1.55; }
+    .notice, .meta-item, .card { background: rgba(17,24,39,.88); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; }
+    .notice strong { color: #3b82f6; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 22px 0; }
+    .label { color: #64748b; font-size: .72em; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+    .value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82em; overflow-wrap: anywhere; }
+    .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+    .column { background: rgba(17,24,39,.6); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 12px; }
+    .column h3 { font-size: .8em; margin: 0 0 10px; display: flex; justify-content: space-between; }
+    .count { color: #64748b; font-weight: 400; }
+    .task { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-left-width: 3px; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .task .t-title { font-size: .88em; font-weight: 600; margin-bottom: 4px; }
+    .task .t-meta { font-size: .72em; color: #64748b; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+    .task .t-note { font-size: .74em; color: #94a3b8; margin-top: 5px; }
+    .st-queued { border-left-color: #64748b; }
+    .st-claimed { border-left-color: #3b82f6; }
+    .st-running { border-left-color: #22c55e; }
+    .st-blocked { border-left-color: #f59e0b; }
+    .st-done { border-left-color: #16a34a; }
+    .st-failed { border-left-color: #ef4444; }
+    .st-unknown { border-left-color: #475569; }
+    .fresh { color: #22c55e; } .stale { color: #f59e0b; } .fr-unknown { color: #64748b; }
+    .k-missing .value { color: #ef4444; }
+    .k-fixture .value { color: #f59e0b; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #dbeafe; }
+    ul { margin-left: 20px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <nav aria-label="Hauptnavigation">
+    <span class="title">Leitstand</span>
+    <a href="/">Home</a>
+    <a href="/bureau" class="active" aria-current="page">Bureau</a>
+    <a href="/checkouts">Checkouts</a>
+    <a href="/repobriefs">RepoBriefs</a>
+    <a href="/anatomy">Anatomie</a>
+    <a href="/timeline">Zeitachse</a>
+    <a href="/insights">Erkenntnisse</a>
+    <a href="/reflexion">Reflexion</a>
+    <a href="/ops">Ops</a>
+  </nav>
+
+  <main>
+    <h1>Bureau Task Board</h1>
+    <p class="subtitle">Read-only Projektion des Bureau-Task-/Claim-Zustands (Ausführungs-Achse). Diese Ansicht zeigt Tasks, Claims und Lifecycle-Zustände; sie besitzt keine Tasks, vergibt keine Claims und führt nichts aus.</p>
+
+    <section class="notice">
+      <strong>View only.</strong> Der Task-Zustand stammt aus einem Snapshot-Artefakt eines separaten Producers. Fällt Leitstand aus, läuft die Ausführungswahrheit ungestört weiter.
+    </section>
+
+    <section class="meta-grid" aria-label="Bureau source metadata">
+      <div class="meta-item <%= view_meta.source_kind === 'artifact' ? '' : view_meta.source_kind === 'fixture' ? 'k-fixture' : 'k-missing' %>"><div class="label">Source state</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
+      <div class="meta-item"><div class="label">Generated</div><div class="value"><%= view_meta.generated_at || '—' %></div></div>
+      <div class="meta-item"><div class="label">Freshness</div><div class="value <%= view_meta.freshness_state === 'fresh' ? 'fresh' : view_meta.freshness_state === 'stale' ? 'stale' : 'fr-unknown' %>"><%= view_meta.freshness_state %></div></div>
+      <div class="meta-item"><div class="label">Tasks</div><div class="value"><%= view_meta.task_count %></div></div>
+      <div class="meta-item"><div class="label">Offen</div><div class="value"><%= view_meta.open_count %></div></div>
+      <div class="meta-item"><div class="label">Blocked / Failed</div><div class="value"><%= view_meta.blocked_count %> / <%= view_meta.failed_count %></div></div>
+    </section>
+
+    <% if (view_meta.source_kind === 'fixture') { %>
+      <section class="card"><p class="muted">Fixture-Fallback aktiv (<code><%= view_meta.missing_reason %></code>). Dies ist Demo-/Preview-Datenmaterial, kein operativer grüner Status. Pfad: <code><%= view_meta.source_path %></code></p></section>
+    <% } else if (view_meta.source_kind !== 'artifact') { %>
+      <section class="card"><p class="muted">Kein Bureau-Snapshot verfügbar (<code><%= view_meta.missing_reason %></code>). Degradierter Read-only-Zustand, kein grüner Status. Pfad: <code><%= view_meta.source_path %></code></p></section>
+    <% } %>
+
+    <section class="board" aria-label="Task board columns">
+      <% columns.forEach(function(col) { %>
+        <div class="column" data-state="<%= col.state %>">
+          <h3><%= col.label %> <span class="count"><%= col.tasks.length %></span></h3>
+          <% col.tasks.forEach(function(task) { %>
+            <div class="task st-<%= task.state %>" data-task-id="<%= task.id %>">
+              <div class="t-title"><%= task.title %></div>
+              <div class="t-meta"><%= task.id %><% if (task.repo) { %> · <%= task.repo %><% } %><% if (task.claimant) { %> · @<%= task.claimant %><% } %></div>
+              <% if (task.note) { %><div class="t-note"><%= task.note %></div><% } %>
+              <% if (task.receipt_ref) { %><div class="t-meta">receipt: <%= task.receipt_ref %></div><% } %>
+            </div>
+          <% }); %>
+          <% if (col.tasks.length === 0) { %><p class="muted" style="font-size:.75em;">—</p><% } %>
+        </div>
+      <% }); %>
+    </section>
+
+    <section class="card">
+      <h2>Does not establish</h2>
+      <ul>
+        <% view_meta.does_not_establish.forEach(function(item) { %><li><%= item %></li><% }); %>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

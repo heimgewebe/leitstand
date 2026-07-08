@@ -16,9 +16,14 @@ role_contract:
     - chronik_events
     - bureau_state
     - plexer_delivery_reports
+    - grabowski_checkout_inventory
   produces:
     - rendered_views
     - daily_digests
+  # Execution-axis inputs (bureau_state, grabowski_checkout_inventory) arrive as
+  # contract-shaped snapshot artifacts produced by a separate producer bridge
+  # (scripts/export-operator-snapshots.mjs); Leitstand never calls Bureau or
+  # Grabowski at request time. See docs/blueprints/operator-execution-observability.md.
   limits:
     - no_task_ownership
     - no_worker_execution

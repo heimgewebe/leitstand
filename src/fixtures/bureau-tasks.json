@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "kind": "leitstand_bureau_task_snapshot",
+  "generatedAt": "2026-07-07T06:30:00Z",
+  "source": "bureau_state_export",
+  "doesNotEstablish": [
+    "task_ownership",
+    "claim_authority",
+    "execution_truth",
+    "dispatch_control",
+    "completion_guarantee"
+  ],
+  "tasks": [
+    {
+      "id": "BUR-RUN-20260707T0612-a1",
+      "title": "grip pr-readiness gate v2",
+      "state": "running",
+      "claimant": "grabowski",
+      "repo": "grabowski",
+      "createdAt": "2026-07-07T06:12:00Z",
+      "updatedAt": "2026-07-07T06:28:00Z",
+      "receiptRef": null,
+      "note": "linked checkout pr81-readiness-fix"
+    },
+    {
+      "id": "BUR-RUN-20260707T0540-b2",
+      "title": "rlens bundle discovery verify",
+      "state": "claimed",
+      "claimant": "grabowski",
+      "repo": "grabowski",
+      "createdAt": "2026-07-07T05:40:00Z",
+      "updatedAt": "2026-07-07T05:41:00Z",
+      "receiptRef": null,
+      "note": "worktree rlens-slice-verify-grabowski"
+    },
+    {
+      "id": "BUR-Q-20260707T0602-c3",
+      "title": "leitstand operator execution observability",
+      "state": "queued",
+      "claimant": null,
+      "repo": "leitstand",
+      "createdAt": "2026-07-07T06:02:00Z",
+      "updatedAt": "2026-07-07T06:02:00Z",
+      "receiptRef": null,
+      "note": "widen observer surface to execution axis"
+    },
+    {
+      "id": "BUR-BLK-20260706T1815-d4",
+      "title": "gui-worker terminal classification",
+      "state": "blocked",
+      "claimant": "grabowski",
+      "repo": "grabowski",
+      "createdAt": "2026-07-06T18:15:43Z",
+      "updatedAt": "2026-07-06T19:02:00Z",
+      "receiptRef": null,
+      "note": "awaiting recovery-gate evidence"
+    },
+    {
+      "id": "BUR-DONE-20260702T1425-e5",
+      "title": "pr50 main receipt",
+      "state": "done",
+      "claimant": "grabowski",
+      "repo": "grabowski",
+      "createdAt": "2026-07-02T14:20:00Z",
+      "updatedAt": "2026-07-02T14:25:00Z",
+      "receiptRef": "receipt:pr50-main-20260702-1425",
+      "note": "receipt archived"
+    },
+    {
+      "id": "BUR-FAIL-20260705T2210-f6",
+      "title": "heimlern metrics cron",
+      "state": "failed",
+      "claimant": "heimlern",
+      "repo": "heimlern",
+      "createdAt": "2026-07-05T22:10:00Z",
+      "updatedAt": "2026-07-05T22:31:00Z",
+      "receiptRef": null,
+      "note": "silent cron failure; no metrics for 3 days"
+    }
+  ]
+}

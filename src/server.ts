@@ -15,6 +15,8 @@ import { getReflexionData } from './controllers/reflexion.js';
 import { getDashboardData } from './controllers/dashboard.js';
 import { getEcosystemMapData } from './controllers/ecosystemMap.js';
 import { getRepoBriefData } from './controllers/repoBrief.js';
+import { getBureauData } from './controllers/bureau.js';
+import { getCheckoutData } from './controllers/checkouts.js';
 import { getEventFamily, listEventFamilies } from './utils/eventKind.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
@@ -314,6 +316,32 @@ app.get('/repobriefs', async (_req, res) => {
     if (!res.headersSent) {
       console.error('[RepoBriefs] Error:', error);
       res.status(500).send('Error loading RepoBrief data');
+    }
+  }
+});
+
+// Bureau Task Board – Execution axis: read-only Bureau task/claim projection
+app.get('/bureau', async (_req, res) => {
+  try {
+    const data = await getBureauData();
+    res.render('bureau', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[Bureau] Error:', error);
+      res.status(500).send('Error loading bureau data');
+    }
+  }
+});
+
+// Checkout Health – Execution axis: read-only Grabowski checkout inventory projection
+app.get('/checkouts', async (_req, res) => {
+  try {
+    const data = await getCheckoutData();
+    res.render('checkouts', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[Checkouts] Error:', error);
+      res.status(500).send('Error loading checkout data');
     }
   }
 });
