@@ -3,8 +3,8 @@ ai_context_version: 1.1
 
 project:
   name: leitstand
-  summary: "Dashboard and control-room for the heimgewebe organism - daily system digest generator."
-  role: dashboard_and_digest_generator
+  summary: "Read-only dashboard and observation surface for the heimgewebe operator ecosystem."
+  role: observer_digest_view_surface
   primary_language: typescript
   visibility: internal
 
@@ -22,6 +22,8 @@ interfaces:
     - "event.line"
     - "fleet.health"
     - "insights.daily"
+    - "leitstand_bureau_task_snapshot"
+    - "leitstand_checkout_inventory"
   produces:
     - "insights.digest"
     - "dashboard.view"
@@ -40,6 +42,12 @@ dependencies:
     - name: chronik
       relationship: consumes
       interface: [event.line]
+    - name: bureau
+      relationship: consumes
+      interface: [leitstand_bureau_task_snapshot]
+    - name: grabowski
+      relationship: consumes
+      interface: [leitstand_checkout_inventory]
   external:
     - name: node
       version: ">=18.0.0"
@@ -59,17 +67,19 @@ architecture:
       purpose: "Static data for UI (e.g. observatory.json)"
     - path: "src/views/"
       purpose: "EJS templates for the web server"
+    - path: "artifacts/"
+      purpose: "Producer-side snapshots consumed by read-only views"
   data_flow:
-    input: "Consumes fleet.health, insights.daily, and event.line files."
-    processing: "Aggregates data into daily digests and serves dashboard views."
-    output: "Displays dashboard UI and generates digest files."
+    input: "Consumes fleet.health, insights.daily, event.line files, and producer-side Bureau/Grabowski snapshot artifacts."
+    processing: "Aggregates data into daily digests and serves read-only dashboard/operator-observer views."
+    output: "Displays dashboard UI, operator observation views, and generated digest files."
 
 boundaries:
   not_responsible_for:
     - "Generating raw insights (responsibility of specialized agents)"
     - "Executing motorik actions (except for self-healing if needed)"
-    - "UI repo is profile-free by policy."
-    - "Don’t add .wgx/profile.yml unless policy changes."
+    - "Executing or dispatching Bureau/Grabowski work."
+    - "Mutating checkouts, leases, claims, tasks, runtime services, or deployment state."
   dangerous_assumptions:
     - "Assuming all data sources are always present (must handle missing files gracefully)"
     - "Assume npm; repo uses pnpm (see packageManager/pnpm-lock.yaml)."

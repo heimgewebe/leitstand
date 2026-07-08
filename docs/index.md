@@ -47,6 +47,7 @@ Tools that enforce the rules automatically.
 - [Leitstand Manifest Blueprint](blueprints/leitstand_manifest.md)
 - [Leitstand Visualization Blueprint](blueprints/leitstand_visualization.md)
 - [Ecosystem Map View Blueprint](blueprints/ecosystem-map-view.md)
+- [Operator Execution Observability Blueprint](blueprints/operator-execution-observability.md)
 
 ## 5. Reports
 

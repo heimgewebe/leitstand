@@ -86,13 +86,49 @@ Verwendung:
 
 ---
 
+### 1.4 `leitstand_bureau_task_snapshot` (Ausführungs-Achse)
+Contract-`kind`: `leitstand_bureau_task_snapshot` (schemaVersion 1)
+
+Quelle:
+  - Primär: `artifacts/bureau-tasks.json`
+  - Bureau-Task-/Claim-Zustand, normalisiert durch die Producer-Bridge
+    `scripts/export-operator-snapshots.mjs`
+  - Dev/Preview-Fixture nur bei explizitem Fallback:
+    `LEITSTAND_BUREAU_FIXTURE_FALLBACK=1` oder `LEITSTAND_STRICT=false|0`
+
+Wichtig (Invariante):
+  - Leitstand ruft Bureau/Grabowski **nicht zur Laufzeit** auf. Der Zustand kommt
+    ausschließlich als Snapshot-Artefakt eines separaten Producers. Fällt
+    Leitstand aus, läuft die Ausführungswahrheit ungestört weiter.
+
+Verwendung:
+  - Task-Board (`/bureau`): Lifecycle-Zustände, Claims, Blocked/Failed-Zähler.
+
+### 1.5 `leitstand_checkout_inventory` (Ausführungs-Achse)
+Contract-`kind`: `leitstand_checkout_inventory` (schemaVersion 1)
+
+Quelle:
+  - Primär: `artifacts/checkout-inventory.json`
+  - Grabowski-Linked-Checkout-Inventar (`grabowski_checkout_inventory`),
+    normalisiert durch dieselbe Producer-Bridge.
+  - Dev/Preview-Fixture nur bei explizitem Fallback:
+    `LEITSTAND_CHECKOUT_FIXTURE_FALLBACK=1` oder `LEITSTAND_STRICT=false|0`
+
+Verwendung:
+  - Checkout Health (`/checkouts`): Retention-Ampel und **Sprawl**-Erkennung
+    (Worktrees ohne Retention-Owner, Prozess oder Lease).
+
+Details: siehe [Operator Execution Observability Blueprint](blueprints/operator-execution-observability.md).
+
+---
+
 ## 2. Aktualisierungsfrequenzen
 
 - `fleet.health` – bei jedem wgx-guard/smoke Lauf, min. täglich
 - `insights.daily` – 1× täglich, bereit bis 08:00
 - `event.line` – kontinuierlich, Append-only
 
-Leitstand verarbeitet diese Daten asynchron; fehlende Quellen werden angezeigt, nicht verschwiegen.
+Leitstand verarbeitet diese Daten asynchron; fehlende Quellen werden angezeigt, nicht verschwiegen. Fixture-Fallbacks werden als `fixture` angezeigt und gelten nicht als operative Wahrheit. Demo-Fixtures verwenden synthetische Beispielpfade; Source-Pfade werden in den Views als Anzeigename gerendert, nicht als rohe interne Operator-Pfade.
 
 ---
 
