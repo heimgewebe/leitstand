@@ -33,6 +33,7 @@ Detailed procedures, explicitly separated from the normative core to preserve th
 - [Leitstand Gateway Runbook](runbooks/ops.runbook.leitstand-gateway.md)
 - [Leitstand Gateway Updates](runbooks/ops.runbook.leitstand-gateway.updates.md)
 - [Leitstand Main Runbook](runbooks/leitstand.md)
+- [Operator Snapshot Producer Runbook](runbooks/operator-snapshots.md)
 
 ## 3. Tooling & Checks
 
