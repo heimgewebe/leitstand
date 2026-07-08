@@ -1,7 +1,7 @@
 {
   "name": "@heimgewebe/leitstand",
   "version": "0.1.0",
-  "description": "Dashboard and control-room for the heimgewebe organism - daily system digest generator",
+  "description": "Read-only dashboard, digest and observation surface for the heimgewebe operator ecosystem",
   "type": "module",
   "author": "heimgewebe",
   "license": "MIT",
