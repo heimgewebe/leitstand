@@ -1,10 +1,39 @@
 import { z } from 'zod';
+import { isIP } from 'node:net';
 import { resolve, dirname, join } from 'path';
 import { readJsonFile } from './utils/fs.js';
 
 /**
+ * Robust boolean parser for environment variables.
+ * Handles 'true', '1', 'yes', 'on' (case-insensitive).
+ */
+function isTruthy(val?: string): boolean {
+    if (!val) return false;
+    return ['true', '1', 'yes', 'on'].includes(val.toLowerCase());
+}
+
+function isWildcardBindHost(host: string): boolean {
+    return host === '0.0.0.0' || host === '::';
+}
+
+/**
  * Schema for runtime environment variables
  */
+const BindEnvSchema = z.object({
+  LEITSTAND_BIND_HOST: z.string()
+    .refine((value) => isIP(value) !== 0, { message: 'Must be an IPv4 or IPv6 literal' })
+    .default('127.0.0.1'),
+  LEITSTAND_ALLOW_WIDE_BIND: z.string().optional(),
+}).superRefine((env, ctx) => {
+  if (isWildcardBindHost(env.LEITSTAND_BIND_HOST) && !isTruthy(env.LEITSTAND_ALLOW_WIDE_BIND)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['LEITSTAND_BIND_HOST'],
+      message: 'Wildcard binding requires LEITSTAND_ALLOW_WIDE_BIND=true',
+    });
+  }
+});
+
 const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.string().default('development'),
@@ -34,9 +63,30 @@ const EnvSchema = z.object({
 });
 
 type EnvType = z.infer<typeof EnvSchema>;
+type BindEnvType = z.infer<typeof BindEnvSchema>;
 
-// Memoization cache
+// Memoization caches
 let cachedEnv: EnvType | null = null;
+let cachedBindEnv: BindEnvType | null = null;
+
+const parsedBindEnv = (): BindEnvType => {
+    if (cachedBindEnv) {
+        return cachedBindEnv;
+    }
+
+    const parsed = BindEnvSchema.safeParse(process.env);
+    if (!parsed.success) {
+        console.warn('Invalid bind environment variables:', parsed.error.format());
+        cachedBindEnv = {
+            LEITSTAND_BIND_HOST: '127.0.0.1',
+            LEITSTAND_ALLOW_WIDE_BIND: undefined,
+        };
+        return cachedBindEnv;
+    }
+
+    cachedBindEnv = parsed.data;
+    return parsed.data;
+};
 
 const parsedEnv = (): EnvType => {
     if (cachedEnv) {
@@ -78,19 +128,12 @@ const parsedEnv = (): EnvType => {
  */
 export const resetEnvConfig = () => {
     cachedEnv = null;
+    cachedBindEnv = null;
 };
-
-/**
- * Robust boolean parser for environment variables.
- * Handles 'true', '1', 'yes', 'on' (case-insensitive).
- */
-function isTruthy(val?: string): boolean {
-    if (!val) return false;
-    return ['true', '1', 'yes', 'on'].includes(val.toLowerCase());
-}
 
 export const envConfig = {
     get PORT() { return parsedEnv().PORT; },
+    get bindHost() { return parsedBindEnv().LEITSTAND_BIND_HOST; },
     get NODE_ENV() { return parsedEnv().NODE_ENV; },
     get OBSERVATORY_URL() { return parsedEnv().OBSERVATORY_URL; },
     get token() { return parsedEnv().LEITSTAND_EVENTS_TOKEN; },

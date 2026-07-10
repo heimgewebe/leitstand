@@ -22,6 +22,7 @@ import { getEventFamily, listEventFamilies } from './utils/eventKind.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
 import { randomBytes } from 'crypto';
+import { Server } from 'node:http';
 
 const execPromise = promisify(exec);
 
@@ -70,7 +71,8 @@ async function enqueueMetaUpdate(updateFn: (meta: Record<string, unknown>) => Re
 }
 
 const app: Express = express();
-const port = envConfig.PORT;
+const defaultPort = envConfig.PORT;
+const defaultBindHost = envConfig.bindHost;
 
 app.use(express.json());
 
@@ -499,10 +501,24 @@ try {
   isDirectRun = false;
 }
 
-if (isDirectRun) {
-  app.listen(port, () => {
-    console.log(`Leitstand server running at http://localhost:${port}`);
+export interface StartServerOptions {
+  port?: number;
+  bindHost?: string;
+  log?: boolean;
+}
+
+export function startServer(options: StartServerOptions = {}): Server {
+  const port = options.port ?? defaultPort;
+  const bindHost = options.bindHost ?? defaultBindHost;
+  return app.listen(port, bindHost, () => {
+    if (options.log === false) return;
+    const displayHost = bindHost.includes(':') ? `[${bindHost}]` : bindHost;
+    console.log(`Leitstand server running at http://${displayHost}:${port}`);
   });
+}
+
+if (isDirectRun) {
+  startServer();
 }
 
 /**

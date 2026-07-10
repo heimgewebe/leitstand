@@ -56,6 +56,52 @@ describe('config', () => {
       expect(warnSpy).toHaveBeenCalled();
     });
 
+    describe('LEITSTAND_BIND_HOST', () => {
+      it('defaults to IPv4 loopback', () => {
+        resetEnvConfig();
+        expect(envConfig.bindHost).toBe('127.0.0.1');
+      });
+
+      it('accepts an explicit LAN IP literal', () => {
+        vi.stubEnv('LEITSTAND_BIND_HOST', '192.168.178.10');
+        resetEnvConfig();
+        expect(envConfig.bindHost).toBe('192.168.178.10');
+      });
+
+      it('accepts IPv6 loopback', () => {
+        vi.stubEnv('LEITSTAND_BIND_HOST', '::1');
+        resetEnvConfig();
+        expect(envConfig.bindHost).toBe('::1');
+      });
+
+      it('rejects hostnames and falls back to loopback', () => {
+        vi.stubEnv('PORT', '4001');
+        vi.stubEnv('NODE_ENV', 'production');
+        vi.stubEnv('LEITSTAND_BIND_HOST', 'leitstand.local');
+        resetEnvConfig();
+        expect(envConfig.bindHost).toBe('127.0.0.1');
+        expect(envConfig.PORT).toBe(4001);
+        expect(envConfig.NODE_ENV).toBe('production');
+        expect(envConfig.isStrict).toBe(true);
+        expect(warnSpy).toHaveBeenCalled();
+      });
+
+      it.each(['0.0.0.0', '::'])('rejects wildcard %s without acknowledgement', (host) => {
+        vi.stubEnv('LEITSTAND_BIND_HOST', host);
+        resetEnvConfig();
+        expect(envConfig.bindHost).toBe('127.0.0.1');
+        expect(warnSpy).toHaveBeenCalled();
+      });
+
+      it.each(['0.0.0.0', '::'])('accepts wildcard %s only with explicit acknowledgement', (host) => {
+        vi.stubEnv('LEITSTAND_BIND_HOST', host);
+        vi.stubEnv('LEITSTAND_ALLOW_WIDE_BIND', 'true');
+        resetEnvConfig();
+        expect(envConfig.bindHost).toBe(host);
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+    });
+
     describe('LEITSTAND_ACS_URL', () => {
       // Ops Viewer specific config tests
       it('should accept valid HTTP/HTTPS URLs', () => {

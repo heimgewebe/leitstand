@@ -58,7 +58,9 @@ The vendored files must be committed to the repository. The build process (`buil
 
 ## Deployment & Zugriff
 
-Der Leitstand wird via Docker Compose deployt und lauscht standardmäßig auf **localhost:3000** (sicherer Default).
+Der Leitstand lauscht bei direktem Node-/systemd-Betrieb standardmäßig auf **127.0.0.1:3000** (sicherer Default). Der Node-Server setzt diesen Host explizit über `LEITSTAND_BIND_HOST`; ein fehlender Host darf nicht implizit zu einer Wildcard-Bindung führen. Ein konkretes LAN-IP-Literal ist zulässig. `0.0.0.0` oder `::` werden nur zusammen mit `LEITSTAND_ALLOW_WIDE_BIND=true` akzeptiert.
+
+Im Docker-Betrieb bindet der Prozess innerhalb des isolierten Container-Netzes bewusst an `0.0.0.0` und setzt die Bestätigung explizit. Die tatsächliche Host-Exposition bleibt ausschließlich in den Compose-Overrides: `docker-compose.loopback.yml` publiziert auf `127.0.0.1`, `docker-compose.lan.yml` nur auf die ausdrücklich gesetzte `LEITSTAND_BIND_IP`.
 
 ### Standard Update & Start
 Der einzige empfohlene Einstiegspunkt für Updates und Neustarts ist das `scripts/leitstand-up` Skript.

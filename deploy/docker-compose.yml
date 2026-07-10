@@ -6,6 +6,11 @@ services:
       - "3000"
     env_file:
       - .env
+    environment:
+      # The process must accept traffic from the container network. Host/LAN
+      # exposure remains controlled exclusively by the selected ports override.
+      LEITSTAND_BIND_HOST: "0.0.0.0"
+      LEITSTAND_ALLOW_WIDE_BIND: "true"
     # Volumes removed to ensure production-grade immutability from built image.
     # Bind mounts are for development only.
     restart: unless-stopped
