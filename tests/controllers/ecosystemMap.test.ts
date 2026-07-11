@@ -1,6 +1,7 @@
 import { mkdtemp, mkdir, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getEcosystemMapData } from '../../src/controllers/ecosystemMap.js';
 import { loadEcosystemCrossLinks, resolveEcosystemCrossLink } from '../../src/controllers/ecosystemMapLinks.js';
@@ -31,57 +32,62 @@ afterEach(async () => {
 async function makeFixture(generatedAt = new Date().toISOString()) {
   const root = await mkdtemp(join(tmpdir(), 'leitstand-map-'));
   tempRoots.push(root);
-  const sourceRoot = join(root, 'heimgewebe-katalog');
+  const sourceRoot = join(root, 'systemkatalog');
   await mkdir(join(sourceRoot, 'rendered'), { recursive: true });
-  await writeFile(join(sourceRoot, 'rendered', 'ecosystem-map.mmd'), 'flowchart TD\n  A[Heimgewebe-Systemkatalog]\n', 'utf-8');
-  await writeFile(join(sourceRoot, 'rendered', 'ecosystem-registry-map.mmd'), 'flowchart TD\n  B[Registry]\n', 'utf-8');
+  const mapContent = 'flowchart TD\n  B[Systemkatalog]\n';
+  await writeFile(join(sourceRoot, 'rendered', 'ecosystem-registry-map.mmd'), mapContent, 'utf-8');
   const manifestPath = join(sourceRoot, 'rendered', 'ecosystem-map-artifact-manifest.json');
   const manifest = {
     schemaVersion: 1,
-    kind: 'cabinet_ecosystem_map_artifact_manifest',
+    kind: 'system_catalog_map_artifact_manifest',
     contractVersion: '1',
     source: {
-      repository: 'heimgewebe/heimgewebe-katalog',
+      repository: 'heimgewebe/systemkatalog',
       commit: 'a'.repeat(40),
       generatedAt,
     },
-    artifactCount: 2,
+    artifactCount: 1,
     artifacts: [
       {
-        role: 'readable_overview_mermaid',
-        path: 'rendered/ecosystem-map.mmd',
-        contentType: 'text/mermaid',
-        bytes: 24,
-        sha256: 'b'.repeat(64),
-      },
-      {
-        role: 'generated_registry_projection_mermaid',
+        role: 'canonical_ecosystem_map_mermaid',
         path: 'rendered/ecosystem-registry-map.mmd',
         contentType: 'text/mermaid',
-        bytes: 25,
-        sha256: 'c'.repeat(64),
+        bytes: Buffer.byteLength(mapContent),
+        sha256: createHash('sha256').update(mapContent).digest('hex'),
       },
     ],
     doesNotEstablish: ['claim_truth', 'runtime_correctness', 'merge_readiness'],
   };
   await writeFile(manifestPath, JSON.stringify(manifest), 'utf-8');
-  return { sourceRoot, manifestPath };
+  return { sourceRoot, manifestPath, mapPath: join(sourceRoot, 'rendered', 'ecosystem-registry-map.mmd') };
 }
 
 describe('getEcosystemMapData', () => {
-  it('loads a Heimgewebe system catalog ecosystem map manifest and Mermaid sources read-only', async () => {
+  it('loads the canonical Systemkatalog map artifact read-only', async () => {
     const fixture = await makeFixture();
     process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
 
     const data = await getEcosystemMapData();
 
     expect(data.view_meta.source_kind).toBe('artifact');
-    expect(data.view_meta.source_repository).toBe('heimgewebe/heimgewebe-katalog');
+    expect(data.view_meta.source_repository).toBe('heimgewebe/systemkatalog');
     expect(data.view_meta.source_commit).toBe('a'.repeat(40));
     expect(data.view_meta.source_root).toBe(fixture.sourceRoot);
-    expect(data.overview?.content).toContain('Heimgewebe-Systemkatalog');
-    expect(data.registry_projection?.content).toContain('Registry');
+    expect(data.map?.role).toBe('canonical_ecosystem_map_mermaid');
+    expect(data.map?.content).toContain('Systemkatalog');
     expect(data.view_meta.does_not_establish).toContain('runtime_correctness');
+  });
+
+  it('rejects a map whose bytes no longer match the manifest', async () => {
+    const fixture = await makeFixture();
+    await writeFile(fixture.mapPath, 'tampered map\n', 'utf-8');
+    process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
+
+    const data = await getEcosystemMapData();
+
+    expect(data.view_meta.source_kind).toBe('missing');
+    expect(data.view_meta.missing_reason).toBe('artifact_integrity_mismatch');
+    expect(data.map?.content).toBeNull();
   });
 
   it('reports a missing manifest as a missing source instead of throwing', async () => {
@@ -93,8 +99,7 @@ describe('getEcosystemMapData', () => {
 
     expect(data.view_meta.source_kind).toBe('missing');
     expect(data.view_meta.missing_reason).toBe('manifest_missing');
-    expect(data.overview).toBeNull();
-    expect(data.registry_projection).toBeNull();
+    expect(data.map).toBeNull();
   });
 
   it('marks stale manifests without repairing them', async () => {
@@ -110,7 +115,7 @@ describe('getEcosystemMapData', () => {
 
   it('loads deterministic cross-view links and degrades unknown node IDs', async () => {
     const links = await loadEcosystemCrossLinks();
-    const systemCatalog = resolveEcosystemCrossLink(links, 'repo:heimgewebe-katalog');
+    const systemCatalog = resolveEcosystemCrossLink(links, 'repo:systemkatalog');
     const unknown = resolveEcosystemCrossLink(links, 'repo:unknown');
 
     expect(links.meta.source_kind).toBe('artifact');

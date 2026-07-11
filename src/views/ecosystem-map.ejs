@@ -39,10 +39,10 @@
 
   <main>
     <h1>Ecosystem Map</h1>
-    <p class="subtitle">Read-only source view for the Heimgewebe ecosystem map owned by the Heimgewebe-Systemkatalog.</p>
+    <p class="subtitle">Read-only source view for the Heimgewebe ecosystem map owned by the Systemkatalog.</p>
 
     <section class="notice" aria-label="Boundary">
-      <strong>View only.</strong> Canonical map semantics live in the Heimgewebe-Systemkatalog. Leitstand displays pinned artifacts and freshness metadata; it does not edit the map, infer claim truth, dispatch tasks, or prove runtime correctness or merge readiness.
+      <strong>View only.</strong> Canonical map semantics live in the Systemkatalog. Leitstand displays pinned artifacts and freshness metadata; it does not edit the map, infer claim truth, dispatch tasks, or prove runtime correctness or merge readiness.
     </section>
 
     <section class="meta-grid" aria-label="Source metadata">
@@ -78,22 +78,12 @@
     </section>
 
     <section class="panel">
-      <h2>Readable overview</h2>
-      <% if (overview && overview.content) { %>
-        <div class="artifact-meta"><%= overview.path %> · <%= overview.bytes %> bytes · sha256 <%= overview.sha256 %></div>
-        <pre><%= overview.content %></pre>
+      <h2>Canonical ecosystem map</h2>
+      <% if (map && map.content) { %>
+        <div class="artifact-meta"><%= map.path %> · <%= map.bytes %> bytes · sha256 <%= map.sha256 %></div>
+        <pre><%= map.content %></pre>
       <% } else { %>
-        <p class="empty">Overview Mermaid source is not available. Reason: <%= overview ? overview.missing_reason : view_meta.missing_reason %>.</p>
-      <% } %>
-    </section>
-
-    <section class="panel">
-      <h2>Generated registry projection</h2>
-      <% if (registry_projection && registry_projection.content) { %>
-        <div class="artifact-meta"><%= registry_projection.path %> · <%= registry_projection.bytes %> bytes · sha256 <%= registry_projection.sha256 %></div>
-        <pre><%= registry_projection.content %></pre>
-      <% } else { %>
-        <p class="empty">Registry projection Mermaid source is not available. Reason: <%= registry_projection ? registry_projection.missing_reason : view_meta.missing_reason %>.</p>
+        <p class="empty">Canonical Mermaid source is not available. Reason: <%= map ? map.missing_reason : view_meta.missing_reason %>.</p>
       <% } %>
     </section>
 

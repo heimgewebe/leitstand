@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { basename, dirname, join, resolve, relative } from 'node:path';
 import {
   loadEcosystemCrossLinks,
@@ -6,7 +7,7 @@ import {
   type EcosystemCrossViewLink,
 } from './ecosystemMapLinks.js';
 
-const MANIFEST_KIND = 'cabinet_ecosystem_map_artifact_manifest';
+const MANIFEST_KIND = 'system_catalog_map_artifact_manifest';
 const DEFAULT_STALE_AFTER_HOURS = 168;
 
 export type EcosystemMapSourceKind = 'artifact' | 'missing' | 'corrupt';
@@ -45,8 +46,7 @@ export interface EcosystemMapArtifactView {
 }
 
 export interface EcosystemMapViewData {
-  overview: EcosystemMapArtifactView | null;
-  registry_projection: EcosystemMapArtifactView | null;
+  map: EcosystemMapArtifactView | null;
   cross_links: EcosystemCrossViewLink[];
   cross_link_meta: {
     source_kind: string;
@@ -107,8 +107,7 @@ function emptyData(
   crossLinks: EcosystemCrossLinkData,
 ): EcosystemMapViewData {
   return {
-    overview: null,
-    registry_projection: null,
+    map: null,
     cross_links: crossLinks.links,
     cross_link_meta: crossLinks.meta,
     view_meta: {
@@ -145,14 +144,17 @@ function parseManifest(raw: unknown): MapManifest {
   if (!manifest.source || typeof manifest.source !== 'object') {
     throw new Error('invalid ecosystem map manifest: source missing');
   }
-  if (manifest.source.repository !== 'heimgewebe/heimgewebe-katalog') {
+  if (manifest.source.repository !== 'heimgewebe/systemkatalog') {
     throw new Error('invalid ecosystem map manifest: source repository mismatch');
   }
   if (!/^[0-9a-f]{40}$/.test(manifest.source.commit || '')) {
     throw new Error('invalid ecosystem map manifest: source commit mismatch');
   }
-  if (!Array.isArray(manifest.artifacts)) {
-    throw new Error('invalid ecosystem map manifest: artifacts missing');
+  if (manifest.contractVersion !== '1') {
+    throw new Error('invalid ecosystem map manifest: contractVersion mismatch');
+  }
+  if (!Array.isArray(manifest.artifacts) || manifest.artifactCount !== manifest.artifacts.length) {
+    throw new Error('invalid ecosystem map manifest: artifacts missing or count mismatch');
   }
   if (!Array.isArray(manifest.doesNotEstablish)) {
     throw new Error('invalid ecosystem map manifest: non-claims missing');
@@ -196,14 +198,26 @@ async function readArtifact(sourceRoot: string, artifact: MapManifestArtifact | 
   if (!artifact) return null;
   const resolvedPath = resolveArtifactPath(sourceRoot, artifact.path);
   try {
-    const content = await readFile(resolvedPath, 'utf-8');
+    const raw = await readFile(resolvedPath);
+    const digest = createHash('sha256').update(raw).digest('hex');
+    if (raw.byteLength !== artifact.bytes || digest !== artifact.sha256) {
+      return {
+        role: artifact.role,
+        path: artifact.path,
+        content_type: artifact.contentType,
+        bytes: artifact.bytes,
+        sha256: artifact.sha256,
+        content: null,
+        missing_reason: 'artifact_integrity_mismatch',
+      };
+    }
     return {
       role: artifact.role,
       path: artifact.path,
       content_type: artifact.contentType,
       bytes: artifact.bytes,
       sha256: artifact.sha256,
-      content,
+      content: raw.toString('utf-8'),
       missing_reason: null,
     };
   } catch {
@@ -228,18 +242,12 @@ export async function getEcosystemMapData(): Promise<EcosystemMapViewData> {
     const manifest = parseManifest(raw);
     const sourceRoot = sourceRootForManifest(manifestPath);
     const freshnessState = freshness(manifest.source.generatedAt, staleAfterHours);
-    const overviewSpec = manifest.artifacts.find((artifact) => artifact.role === 'readable_overview_mermaid');
-    const registrySpec = manifest.artifacts.find((artifact) => artifact.role === 'generated_registry_projection_mermaid');
-    const [overview, registryProjection] = await Promise.all([
-      readArtifact(sourceRoot, overviewSpec),
-      readArtifact(sourceRoot, registrySpec),
-    ]);
-
-    const missingReason = overview?.missing_reason || registryProjection?.missing_reason || 'ok';
+    const mapSpec = manifest.artifacts.find((artifact) => artifact.role === 'canonical_ecosystem_map_mermaid');
+    const map = await readArtifact(sourceRoot, mapSpec);
+    const missingReason = map?.missing_reason || (map ? 'ok' : 'artifact_role_missing');
 
     return {
-      overview,
-      registry_projection: registryProjection,
+      map,
       cross_links: crossLinks.links,
       cross_link_meta: crossLinks.meta,
       view_meta: {

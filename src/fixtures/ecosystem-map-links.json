@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "leitstand_ecosystem_map_cross_view_links",
-  "source": "heimgewebe-systemkatalog.ecosystem_map.v0.node_ids",
+  "source": "systemkatalog.ecosystem_map.v1.node_ids",
   "doesNotEstablish": [
     "relation_truth",
     "runtime_dependency",
@@ -23,14 +23,14 @@
       ]
     },
     {
-      "nodeId": "repo:heimgewebe-katalog",
-      "label": "Heimgewebe-Systemkatalog",
+      "nodeId": "repo:systemkatalog",
+      "label": "Systemkatalog",
       "status": "linked",
       "links": [
         {
           "view": "ecosystem-map",
           "href": "/ecosystem-map",
-          "title": "map artifacts owned by the Heimgewebe-Systemkatalog"
+          "title": "map artifacts owned by the Systemkatalog"
         }
       ]
     },

@@ -102,7 +102,7 @@ Leitstand intentionally tracks `.wgx/profile.yml` as documented in [WGX Leitstan
 
 ## Ecosystem Map View
 
-Leitstand is the right dashboard surface for a future read-only view of the ecosystem map owned by the Heimgewebe-Systemkatalog. The boundary is documented in [Ecosystem Map View Blueprint](docs/blueprints/ecosystem-map-view.md): The Heimgewebe-Systemkatalog owns map semantics; Leitstand may render and display pinned system catalog Mermaid artifacts with freshness metadata.
+Leitstand is the right dashboard surface for a future read-only view of the ecosystem map owned by the Systemkatalog. The boundary is documented in [Ecosystem Map View Blueprint](docs/blueprints/ecosystem-map-view.md): The Systemkatalog owns map semantics; Leitstand may render and display pinned system catalog Mermaid artifacts with freshness metadata.
 
 ## Installation
 
