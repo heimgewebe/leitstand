@@ -31,9 +31,9 @@ afterEach(async () => {
 async function makeFixture(generatedAt = new Date().toISOString()) {
   const root = await mkdtemp(join(tmpdir(), 'leitstand-map-'));
   tempRoots.push(root);
-  const sourceRoot = join(root, 'cabinet');
+  const sourceRoot = join(root, 'heimgewebe-katalog');
   await mkdir(join(sourceRoot, 'rendered'), { recursive: true });
-  await writeFile(join(sourceRoot, 'rendered', 'ecosystem-map.mmd'), 'flowchart TD\n  A[Cabinet]\n', 'utf-8');
+  await writeFile(join(sourceRoot, 'rendered', 'ecosystem-map.mmd'), 'flowchart TD\n  A[Heimgewebe-Systemkatalog]\n', 'utf-8');
   await writeFile(join(sourceRoot, 'rendered', 'ecosystem-registry-map.mmd'), 'flowchart TD\n  B[Registry]\n', 'utf-8');
   const manifestPath = join(sourceRoot, 'rendered', 'ecosystem-map-artifact-manifest.json');
   const manifest = {
@@ -41,7 +41,7 @@ async function makeFixture(generatedAt = new Date().toISOString()) {
     kind: 'cabinet_ecosystem_map_artifact_manifest',
     contractVersion: '1',
     source: {
-      repository: 'heimgewebe/cabinet',
+      repository: 'heimgewebe/heimgewebe-katalog',
       commit: 'a'.repeat(40),
       generatedAt,
     },
@@ -69,17 +69,17 @@ async function makeFixture(generatedAt = new Date().toISOString()) {
 }
 
 describe('getEcosystemMapData', () => {
-  it('loads a Cabinet ecosystem map manifest and Mermaid sources read-only', async () => {
+  it('loads a Heimgewebe system catalog ecosystem map manifest and Mermaid sources read-only', async () => {
     const fixture = await makeFixture();
     process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
 
     const data = await getEcosystemMapData();
 
     expect(data.view_meta.source_kind).toBe('artifact');
-    expect(data.view_meta.source_repository).toBe('heimgewebe/cabinet');
+    expect(data.view_meta.source_repository).toBe('heimgewebe/heimgewebe-katalog');
     expect(data.view_meta.source_commit).toBe('a'.repeat(40));
     expect(data.view_meta.source_root).toBe(fixture.sourceRoot);
-    expect(data.overview?.content).toContain('Cabinet');
+    expect(data.overview?.content).toContain('Heimgewebe-Systemkatalog');
     expect(data.registry_projection?.content).toContain('Registry');
     expect(data.view_meta.does_not_establish).toContain('runtime_correctness');
   });
@@ -110,12 +110,12 @@ describe('getEcosystemMapData', () => {
 
   it('loads deterministic cross-view links and degrades unknown node IDs', async () => {
     const links = await loadEcosystemCrossLinks();
-    const cabinet = resolveEcosystemCrossLink(links, 'repo:cabinet');
+    const systemCatalog = resolveEcosystemCrossLink(links, 'repo:heimgewebe-katalog');
     const unknown = resolveEcosystemCrossLink(links, 'repo:unknown');
 
     expect(links.meta.source_kind).toBe('artifact');
-    expect(cabinet.status).toBe('linked');
-    expect(cabinet.links[0].href).toBe('/ecosystem-map');
+    expect(systemCatalog.status).toBe('linked');
+    expect(systemCatalog.links[0].href).toBe('/ecosystem-map');
     expect(unknown.status).toBe('unmapped');
     expect(unknown.reason).toBe('node_id_not_in_cross_view_contract');
   });

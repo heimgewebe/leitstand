@@ -18,7 +18,7 @@ const STATIC_MIRROR_DYNAMIC_ONLY_ROUTES = [
   { route: "/ops", reason: "runtime ACS viewer and optional job fallback" },
   { route: "/bureau", reason: "execution-axis snapshot view remains runtime-rendered in Mode A" },
   { route: "/checkouts", reason: "checkout inventory view remains runtime-rendered in Mode A" },
-  { route: "/ecosystem-map", reason: "Cabinet artifact projection is runtime-rendered until static artifact parity is implemented" },
+  { route: "/ecosystem-map", reason: "system catalog artifact projection is runtime-rendered until static artifact parity is implemented" },
   { route: "/repobriefs", reason: "RepoBrief bundle index view is runtime-rendered until static artifact parity is implemented" },
   { route: "/anatomy", reason: "controller-backed structure view is runtime-rendered until static artifact parity is implemented" },
   { route: "/insights", reason: "controller-backed insights view is runtime-rendered until static artifact parity is implemented" },
