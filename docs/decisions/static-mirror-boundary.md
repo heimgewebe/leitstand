@@ -30,7 +30,7 @@ These routes are intentionally not part of the current static mirror:
 - `/ops` — runtime ACS viewer and optional job fallback.
 - `/bureau` — execution-axis snapshot view, runtime-rendered in Mode A until static artifact parity is implemented.
 - `/checkouts` — checkout inventory view, runtime-rendered in Mode A until static artifact parity is implemented.
-- `/ecosystem-map` — Cabinet artifact projection, runtime-rendered until static artifact parity is implemented.
+- `/ecosystem-map` — system catalog artifact projection, runtime-rendered until static artifact parity is implemented.
 - `/repobriefs` — RepoBrief bundle index view, runtime-rendered until static artifact parity is implemented.
 - `/anatomy`, `/insights`, `/timeline`, `/reflexion` — controller-backed views with runtime/time-window semantics or artifact freshness contracts not yet represented by the static build.
 

@@ -145,7 +145,7 @@ function parseManifest(raw: unknown): MapManifest {
   if (!manifest.source || typeof manifest.source !== 'object') {
     throw new Error('invalid ecosystem map manifest: source missing');
   }
-  if (manifest.source.repository !== 'heimgewebe/cabinet') {
+  if (manifest.source.repository !== 'heimgewebe/heimgewebe-katalog') {
     throw new Error('invalid ecosystem map manifest: source repository mismatch');
   }
   if (!/^[0-9a-f]{40}$/.test(manifest.source.commit || '')) {
