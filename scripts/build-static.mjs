@@ -1,11 +1,19 @@
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { copyFile, mkdir, writeFile, readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import ejs from "ejs";
 
 const ROOT = process.cwd();
 const VIEWS = join(ROOT, "src", "views");
 const OUT = join(ROOT, "dist", "site");
+const STATIC_ASSETS = ["shell.css", "shell.mjs"];
 
+async function copyStaticAssets() {
+  const assetsOut = join(OUT, "assets");
+  await mkdir(assetsOut, { recursive: true });
+  await Promise.all(STATIC_ASSETS.map((name) => (
+    copyFile(join(ROOT, "src", "public", name), join(assetsOut, name))
+  )));
+}
 
 const STATIC_MIRROR_SUPPORTED_ROUTES = [
   { route: "/", output: "index.html", view: "index", reason: "static landing page" },
@@ -81,7 +89,7 @@ async function renderTo(outPath, viewName, data = {}, extraLocals = {}) {
   const context = { ...data, ...extraLocals };
 
   const html = await ejs.renderFile(join(VIEWS, `${viewName}.ejs`), context, {
-    async: true,
+    async: false,
     rmWhitespace: false,
     localsName: "locals", // accessible as 'locals' in template
   });
@@ -92,9 +100,10 @@ async function renderTo(outPath, viewName, data = {}, extraLocals = {}) {
 
 async function main() {
   await mkdir(OUT, { recursive: true });
+  await copyStaticAssets();
 
   // 1) Home
-  await renderTo(join(OUT, "index.html"), "index");
+  await renderTo(join(OUT, "index.html"), "index", {}, { currentPath: "/" });
 
   // Strict Symmetry Check
   const isStrict = process.env.LEITSTAND_STRICT === '1' || process.env.NODE_ENV === 'production' || process.env.OBSERVATORY_STRICT === '1';
@@ -389,7 +398,8 @@ async function main() {
           is_strict: isStrict,
           forensics: metaForensics
       },
-      observatoryUrl: observatoryUrl
+      observatoryUrl: observatoryUrl,
+      currentPath: "/observatory"
     }
   );
 
@@ -398,7 +408,7 @@ async function main() {
   const intentData = await readJson(intentPath);
 
   await mkdir(join(OUT, "intent"), { recursive: true });
-  await renderTo(join(OUT, "intent", "index.html"), "intent", { data: intentData });
+  await renderTo(join(OUT, "intent", "index.html"), "intent", { data: intentData }, { currentPath: "/intent" });
 
   await writeStaticBoundaryManifest();
 

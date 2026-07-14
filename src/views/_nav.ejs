@@ -1,0 +1,41 @@
+<%
+const navPath = typeof currentPath === 'string' ? currentPath : '';
+const navItems = [
+  { href: '/', label: 'Home' },
+  { href: '/bureau', label: 'Bureau' },
+  { href: '/checkouts', label: 'Checkouts' },
+  { href: '/observatory', label: 'Observatorium' },
+  { href: '/ecosystem-map', label: 'Systemkarte' },
+  { href: '/repobriefs', label: 'RepoBriefs' },
+  { href: '/anatomy', label: 'Anatomie' },
+  { href: '/timeline', label: 'Zeitachse' },
+  { href: '/insights', label: 'Erkenntnisse' },
+  { href: '/reflexion', label: 'Reflexion' },
+  { href: '/ops', label: 'Ops' },
+];
+const isActiveRoute = (href) => {
+  if (href === '/') return navPath === '/';
+  if (href === '/observatory' && (navPath === '/intent' || navPath.startsWith('/intent/'))) return true;
+  return navPath === href || navPath.startsWith(`${href}/`);
+};
+%>
+<a class="leitstand-skip-link" href="#leitstand-content">Zum Inhalt springen</a>
+<nav class="leitstand-nav" data-leitstand-nav data-expanded="false" aria-label="Hauptnavigation">
+  <a class="leitstand-nav__brand" href="/" aria-label="Leitstand – Startseite">Leitstand</a>
+  <button class="leitstand-nav__toggle"
+          type="button"
+          data-leitstand-nav-toggle
+          aria-expanded="false"
+          aria-controls="leitstand-nav-links">
+    <span>Menü</span>
+    <span class="leitstand-nav__toggle-icon" aria-hidden="true">☰</span>
+  </button>
+  <div class="leitstand-nav__links" id="leitstand-nav-links" data-leitstand-nav-links>
+    <% navItems.forEach(function(item) { const active = isActiveRoute(item.href); %>
+      <a class="leitstand-nav__link<%= active ? ' active' : '' %>"
+         href="<%= item.href %>"
+         <%- active ? 'aria-current="page"' : '' %>><%= item.label %></a>
+    <% }); %>
+  </div>
+</nav>
+<span id="leitstand-content" class="leitstand-main-anchor" tabindex="-1"></span>

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getDashboardData } from '../../src/controllers/dashboard.js';
+import { getDashboardData, summarizeDashboard, type DashboardPhase } from '../../src/controllers/dashboard.js';
 import * as anatomyCtrl from '../../src/controllers/anatomy.js';
 import * as insightsCtrl from '../../src/controllers/insights.js';
 import * as timelineCtrl from '../../src/controllers/timeline.js';
@@ -14,7 +14,7 @@ describe('getDashboardData controller', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns a tile for each of the five phases in a stable order', async () => {
+  it('returns a tile for each phase and a derived situation summary', async () => {
     vi.spyOn(anatomyCtrl, 'getAnatomyData').mockResolvedValue({
       anatomy: { nodes: [], edges: [], achsen: {}, generated_at: '2026-04-01T00:00:00.000Z' } as never,
       health: {
@@ -115,9 +115,24 @@ describe('getDashboardData controller', () => {
     for (const phase of result.phases) {
       expect(phase.error_reason).toBeNull();
     }
+
+    expect(result.summary).toMatchObject({
+      state: 'attention',
+      state_label: 'Prüfbedarf',
+      total_count: 5,
+      verified_fresh_count: 2,
+      attention_count: 3,
+      unavailable_count: 0,
+    });
+    expect(result.summary.attention.map((item) => item.phase_id)).toEqual([
+      'physiologie',
+      'zeitachse',
+      'reflexion',
+    ]);
+    expect(result.summary.attention[0].reason).toContain('Ersatzdaten');
   });
 
-  it('masks strict-mode error messages as an opaque token in error_reason', async () => {
+  it('masks strict-mode error messages and raises a critical summary', async () => {
     vi.spyOn(anatomyCtrl, 'getAnatomyData').mockRejectedValue(
       new Error('Strict load failed: /data/artifacts/anatomy/2026-05-18.json not found'),
     );
@@ -166,6 +181,10 @@ describe('getDashboardData controller', () => {
     expect(insightsTile.source_kind).toBe('error');
     expect(insightsTile.error_reason).toBe('strict-load-failed');
     expect(insightsTile.error_reason).not.toContain('/var/run');
+
+    expect(result.summary.state).toBe('critical');
+    expect(result.summary.unavailable_count).toBe(5);
+    expect(result.summary.attention[0].severity).toBe('critical');
   });
 
   it('isolates failures so one broken controller does not break the others', async () => {
@@ -220,5 +239,34 @@ describe('getDashboardData controller', () => {
 
     const reflexionTile = result.phases.find((p) => p.id === 'reflexion')!;
     expect(reflexionTile.source_kind).toBe('missing');
+    expect(result.summary.state).toBe('critical');
+    expect(result.summary.attention_count).toBe(5);
+  });
+
+  it('reports a stable state only when every projected phase is artifact-backed and fresh', () => {
+    const phases: DashboardPhase[] = [
+      {
+        id: 'anatomie',
+        phase: 1,
+        title: 'Anatomie',
+        description: 'Test',
+        href: '/anatomy',
+        source_kind: 'artifact',
+        freshness_state: 'fresh',
+        metric: '1 Knoten',
+        error_reason: null,
+      },
+    ];
+
+    expect(summarizeDashboard(phases)).toEqual({
+      state: 'healthy',
+      state_label: 'Stabil',
+      headline: 'Alle Bereiche liefern frische Artefakte',
+      total_count: 1,
+      verified_fresh_count: 1,
+      attention_count: 0,
+      unavailable_count: 0,
+      attention: [],
+    });
   });
 });

@@ -99,6 +99,11 @@ app.use('/vendor/mermaid', express.static(join(process.cwd(), 'node_modules', 'm
   maxAge: '1h',
 }));
 
+app.use((req, res, next) => {
+  res.locals.currentPath = req.path;
+  next();
+});
+
 app.post('/events', async (req, res) => {
   // 1. Authorization
   const { token, isStrict } = envConfig;
