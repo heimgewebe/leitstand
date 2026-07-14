@@ -44,6 +44,17 @@ implementations:
     supersedes: []
     deprecated_by: []
 
+  - id: impl.view.leitstandShell
+    path: src/views/_nav.ejs
+    impl_type: view
+    status: active
+    documented_by:
+      - docs/blueprints/leitstand_visualization.md
+    verified_by:
+      - tests/views/navigation.test.ts
+    supersedes: []
+    deprecated_by: []
+
   - id: impl.insights.comparison
     path: src/insightsComparison.ts
     impl_type: util
