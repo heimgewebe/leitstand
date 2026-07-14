@@ -118,4 +118,30 @@ describe('ecosystem-map view', () => {
     expect(browserModule).not.toContain('fetch(');
     expect(browserModule).not.toContain('contenteditable');
   });
+
+  it('binds focus, relationship, viewport and URL state to the canonical Mermaid projection', async () => {
+    const browserModule = await readFile(
+      join(process.cwd(), 'src/public/ecosystem-map.mjs'),
+      'utf-8',
+    );
+
+    expect(browserModule).toContain('const EDGE_DEFINITION');
+    expect(browserModule).toContain('parseRelationships(definition');
+    expect(browserModule).toContain('data-map-results role="list"');
+    expect(browserModule).toContain("item.setAttribute('role', 'listitem')");
+    expect(browserModule).toContain('data-map-view-action="fit-focus"');
+    expect(browserModule).toContain('const aspect = original.width / original.height');
+    expect(browserModule).toContain('gestureTravel > 6');
+    expect(browserModule).toContain("ecosystem-map-touch-tap");
+    expect(browserModule).toContain('original.x + original.width - width * 0.1');
+    expect(browserModule).toContain('Umfeld erweitern');
+    expect(browserModule).toContain('Kanonische Quelle');
+    expect(browserModule).toContain("url.searchParams.set('node'");
+    expect(browserModule).toContain("url.searchParams.set('view'");
+    expect(browserModule).toContain("initialParameters.get('depth') === '2'");
+    expect(browserModule).toContain("svg.addEventListener('pointermove'");
+    expect(browserModule).toContain("svg.addEventListener('wheel'");
+    expect(browserModule).toContain("element.classList.toggle('is-outgoing'");
+    expect(browserModule).toContain("element.classList.toggle('is-incoming'");
+  });
 });
