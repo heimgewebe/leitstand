@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import {
   loadEcosystemCrossLinks,
@@ -348,6 +348,24 @@ function digestMatches(raw: Buffer, artifact: MapManifestArtifact): boolean {
 async function inspectCurrentArtifact(sourceRoot: string, artifact: MapManifestArtifact): Promise<ArtifactInspection> {
   const resolvedPath = resolveArtifactPath(sourceRoot, artifact.path);
   try {
+    const fileStat = await lstat(resolvedPath);
+    if (!fileStat.isFile() || fileStat.size !== artifact.bytes) {
+      return {
+        artifact,
+        matches: false,
+        view: {
+          role: artifact.role,
+          path: artifact.path,
+          content_type: artifact.contentType,
+          bytes: artifact.bytes,
+          sha256: artifact.sha256,
+          content: null,
+          missing_reason: fileStat.isSymbolicLink()
+            ? 'artifact_symlink_rejected'
+            : 'artifact_integrity_mismatch',
+        },
+      };
+    }
     const raw = await readFile(resolvedPath);
     const matches = digestMatches(raw, artifact);
     return {

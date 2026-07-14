@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -196,6 +196,21 @@ describe('getEcosystemMapData', () => {
     expect(data.view_meta.alignment_state).toBe('drifted');
     expect(data.view_meta.alignment_reason).toBe('source_head_artifact_drift');
     expect(data.view_meta.freshness_state).toBe('stale');
+  });
+
+  it('rejects symlinked artifacts before reading their targets', async () => {
+    const fixture = await makeFixture();
+    const target = join(fixture.sourceRoot, 'outside-map.mmd');
+    await writeFile(target, 'flowchart TD\n  B[Systemkatalog]\n', 'utf-8');
+    await rm(fixture.mapPath);
+    await symlink(target, fixture.mapPath);
+    process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
+
+    const data = await getEcosystemMapData();
+
+    expect(data.view_meta.alignment_state).toBe('drifted');
+    expect(data.view_meta.missing_reason).toBe('artifact_symlink_rejected');
+    expect(data.map?.content).toBeNull();
   });
 
   it('marks content drift stale when a declared artifact changes', async () => {
