@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { renderFile } from 'ejs';
 import { describe, expect, it } from 'vitest';
 
 const canonicalRoutes = [
@@ -16,51 +17,83 @@ const canonicalRoutes = [
   '/ops',
 ];
 
-const navViews: Array<{ file: string; active?: string }> = [
-  { file: 'index.ejs', active: '/' },
-  { file: 'bureau.ejs', active: '/bureau' },
-  { file: 'checkouts.ejs', active: '/checkouts' },
-  { file: 'observatory.ejs', active: '/observatory' },
-  { file: 'ecosystem-map.ejs', active: '/ecosystem-map' },
-  { file: 'repobriefs.ejs', active: '/repobriefs' },
-  { file: 'anatomy.ejs', active: '/anatomy' },
-  { file: 'timeline.ejs', active: '/timeline' },
-  { file: 'insights.ejs', active: '/insights' },
-  { file: 'reflexion.ejs', active: '/reflexion' },
-  { file: 'ops.ejs', active: '/ops' },
-  { file: 'intent.ejs' },
+const navViews = [
+  'index.ejs',
+  'bureau.ejs',
+  'checkouts.ejs',
+  'observatory.ejs',
+  'ecosystem-map.ejs',
+  'repobriefs.ejs',
+  'anatomy.ejs',
+  'timeline.ejs',
+  'insights.ejs',
+  'reflexion.ejs',
+  'ops.ejs',
+  'intent.ejs',
 ];
 
-function readView(file: string): string {
-  return readFileSync(join(process.cwd(), 'src', 'views', file), 'utf-8');
-}
+const viewsRoot = join(process.cwd(), 'src', 'views');
+const navPartial = join(viewsRoot, '_nav.ejs');
 
-function navBlock(html: string): string {
-  const match = html.match(/<nav[^>]*aria-label="Hauptnavigation"[^>]*>[\s\S]*?<\/nav>/);
-  if (!match) throw new Error('missing canonical navigation block');
-  return match[0];
+function readView(file: string): string {
+  return readFileSync(join(viewsRoot, file), 'utf-8');
 }
 
 describe('canonical navigation parity', () => {
-  it.each(navViews)('$file exposes the canonical read-only route set', ({ file }) => {
-    const nav = navBlock(readView(file));
+  it.each(navViews)('%s consumes the shared shell without a private nav copy', (file) => {
+    const view = readView(file);
+    expect(view).toContain("<%- include('_nav') %>");
+    expect(view).toContain('href="/assets/shell.css"');
+    expect(view).toContain('src="/assets/shell.mjs"');
+    expect(view).not.toContain('<nav aria-label="Hauptnavigation">');
+  });
+
+  it('the shared partial exposes the canonical read-only route set', () => {
+    const partial = readFileSync(navPartial, 'utf-8');
     for (const route of canonicalRoutes) {
-      expect(nav).toContain(`href="${route}"`);
+      expect(partial).toContain(`href: '${route}'`);
     }
+    expect(partial).not.toContain('<form');
+    expect(partial).not.toContain('method="post"');
+    expect(partial).not.toContain('data-action');
   });
 
-  it.each(navViews.filter((view) => view.active))('$file marks only its active route', ({ file, active }) => {
-    const nav = navBlock(readView(file));
-    const activeMatches = [...nav.matchAll(/<a href="([^"]+)" class="active" aria-current="page">/g)].map((match) => match[1]);
-    expect(activeMatches).toEqual([active]);
+  it.each(canonicalRoutes)('marks only %s as the active canonical route', async (route) => {
+    const html = await renderFile(navPartial, { currentPath: route });
+    const activeMatches = [
+      ...html.matchAll(/<a class="leitstand-nav__link active"\s+href="([^"]+)"\s+aria-current="page">/g),
+    ].map((match) => match[1]);
+    expect(activeMatches).toEqual([route]);
   });
 
-  it('canonical navigation contains links only and no action forms', () => {
-    for (const view of navViews) {
-      const nav = navBlock(readView(view.file));
-      expect(nav).not.toContain('<form');
-      expect(nav).not.toContain('method="post"');
-      expect(nav).not.toContain('data-action');
-    }
+  it.each(['/intent', '/intent/example'])('maps %s back to the Observatorium section', async (currentPath) => {
+    const html = await renderFile(navPartial, { currentPath });
+    expect(html).toMatch(/href="\/observatory"\s+aria-current="page"/);
+  });
+
+  it('provides progressive mobile navigation and a keyboard skip target', () => {
+    const partial = readFileSync(navPartial, 'utf-8');
+    const css = readFileSync(join(process.cwd(), 'src', 'public', 'shell.css'), 'utf-8');
+    const script = readFileSync(join(process.cwd(), 'src', 'public', 'shell.mjs'), 'utf-8');
+
+    expect(partial).toContain('data-leitstand-nav-toggle');
+    expect(partial).toContain('aria-controls="leitstand-nav-links"');
+    expect(partial).toContain('href="#leitstand-content"');
+    expect(partial).toContain('id="leitstand-content"');
+    expect(css).toContain('@media (max-width: 960px)');
+    expect(css).toContain('prefers-reduced-motion');
+    expect(script).toContain("event.key === 'Escape'");
+    expect(script).toContain("window.matchMedia('(max-width: 960px)')");
+  });
+
+  it('copies the shared shell into the supported static mirror', () => {
+    const buildScript = readFileSync(join(process.cwd(), 'scripts', 'build-static.mjs'), 'utf-8');
+
+    expect(buildScript).toContain('const STATIC_ASSETS = ["shell.css", "shell.mjs"]');
+    expect(buildScript).toContain('copyFile(join(ROOT, "src", "public", name), join(assetsOut, name))');
+    expect(buildScript).toContain('await copyStaticAssets()');
+    expect(buildScript).toContain('{ currentPath: "/" }');
+    expect(buildScript).toContain('currentPath: "/observatory"');
+    expect(buildScript).toContain('{ currentPath: "/intent" }');
   });
 });

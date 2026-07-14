@@ -369,22 +369,11 @@
 
     .source-badge .warn { color: #f59e0b; }
   </style>
+  <link rel="stylesheet" href="/assets/shell.css">
+  <script type="module" src="/assets/shell.mjs"></script>
 </head>
 <body>
-  <nav aria-label="Hauptnavigation">
-    <span class="title">Leitstand</span>
-    <a href="/">Home</a>
-    <a href="/bureau">Bureau</a>
-    <a href="/checkouts">Checkouts</a>
-    <a href="/observatory">Observatorium</a>
-    <a href="/ecosystem-map">Ecosystem Map</a>
-    <a href="/repobriefs">RepoBriefs</a>
-    <a href="/anatomy">Anatomie</a>
-    <a href="/timeline" class="active" aria-current="page">Zeitachse</a>
-    <a href="/insights">Erkenntnisse</a>
-    <a href="/reflexion">Reflexion</a>
-    <a href="/ops">Ops</a>
-  </nav>
+  <%- include('_nav') %>
 
   <div class="main">
     <div class="page-header">

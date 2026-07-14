@@ -37,22 +37,11 @@
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #dbeafe; }
     ul { margin-left: 20px; color: #94a3b8; }
   </style>
+  <link rel="stylesheet" href="/assets/shell.css">
+  <script type="module" src="/assets/shell.mjs"></script>
 </head>
 <body>
-  <nav aria-label="Hauptnavigation">
-    <span class="title">Leitstand</span>
-    <a href="/">Home</a>
-    <a href="/bureau">Bureau</a>
-    <a href="/checkouts" class="active" aria-current="page">Checkouts</a>
-    <a href="/observatory">Observatorium</a>
-    <a href="/ecosystem-map">Ecosystem Map</a>
-    <a href="/repobriefs">RepoBriefs</a>
-    <a href="/anatomy">Anatomie</a>
-    <a href="/timeline">Zeitachse</a>
-    <a href="/insights">Erkenntnisse</a>
-    <a href="/reflexion">Reflexion</a>
-    <a href="/ops">Ops</a>
-  </nav>
+  <%- include('_nav') %>
 
   <main>
     <h1>Checkout / Worktree Health</h1>

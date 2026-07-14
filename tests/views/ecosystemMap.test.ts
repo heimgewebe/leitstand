@@ -45,7 +45,7 @@ describe('ecosystem-map view', () => {
         },
         node_navigation_json: '[{"mermaid_id":"repo_bureau","href":"/bureau"}]',
       },
-      { async: true, localsName: 'locals' },
+      { async: false, localsName: 'locals' },
     );
 
     expect(html).toContain('data-ecosystem-map-canvas');
@@ -98,7 +98,7 @@ describe('ecosystem-map view', () => {
         },
         node_navigation_json: '[]',
       },
-      { async: true, localsName: 'locals' },
+      { async: false, localsName: 'locals' },
     );
 
     expect(html).toContain('Drift erkannt');

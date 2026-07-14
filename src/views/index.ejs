@@ -1,4 +1,8 @@
-<% const phaseCards = Array.isArray(locals.phases) ? locals.phases : []; %>
+<%
+  const phaseCards = Array.isArray(locals.phases) ? locals.phases : [];
+  const dashboardSummary = locals.summary && typeof locals.summary === 'object' ? locals.summary : null;
+  const attentionItems = Array.isArray(dashboardSummary?.attention) ? dashboardSummary.attention : [];
+%>
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -40,6 +44,8 @@
       align-items: center;
       gap: 4px;
       padding: 10px 20px;
+      overflow-x: auto;
+      scrollbar-width: thin;
       background: rgba(10, 14, 26, 0.92);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
@@ -47,6 +53,7 @@
     }
 
     nav a {
+      flex: 0 0 auto;
       text-decoration: none;
       color: var(--text-secondary);
       font-size: 0.82em;
@@ -59,7 +66,7 @@
     nav a:hover { color: var(--text-primary); background: var(--bg-glass); }
     nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     nav a.active { color: var(--accent); background: rgba(59, 130, 246, 0.1); }
-    nav .title { font-weight: 700; font-size: 0.9em; color: var(--text-primary); margin-right: 16px; }
+    nav .title { flex: 0 0 auto; font-weight: 700; font-size: 0.9em; color: var(--text-primary); margin-right: 16px; }
 
     .main {
       max-width: 1080px;
@@ -68,7 +75,7 @@
     }
 
     .page-header {
-      margin-bottom: 36px;
+      margin-bottom: 30px;
     }
 
     .page-header h1 {
@@ -93,6 +100,145 @@
       color: var(--text-muted);
       margin-bottom: 16px;
     }
+
+    .situation {
+      display: grid;
+      gap: 20px;
+      padding: 24px;
+      margin-bottom: 32px;
+      border: 1px solid var(--border-glass);
+      border-left-width: 4px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.88));
+    }
+
+    .situation-healthy { border-left-color: var(--ok); }
+    .situation-attention { border-left-color: var(--warn); }
+    .situation-critical { border-left-color: var(--fail); }
+
+    .situation-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .situation-kicker {
+      margin-bottom: 6px;
+      color: var(--text-muted);
+      font-size: 0.7em;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .situation h2 {
+      font-size: 1.25em;
+      line-height: 1.35;
+    }
+
+    .state-badge {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 11px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      font-size: 0.76em;
+      font-weight: 700;
+    }
+
+    .situation-healthy .state-badge { color: var(--ok); }
+    .situation-attention .state-badge { color: var(--warn); }
+    .situation-critical .state-badge { color: var(--fail); }
+
+    .summary-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .summary-stat {
+      padding: 14px;
+      border: 1px solid var(--border-glass);
+      border-radius: 10px;
+      background: var(--bg-glass);
+    }
+
+    .summary-stat dt {
+      color: var(--text-muted);
+      font-size: 0.7em;
+      line-height: 1.35;
+    }
+
+    .summary-stat dd {
+      margin-top: 5px;
+      font-size: 1.35em;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .attention-block h3 {
+      margin-bottom: 10px;
+      font-size: 0.85em;
+      color: var(--text-secondary);
+    }
+
+    .attention-list {
+      display: grid;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .attention-item a {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 11px 12px;
+      color: inherit;
+      text-decoration: none;
+      border: 1px solid var(--border-glass);
+      border-radius: 9px;
+      background: rgba(2, 6, 23, 0.34);
+    }
+
+    .attention-item a:hover { border-color: rgba(59, 130, 246, 0.45); }
+    .attention-item a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .attention-title { font-size: 0.86em; font-weight: 650; }
+    .attention-reason { color: var(--text-secondary); font-size: 0.78em; line-height: 1.4; }
+    .attention-arrow { color: var(--text-muted); }
+
+    .severity-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--unknown);
+    }
+
+    .severity-critical { background: var(--fail); }
+    .severity-warning { background: var(--warn); }
+    .severity-info { background: var(--unknown); }
+
+    .situation-clear {
+      color: var(--ok);
+      font-size: 0.86em;
+    }
+
+    .projection-note {
+      color: var(--text-muted);
+      font-size: 0.72em;
+      line-height: 1.45;
+    }
+
+    .surface-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .surface-grid .info-card { margin-bottom: 0; }
 
     .phase-grid {
       display: grid;
@@ -220,6 +366,9 @@
       line-height: 1.6;
     }
 
+    .info-card a { color: #93c5fd; }
+    .info-card a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
     .info-card .role-list {
       list-style: none;
       padding: 0;
@@ -240,9 +389,20 @@
 
     .info-card .role-list strong { color: var(--text-primary); font-weight: 600; }
 
+    @media (max-width: 860px) {
+      .surface-grid { grid-template-columns: 1fr; }
+      .summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
     @media (max-width: 640px) {
+      nav { padding-inline: 14px; }
       .main { padding: 28px 18px 64px; }
       .page-header h1 { font-size: 1.5em; }
+      .situation { padding: 18px; }
+      .situation-header { display: grid; }
+      .state-badge { justify-self: start; }
+      .attention-item a { grid-template-columns: auto 1fr; }
+      .attention-arrow { display: none; }
     }
 
     /* Visually hidden text accessible to screen readers */
@@ -258,22 +418,11 @@
       border: 0;
     }
   </style>
+  <link rel="stylesheet" href="/assets/shell.css">
+  <script type="module" src="/assets/shell.mjs"></script>
 </head>
 <body>
-  <nav aria-label="Hauptnavigation">
-    <span class="title">Leitstand</span>
-    <a href="/" class="active" aria-current="page">Home</a>
-    <a href="/bureau">Bureau</a>
-    <a href="/checkouts">Checkouts</a>
-    <a href="/observatory">Observatorium</a>
-    <a href="/ecosystem-map">Ecosystem Map</a>
-    <a href="/repobriefs">RepoBriefs</a>
-    <a href="/anatomy">Anatomie</a>
-    <a href="/timeline">Zeitachse</a>
-    <a href="/insights">Erkenntnisse</a>
-    <a href="/reflexion">Reflexion</a>
-    <a href="/ops">Ops</a>
-  </nav>
+  <%- include('_nav') %>
 
   <main class="main" id="main">
     <header class="page-header">
@@ -284,29 +433,92 @@
       </p>
     </header>
 
-    <section class="info-card" aria-labelledby="ecosystem-map-heading">
-      <h2 id="ecosystem-map-heading">Ecosystem Map</h2>
-      <p>
-        Read-only system catalog map source view: zeigt Mermaid-Quellen, Commit, Manifest, Freshness und Boundary-Hinweis.
-        <a href="/ecosystem-map">Ecosystem Map öffnen</a>.
-      </p>
-    </section>
+    <% if (dashboardSummary) { %>
+      <section class="situation situation-<%= dashboardSummary.state %>"
+               aria-labelledby="situation-heading"
+               data-dashboard-state="<%= dashboardSummary.state %>">
+        <div class="situation-header">
+          <div>
+            <p class="situation-kicker">Aktuelles Lagebild</p>
+            <h2 id="situation-heading"><%= dashboardSummary.headline %></h2>
+          </div>
+          <span class="state-badge"><%= dashboardSummary.state_label %></span>
+        </div>
 
-    <section class="info-card" aria-labelledby="execution-heading">
-      <h2 id="execution-heading">Ausführungs-Achse (Bureau · Grabowski)</h2>
-      <p>
-        Read-only Projektion des Operator-Ökosystems, das die Ausführungswahrheit erzeugt.
-        Snapshots werden von einem separaten Producer erzeugt; Leitstand rendert sie nur.
-        <a href="/bureau">Bureau Task Board öffnen</a> · <a href="/checkouts">Checkout Health öffnen</a>.
-      </p>
-    </section>
+        <dl class="summary-stats" aria-label="Verdichtete Zustandszahlen">
+          <div class="summary-stat">
+            <dt>Beobachtete Bereiche</dt>
+            <dd><%= dashboardSummary.total_count %></dd>
+          </div>
+          <div class="summary-stat">
+            <dt>Artefakt + frisch belegt</dt>
+            <dd><%= dashboardSummary.verified_fresh_count %></dd>
+          </div>
+          <div class="summary-stat">
+            <dt>Mit Prüfhinweis</dt>
+            <dd><%= dashboardSummary.attention_count %></dd>
+          </div>
+          <div class="summary-stat">
+            <dt>Nicht belastbar verfügbar</dt>
+            <dd><%= dashboardSummary.unavailable_count %></dd>
+          </div>
+        </dl>
 
-    <section class="info-card" aria-labelledby="repobrief-heading">
-      <h2 id="repobrief-heading">RepoBrief / rLens</h2>
-      <p>
-        Read-only bundle observability: zeigt Snapshot-Status, Required Artifacts und Export-Safety-Warnungen.
-        <a href="/repobriefs">RepoBriefs öffnen</a>.
-      </p>
+        <% if (attentionItems.length > 0) { %>
+          <div class="attention-block">
+            <h3>Priorisierte Prüfungen</h3>
+            <ol class="attention-list">
+              <% attentionItems.forEach(function(item) { %>
+                <li class="attention-item">
+                  <a href="<%= item.href %>" data-attention-phase="<%= item.phase_id %>">
+                    <span class="severity-dot severity-<%= item.severity %>" aria-hidden="true"></span>
+                    <span>
+                      <span class="attention-title"><%= item.title %></span><br>
+                      <span class="attention-reason"><%= item.reason %></span>
+                    </span>
+                    <span class="attention-arrow" aria-hidden="true">→</span>
+                  </a>
+                </li>
+              <% }); %>
+            </ol>
+          </div>
+        <% } else { %>
+          <p class="situation-clear">Keine Prüfhinweise aus den vorhandenen Quellen- und Frischebelegen.</p>
+        <% } %>
+
+        <p class="projection-note">
+          Dieses Lagebild verdichtet nur die darunter angezeigten Quellen- und Frischebelege. Es erzeugt keine eigene Zustandswahrheit.
+        </p>
+      </section>
+    <% } %>
+
+    <section aria-labelledby="surfaces-heading">
+      <h2 id="surfaces-heading" class="section-title">Arbeitsflächen</h2>
+      <div class="surface-grid">
+        <article class="info-card" aria-labelledby="ecosystem-map-heading">
+          <h2 id="ecosystem-map-heading">Ecosystem Map</h2>
+          <p>
+            Systemkatalog als interaktive Karte mit Quelle, Commit, Manifest, Frische und klarer Read-only-Grenze.
+            <a href="/ecosystem-map">Karte öffnen</a>.
+          </p>
+        </article>
+
+        <article class="info-card" aria-labelledby="execution-heading">
+          <h2 id="execution-heading">Ausführung</h2>
+          <p>
+            Read-only-Projektion von Bureau und Grabowski. Snapshots stammen vom separaten Producer.
+            <a href="/bureau">Tasks</a> · <a href="/checkouts">Checkouts</a>.
+          </p>
+        </article>
+
+        <article class="info-card" aria-labelledby="repobrief-heading">
+          <h2 id="repobrief-heading">RepoBrief / rLens</h2>
+          <p>
+            Bundle-Status, Pflichtartefakte und Export-Safety-Warnungen ohne versteckten Refresh.
+            <a href="/repobriefs">RepoBriefs öffnen</a>.
+          </p>
+        </article>
+      </div>
     </section>
 
     <section aria-labelledby="phasen-heading">

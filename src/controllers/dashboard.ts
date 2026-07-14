@@ -30,8 +30,32 @@ export interface DashboardPhase {
   error_reason: string | null;
 }
 
+export interface DashboardAttentionItem {
+  phase_id: DashboardPhase['id'];
+  title: string;
+  href: string;
+  severity: 'critical' | 'warning' | 'info';
+  reason: string;
+}
+
+/**
+ * Derived projection only. It does not introduce a second health source; every
+ * field is calculated from the phase source/freshness contracts above.
+ */
+export interface DashboardSummary {
+  state: 'healthy' | 'attention' | 'critical';
+  state_label: 'Stabil' | 'Prüfbedarf' | 'Kritisch';
+  headline: string;
+  total_count: number;
+  verified_fresh_count: number;
+  attention_count: number;
+  unavailable_count: number;
+  attention: DashboardAttentionItem[];
+}
+
 export interface DashboardData {
   phases: DashboardPhase[];
+  summary: DashboardSummary;
 }
 
 /**
@@ -56,6 +80,105 @@ async function safeLoad<T>(name: string, loader: () => Promise<T>): Promise<{ da
     console.warn(`[Dashboard] ${name} load failed:`, msg);
     return { data: null, error: publicErrorReason(msg) };
   }
+}
+
+function summarizePhase(phase: DashboardPhase): DashboardAttentionItem | null {
+  if (phase.source_kind === 'error') {
+    return {
+      phase_id: phase.id,
+      title: phase.title,
+      href: phase.href,
+      severity: 'critical',
+      reason: 'Datenquelle konnte nicht geladen werden',
+    };
+  }
+
+  if (phase.source_kind === 'missing') {
+    return {
+      phase_id: phase.id,
+      title: phase.title,
+      href: phase.href,
+      severity: 'critical',
+      reason: 'Keine belastbare Datenquelle verfügbar',
+    };
+  }
+
+  const reasons: string[] = [];
+  let severity: DashboardAttentionItem['severity'] = 'info';
+
+  if (phase.source_kind === 'fixture') {
+    reasons.push('Ersatzdaten statt eines Artefakts');
+    severity = 'warning';
+  }
+  if (phase.freshness_state === 'stale') {
+    reasons.push('Daten sind veraltet');
+    severity = 'warning';
+  } else if (phase.freshness_state === 'unknown') {
+    reasons.push('Datenfrische ist nicht belegt');
+  }
+
+  if (reasons.length === 0) return null;
+
+  return {
+    phase_id: phase.id,
+    title: phase.title,
+    href: phase.href,
+    severity,
+    reason: reasons.join(' · '),
+  };
+}
+
+export function summarizeDashboard(phases: DashboardPhase[]): DashboardSummary {
+  const severityRank: Record<DashboardAttentionItem['severity'], number> = {
+    critical: 0,
+    warning: 1,
+    info: 2,
+  };
+  const attention = phases
+    .map(summarizePhase)
+    .filter((item): item is DashboardAttentionItem => item !== null)
+    .sort((left, right) => severityRank[left.severity] - severityRank[right.severity]
+      || phases.findIndex((phase) => phase.id === left.phase_id) - phases.findIndex((phase) => phase.id === right.phase_id));
+  const unavailableCount = phases.filter((phase) => phase.source_kind === 'missing' || phase.source_kind === 'error').length;
+  const verifiedFreshCount = phases.filter((phase) => phase.source_kind === 'artifact' && phase.freshness_state === 'fresh').length;
+  const hasCritical = attention.some((item) => item.severity === 'critical');
+
+  if (hasCritical) {
+    return {
+      state: 'critical',
+      state_label: 'Kritisch',
+      headline: `${unavailableCount} ${unavailableCount === 1 ? 'Bereich liefert' : 'Bereiche liefern'} keine belastbaren Daten`,
+      total_count: phases.length,
+      verified_fresh_count: verifiedFreshCount,
+      attention_count: attention.length,
+      unavailable_count: unavailableCount,
+      attention,
+    };
+  }
+
+  if (attention.length > 0) {
+    return {
+      state: 'attention',
+      state_label: 'Prüfbedarf',
+      headline: `${attention.length} ${attention.length === 1 ? 'Bereich benötigt' : 'Bereiche benötigen'} Prüfung`,
+      total_count: phases.length,
+      verified_fresh_count: verifiedFreshCount,
+      attention_count: attention.length,
+      unavailable_count: unavailableCount,
+      attention,
+    };
+  }
+
+  return {
+    state: 'healthy',
+    state_label: 'Stabil',
+    headline: 'Alle Bereiche liefern frische Artefakte',
+    total_count: phases.length,
+    verified_fresh_count: verifiedFreshCount,
+    attention_count: 0,
+    unavailable_count: 0,
+    attention: [],
+  };
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -136,5 +259,5 @@ export async function getDashboardData(): Promise<DashboardData> {
     },
   ];
 
-  return { phases };
+  return { phases, summary: summarizeDashboard(phases) };
 }

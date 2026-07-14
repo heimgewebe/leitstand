@@ -61,6 +61,49 @@ describe('runtime health receipt', () => {
     expect(receipt.doesNotEstablish).toContain('dns_correctness');
   });
 
+  it('resolves a loose branch ref from a linked worktree common Git directory', async () => {
+    await writeSnapshots('2026-07-08T17:55:00.000Z');
+    const commonGitDir = join(testDir, '.git-common');
+    const worktreeGitDir = join(commonGitDir, 'worktrees', 'linked');
+    await rm(join(testDir, '.git'), { recursive: true, force: true });
+    await mkdir(join(commonGitDir, 'refs', 'heads'), { recursive: true });
+    await mkdir(worktreeGitDir, { recursive: true });
+    await writeFile(join(testDir, '.git'), `gitdir: ${worktreeGitDir}\n`, 'utf-8');
+    await writeFile(join(worktreeGitDir, 'HEAD'), 'ref: refs/heads/feature\n', 'utf-8');
+    await writeFile(join(worktreeGitDir, 'commondir'), '../..\n', 'utf-8');
+    await writeFile(join(commonGitDir, 'refs', 'heads', 'feature'), `${'b'.repeat(40)}\n`, 'utf-8');
+
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
+
+    expect(receipt.status).toBe('ok');
+    expect(receipt.git.status).toBe('ok');
+    expect(receipt.git.head).toBe('b'.repeat(40));
+    expect(receipt.git.branch).toBe('feature');
+  });
+
+  it('resolves a packed branch ref from a linked worktree common Git directory', async () => {
+    await writeSnapshots('2026-07-08T17:55:00.000Z');
+    const commonGitDir = join(testDir, '.git-common');
+    const worktreeGitDir = join(commonGitDir, 'worktrees', 'linked');
+    await rm(join(testDir, '.git'), { recursive: true, force: true });
+    await mkdir(worktreeGitDir, { recursive: true });
+    await writeFile(join(testDir, '.git'), `gitdir: ${worktreeGitDir}\n`, 'utf-8');
+    await writeFile(join(worktreeGitDir, 'HEAD'), 'ref: refs/heads/packed-feature\n', 'utf-8');
+    await writeFile(join(worktreeGitDir, 'commondir'), '../..\n', 'utf-8');
+    await writeFile(
+      join(commonGitDir, 'packed-refs'),
+      `# pack-refs with: peeled fully-peeled sorted\n${'c'.repeat(40)} refs/heads/packed-feature\n`,
+      'utf-8',
+    );
+
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
+
+    expect(receipt.status).toBe('ok');
+    expect(receipt.git.status).toBe('ok');
+    expect(receipt.git.head).toBe('c'.repeat(40));
+    expect(receipt.git.branch).toBe('packed-feature');
+  });
+
   it('warns when snapshots are stale', async () => {
     await writeSnapshots('2026-07-08T17:00:00.000Z');
 
@@ -71,7 +114,6 @@ describe('runtime health receipt', () => {
     expect(receipt.snapshots.bureau_tasks.reason).toBe('snapshot_stale');
     expect(receipt.snapshots.checkout_inventory.status).toBe('warn');
   });
-
 
   it('fails when a snapshot has the wrong contract kind', async () => {
     await writeFile(

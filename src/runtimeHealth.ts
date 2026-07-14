@@ -227,6 +227,56 @@ async function resolveGitDir(cwd: string): Promise<string> {
   return resolve(cwd, gitdir);
 }
 
+async function resolveCommonGitDir(gitDir: string): Promise<string> {
+  try {
+    const commonDir = (await readFile(join(gitDir, 'commondir'), 'utf-8')).trim();
+    return commonDir ? resolve(gitDir, commonDir) : gitDir;
+  } catch {
+    return gitDir;
+  }
+}
+
+function isSafeGitRef(ref: string): boolean {
+  return ref.startsWith('refs/')
+    && !ref.includes('\\')
+    && ref.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
+}
+
+async function readPackedRef(commonGitDir: string, ref: string): Promise<string | null> {
+  try {
+    const packedRefs = await readFile(join(commonGitDir, 'packed-refs'), 'utf-8');
+    for (const line of packedRefs.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('^')) continue;
+      const separator = trimmed.indexOf(' ');
+      if (separator <= 0) continue;
+      const head = trimmed.slice(0, separator);
+      const packedRef = trimmed.slice(separator + 1);
+      if (packedRef === ref && GIT_HEAD_RE.test(head)) return head;
+    }
+  } catch {
+    // A missing packed-refs file is normal when every ref is loose.
+  }
+  return null;
+}
+
+async function readGitRef(gitDir: string, ref: string): Promise<string | null> {
+  if (!isSafeGitRef(ref)) return null;
+  const commonGitDir = await resolveCommonGitDir(gitDir);
+  const candidatePaths = [...new Set([join(gitDir, ref), join(commonGitDir, ref)])];
+
+  for (const candidatePath of candidatePaths) {
+    try {
+      const head = (await readFile(candidatePath, 'utf-8')).trim();
+      if (GIT_HEAD_RE.test(head)) return head;
+    } catch {
+      // Continue with the common directory or packed refs.
+    }
+  }
+
+  return readPackedRef(commonGitDir, ref);
+}
+
 async function readGitHealth(cwd: string): Promise<RuntimeHealthReceipt['git']> {
   const gitDir = await resolveGitDir(cwd);
   const headPath = join(gitDir, 'HEAD');
@@ -239,13 +289,12 @@ async function readGitHealth(cwd: string): Promise<RuntimeHealthReceipt['git']> 
     const rawHead = (await readFile(headPath, 'utf-8')).trim();
     if (rawHead.startsWith('ref:')) {
       const ref = rawHead.slice('ref:'.length).trim();
-      const refPath = join(gitDir, ref);
-      const head = (await readFile(refPath, 'utf-8')).trim();
+      const head = await readGitRef(gitDir, ref);
       const branch = ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : ref;
       return {
         ...base,
-        status: GIT_HEAD_RE.test(head) ? 'ok' : 'warn',
-        reason: GIT_HEAD_RE.test(head) ? 'git_head_resolved' : 'git_head_unexpected_format',
+        status: head ? 'ok' : 'warn',
+        reason: head ? 'git_head_resolved' : 'git_ref_unresolved',
         head,
         branch,
       };
