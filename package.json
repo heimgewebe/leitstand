@@ -19,7 +19,8 @@
     "daily-digest": "node dist/cli.js",
     "start:server": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "check:vendor-contracts": "node scripts/check-vendored-contracts.mjs"
+    "check:vendor-contracts": "node scripts/check-vendored-contracts.mjs",
+    "test:browser-shell": "node scripts/browser-shell-regression.mjs"
   },
   "bin": {
     "leitstand": "./dist/cli.js"
@@ -41,6 +42,7 @@
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "eslint": "^8.54.0",
+    "playwright-core": "^1.61.1",
     "supertest": "^7.1.4",
     "typescript": "5.3.3",
     "vitest": "^1.0.0"

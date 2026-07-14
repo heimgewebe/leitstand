@@ -36,38 +36,6 @@
       min-height: 100vh;
     }
 
-    nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 10px 20px;
-      overflow-x: auto;
-      scrollbar-width: thin;
-      background: rgba(10, 14, 26, 0.92);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border-glass);
-    }
-
-    nav a {
-      flex: 0 0 auto;
-      text-decoration: none;
-      color: var(--text-secondary);
-      font-size: 0.82em;
-      font-weight: 500;
-      padding: 6px 14px;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-    }
-
-    nav a:hover { color: var(--text-primary); background: var(--bg-glass); }
-    nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    nav a.active { color: var(--accent); background: rgba(59, 130, 246, 0.1); }
-    nav .title { flex: 0 0 auto; font-weight: 700; font-size: 0.9em; color: var(--text-primary); margin-right: 16px; }
-
     .main {
       max-width: 1080px;
       margin: 0 auto;
@@ -395,7 +363,6 @@
     }
 
     @media (max-width: 640px) {
-      nav { padding-inline: 14px; }
       .main { padding: 28px 18px 64px; }
       .page-header h1 { font-size: 1.5em; }
       .situation { padding: 18px; }

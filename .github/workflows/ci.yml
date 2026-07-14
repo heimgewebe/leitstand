@@ -48,6 +48,10 @@ jobs:
       if: success()
       run: pnpm run test
 
+    - name: Browser shell regression
+      if: success()
+      run: pnpm run test:browser-shell
+
     - name: Build
       if: success()
       run: pnpm run build
