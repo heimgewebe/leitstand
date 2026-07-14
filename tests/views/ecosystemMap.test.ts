@@ -114,7 +114,7 @@ describe('ecosystem-map view', () => {
 
     expect(browserModule).toContain("from '/vendor/mermaid/mermaid.esm.min.mjs'");
     expect(browserModule).toContain("securityLevel: 'strict'");
-    expect(browserModule).toContain("setAttribute('role', 'link')");
+    expect(browserModule).toContain("setAttribute('role', 'button')");
     expect(browserModule).not.toContain('fetch(');
     expect(browserModule).not.toContain('contenteditable');
   });
