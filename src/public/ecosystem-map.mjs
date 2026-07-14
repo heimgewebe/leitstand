@@ -364,7 +364,7 @@ function createViewportController(canvas, onChange) {
 
   function finishPointer(event) {
     const tapTarget = pendingTapTarget;
-    pointers.delete(event.pointerId);
+    pointers['delete'](event.pointerId);
     if (moved) suppressClickUntil = Date.now() + 250;
     lastGesture = gestureSnapshot();
     if (pointers.size === 0) {
@@ -471,16 +471,16 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
     scheduledUrlUpdate = false;
     const url = new URL(window.location.href);
     const query = search.value.trim();
-    if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
-    if (activeType !== 'all') url.searchParams.set('type', activeType); else url.searchParams.delete('type');
-    if (selected) url.searchParams.set('node', selected.target.node_id); else url.searchParams.delete('node');
-    if (selected && focusDepth === 2) url.searchParams.set('depth', '2'); else url.searchParams.delete('depth');
+    if (query) url.searchParams.set('q', query); else url.searchParams['delete']('q');
+    if (activeType !== 'all') url.searchParams.set('type', activeType); else url.searchParams['delete']('type');
+    if (selected) url.searchParams.set('node', selected.target.node_id); else url.searchParams['delete']('node');
+    if (selected && focusDepth === 2) url.searchParams.set('depth', '2'); else url.searchParams['delete']('depth');
     const currentView = viewport?.current();
     const originalView = viewport?.original();
     if (currentView && originalView && serializeViewBox(currentView) !== serializeViewBox(originalView)) {
       url.searchParams.set('view', serializeViewBox(currentView));
     } else {
-      url.searchParams.delete('view');
+      url.searchParams['delete']('view');
     }
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   }
