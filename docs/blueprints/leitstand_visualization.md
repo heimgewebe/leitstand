@@ -73,10 +73,10 @@ Statuslegende: `[ ] offen`, `[~] in Arbeit`, `[x] erledigt`
 ### 7) UX, Zugang und Betriebsreife
 
 - [~] Cross-View-Navigation bauen (Graph <-> Timeline <-> Insight-Layer ohne Kontextverlust). Landing-Seite `/` aggregiert Phase 1-5 mit Quelle/Frische je Phase als Einstieg; tiefere Filterübergaben zwischen Views sind weiter offen.
-- [ ] Responsives Verhalten für Leitstand-Kernansichten auf Desktop und Mobile absichern.
+- [~] Responsives Verhalten für Leitstand-Kernansichten auf Desktop und Mobile absichern. Gemeinsame Navigation ist für Desktop und Mobile geprüft; vollständige Viewport-Matrix aller Inhaltsansichten bleibt offen.
 - [ ] Performance-Budget festlegen (Initial Load, Interaktion, Daten-Refresh) und messen.
 - [~] Leermengen-/Fehlerzustände UX-seitig definieren (kein Datenfriedhof, klare Operator-Hinweise). Empty-States in den Phase-Views vorhanden, Landing-Seite zeigt Fehler-Tile pro Phase, falls ein Controller scheitert.
-- [~] Accessibility-Basics absichern (Kontrast, Tastaturfokus, Labels). Home (`index.ejs`) und Timeline tragen ARIA-Labels, Focus-Styles und Keyboard-Toggle; übrige Views stehen für Sweep aus.
+- [~] Accessibility-Basics absichern (Kontrast, Tastaturfokus, Labels). Gemeinsame Navigation liefert Skip-Link, sichtbare Fokuszustände, genau ein `aria-current` und tastaturbedienbares Mobile-Menü; ein vollständiger WCAG-Sweep aller Inhaltsansichten bleibt offen.
 
 ### 8) Qualitat, Guards und Rollout
 
@@ -135,6 +135,24 @@ Technische Referenzen:
 - `src/views/index.ejs` (Landing-Seite im Dark-Theme mit ARIA-Labels und Phase-Tiles)
 - `tests/utils/eventKind.test.ts` (Event-Familien-Stabilität und Fallback)
 - `tests/controllers/dashboard.test.ts` (Phase-Tiles und Fehler-Isolation)
+
+### Implementierungsstand (2026-07-14)
+
+- [x] Gemeinsame, serverseitig wahrheitsgebundene Hauptnavigation eingeführt: Alle zwölf Views verwenden `src/views/_nav.ejs`; der aktive Pfad wird zentral über `res.locals.currentPath` gesetzt.
+- [x] Mobile Progressive-Enhancement-Navigation umgesetzt und mit realem Browserlayout bei 390×844 sowie 1440×900 geprüft: kein horizontaler Überlauf, alle elf Ziele erreichbar, Escape-/Außenklick-Schließen vorhanden.
+- [x] Accessibility-Basics im gemeinsamen Shell abgesichert: Skip-Link, sichtbarer Tastaturfokus, `aria-current="page"`, Reduced-Motion-Verhalten und mindestens 42 px hohe mobile Ziele.
+- [x] Landing-Seite um ein abgeleitetes Lagebild und responsive Arbeitsflächen ergänzt. Die Zusammenfassung verwendet ausschließlich vorhandene Quellen- und Frischemetadaten und führt keine zweite Wahrheit ein.
+- [x] Runtime-Health für verknüpfte Git-Worktrees gehärtet: lose und gepackte Branch-Refs werden über das gemeinsame Git-Verzeichnis aufgelöst; der sichere isolierte Arbeitsmodus meldet nicht länger fälschlich `warn`.
+- [x] Verifikation: 108 Testsuiten / 361 Tests, Typprüfung, Lint, Server-Build, statischer Build und Browser-Geometrieprüfung grün.
+- [~] Restumfang: Inhaltsansichten über eine feste Desktop-/Mobile-Viewport-Matrix visuell regressionsprüfen, Performance-Budgets für Initial Load, Interaktion und Refresh in CI festlegen sowie tiefe Cross-View-Kontextübergaben absichern.
+
+Technische Referenzen:
+
+- `src/views/_nav.ejs`, `src/public/shell.css`, `src/public/shell.mjs`
+- `src/server.ts` (zentrale aktuelle Route)
+- `src/controllers/dashboard.ts`, `src/views/index.ejs` (abgeleitetes Lagebild und Arbeitsflächen)
+- `src/runtimeHealth.ts` (Git-Common-Directory und Packed-Refs)
+- `tests/views/navigation.test.ts`, `tests/controllers/dashboard.test.ts`, `tests/runtimeHealth.test.ts`
 
 ### Implementierungsstand (2026-05-29)
 
