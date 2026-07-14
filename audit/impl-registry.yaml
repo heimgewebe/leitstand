@@ -56,3 +56,26 @@ implementations:
       - tests/server.test.ts
     supersedes: []
     deprecated_by: []
+
+  - id: impl.controller.ecosystemMapNavigation
+    path: src/controllers/ecosystemMapNavigation.ts
+    impl_type: controller
+    status: active
+    documented_by:
+      - docs/blueprints/ecosystem-map-view.md
+    verified_by:
+      - tests/controllers/ecosystemMapNavigation.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.view.ecosystemMapSvg
+    path: src/public/ecosystem-map.mjs
+    impl_type: view
+    status: active
+    documented_by:
+      - docs/blueprints/ecosystem-map-view.md
+    verified_by:
+      - tests/views/ecosystemMap.test.ts
+      - tests/controllers/ecosystemMapNavigation.test.ts
+    supersedes: []
+    deprecated_by: []

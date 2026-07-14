@@ -14,6 +14,10 @@ import { getTimelineData } from './controllers/timeline.js';
 import { getReflexionData } from './controllers/reflexion.js';
 import { getDashboardData } from './controllers/dashboard.js';
 import { getEcosystemMapData } from './controllers/ecosystemMap.js';
+import {
+  buildEcosystemMapNavigation,
+  serializeEcosystemMapNavigation,
+} from './controllers/ecosystemMapNavigation.js';
 import { getRepoBriefData } from './controllers/repoBrief.js';
 import { getBureauData } from './controllers/bureau.js';
 import { getCheckoutData } from './controllers/checkouts.js';
@@ -81,6 +85,19 @@ app.set('view engine', 'ejs');
 // We point to src/views for the MVP to avoid build complexity of copying assets
 // This assumes the process is run from the root of the repo
 app.set('views', join(process.cwd(), 'src', 'views'));
+
+// Release-local, read-only browser assets. Mermaid is served from the lockfile-bound
+// dependency tree; the map view never depends on a third-party CDN.
+app.use('/assets', express.static(join(process.cwd(), 'src', 'public'), {
+  fallthrough: false,
+  index: false,
+  maxAge: '1h',
+}));
+app.use('/vendor/mermaid', express.static(join(process.cwd(), 'node_modules', 'mermaid', 'dist'), {
+  fallthrough: false,
+  index: false,
+  maxAge: '1h',
+}));
 
 app.post('/events', async (req, res) => {
   // 1. Authorization
@@ -368,7 +385,21 @@ app.get('/checkouts', async (_req, res) => {
 app.get('/ecosystem-map', async (_req, res) => {
   try {
     const data = await getEcosystemMapData();
-    res.render('ecosystem-map', data);
+    const navigation = data.map?.content
+      && data.view_meta.source_repository
+      && data.view_meta.source_commit
+      ? buildEcosystemMapNavigation(
+        data.map.content,
+        data.cross_links,
+        data.view_meta.source_repository,
+        data.view_meta.source_commit,
+        data.map.path,
+      )
+      : [];
+    res.render('ecosystem-map', {
+      ...data,
+      node_navigation_json: serializeEcosystemMapNavigation(navigation),
+    });
   } catch (error) {
     if (!res.headersSent) {
       console.error('[EcosystemMap] Error:', error);

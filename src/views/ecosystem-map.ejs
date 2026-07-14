@@ -1,24 +1,48 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <title>Ecosystem Map – Leitstand</title>
+  <title>Ökosystemkarte – Leitstand</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; color: #f1f5f9; margin: 0; }
-    nav { position: sticky; top: 0; display: flex; gap: 4px; padding: 10px 20px; background: rgba(10, 14, 26, 0.92); border-bottom: 1px solid rgba(255,255,255,.08); }
-    nav a { color: #94a3b8; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: .82em; }
+    a { color: #60a5fa; }
+    nav { position: sticky; top: 0; z-index: 10; display: flex; gap: 4px; padding: 10px 20px; overflow-x: auto; background: rgba(10, 14, 26, 0.96); border-bottom: 1px solid rgba(255,255,255,.08); }
+    nav a { color: #94a3b8; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: .82em; white-space: nowrap; }
     nav a.active, nav a:hover { color: #3b82f6; background: rgba(59,130,246,.1); }
-    nav .title { color: #f1f5f9; font-weight: 700; margin-right: 16px; }
-    main { max-width: 1180px; margin: 0 auto; padding: 42px 24px 80px; }
+    nav .title { color: #f1f5f9; font-weight: 700; margin-right: 16px; padding: 6px 0; white-space: nowrap; }
+    main { max-width: 1440px; margin: 0 auto; padding: 42px 24px 80px; }
     h1 { font-size: 1.9em; margin-bottom: 10px; }
-    .subtitle, .empty, .artifact-meta, li { color: #94a3b8; line-height: 1.55; }
+    h2 { margin-top: 0; }
+    .subtitle, .empty, .artifact-meta, li, summary { color: #94a3b8; line-height: 1.55; }
     .notice, .panel, .meta-item { background: rgba(17,24,39,.88); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; }
     .notice strong { color: #3b82f6; }
     .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 22px; }
     .label { color: #64748b; font-size: .72em; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
     .value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82em; overflow-wrap: anywhere; }
+    .map-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px 18px; margin-bottom: 14px; }
+    .render-status { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78em; color: #94a3b8; }
+    .render-status[data-state="ready"] { color: #86efac; }
+    .render-status[data-state="warning"] { color: #fde68a; }
+    .render-status[data-state="error"] { color: #fca5a5; }
+    .map-canvas { min-height: 420px; overflow: auto; padding: 18px; background: rgba(2,6,23,.72); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; }
+    .map-canvas[data-render-state="loading"] { display: grid; place-items: center; color: #64748b; }
+    .map-canvas svg { display: block; min-width: 980px; width: 100%; height: auto; margin: 0 auto; }
+    .map-canvas g.node.navigable-node { cursor: pointer; }
+    .map-canvas g.node.navigable-node:hover > rect,
+    .map-canvas g.node.navigable-node:hover > polygon,
+    .map-canvas g.node.navigable-node:focus > rect,
+    .map-canvas g.node.navigable-node:focus > polygon { stroke: #60a5fa !important; stroke-width: 3px !important; }
+    .map-canvas g.node.navigable-node:focus { outline: none; }
+    details { margin-top: 16px; }
+    summary { cursor: pointer; }
     pre { background: rgba(2,6,23,.72); color: #dbeafe; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 16px; overflow: auto; font-size: .78em; line-height: 1.45; max-height: 520px; }
+    .link-note { margin: 0 0 14px; color: #94a3b8; line-height: 1.5; }
+    @media (max-width: 720px) {
+      main { padding: 28px 14px 60px; }
+      .notice, .panel, .meta-item { padding: 16px; }
+      .map-canvas { padding: 10px; min-height: 360px; }
+    }
   </style>
 </head>
 <body>
@@ -28,7 +52,7 @@
     <a href="/bureau">Bureau</a>
     <a href="/checkouts">Checkouts</a>
     <a href="/observatory">Observatorium</a>
-    <a href="/ecosystem-map" class="active" aria-current="page">Ecosystem Map</a>
+    <a href="/ecosystem-map" class="active" aria-current="page">Ökosystemkarte</a>
     <a href="/repobriefs">RepoBriefs</a>
     <a href="/anatomy">Anatomie</a>
     <a href="/timeline">Zeitachse</a>
@@ -38,38 +62,68 @@
   </nav>
 
   <main>
-    <h1>Ecosystem Map</h1>
-    <p class="subtitle">Read-only source view for the Heimgewebe ecosystem map owned by the Systemkatalog.</p>
+    <h1>Ökosystemkarte</h1>
+    <p class="subtitle">Grafische, ausschließlich lesende Projektion der vom Systemkatalog verantworteten Ökosystemsemantik.</p>
 
-    <section class="notice" aria-label="Boundary">
-      <strong>View only.</strong> Canonical map semantics live in the Systemkatalog. Leitstand displays pinned artifacts and freshness metadata; it does not edit the map, infer claim truth, dispatch tasks, or prove runtime correctness or merge readiness.
+    <section class="notice" aria-label="Zuständigkeitsgrenze">
+      <strong>Nur Ansicht.</strong> Der Systemkatalog besitzt Systeme, Beziehungen und Bedeutungen. Leitstand rendert das geprüfte, commit- und hashgebundene Artefakt als SVG. Er bearbeitet die Karte nicht, leitet keine neue Wahrheit ab und löst keine Aufgaben oder Änderungen aus.
     </section>
 
-    <section class="meta-grid" aria-label="Source metadata">
-      <div class="meta-item"><div class="label">Source state</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
+    <section class="meta-grid" aria-label="Quellenmetadaten">
+      <div class="meta-item"><div class="label">Quellzustand</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
       <div class="meta-item"><div class="label">Manifest</div><div class="value"><%= view_meta.manifest_path %></div></div>
-      <div class="meta-item"><div class="label">Source root</div><div class="value"><%= view_meta.source_root || '—' %></div></div>
+      <div class="meta-item"><div class="label">Quellwurzel</div><div class="value"><%= view_meta.source_root || '—' %></div></div>
       <div class="meta-item"><div class="label">Repository</div><div class="value"><%= view_meta.source_repository || '—' %></div></div>
-      <div class="meta-item"><div class="label">Commit</div><div class="value"><%= view_meta.source_commit || '—' %></div></div>
-      <div class="meta-item"><div class="label">Freshness</div><div class="value"><%= view_meta.freshness_state %><% if (view_meta.data_age_minutes !== null) { %> · <%= view_meta.data_age_minutes %> min<% } %></div></div>
+      <div class="meta-item">
+        <div class="label">Commit</div>
+        <div class="value">
+          <% if (view_meta.source_repository && view_meta.source_commit) { %>
+            <a href="https://github.com/<%= view_meta.source_repository %>/tree/<%= view_meta.source_commit %>"><%= view_meta.source_commit %></a>
+          <% } else { %>—<% } %>
+        </div>
+      </div>
+      <div class="meta-item"><div class="label">Frische</div><div class="value"><%= view_meta.freshness_state %><% if (view_meta.data_age_minutes !== null) { %> · <%= view_meta.data_age_minutes %> min<% } %></div></div>
     </section>
 
-    <section class="panel" aria-label="Cross-view identity mapping">
-      <h2>Cross-view links</h2>
-      <p class="artifact-meta">Contract: <%= cross_link_meta.source_kind %> / <%= cross_link_meta.missing_reason %> · <%= cross_link_meta.source_path %></p>
+    <section class="panel" aria-labelledby="canonical-map-heading">
+      <div class="map-header">
+        <h2 id="canonical-map-heading">Kanonische Karte</h2>
+        <div class="render-status" data-ecosystem-map-render-status data-state="loading">SVG wird lokal gerendert …</div>
+      </div>
+      <% if (map && map.content) { %>
+        <p class="artifact-meta">
+          <a href="https://github.com/<%= view_meta.source_repository %>/blob/<%= view_meta.source_commit %>/<%= map.path %>"><%= map.path %></a>
+          · <%= map.bytes %> Bytes · sha256 <%= map.sha256 %>
+        </p>
+        <p class="link-note">Knoten mit einer passenden Leitstand-Ansicht öffnen diese Ansicht. Alle übrigen Knoten führen zur exakten Definitionszeile im gebundenen Systemkatalog-Commit. Tastatur: Tab, dann Enter oder Leertaste.</p>
+        <div class="map-canvas" data-ecosystem-map-canvas data-render-state="loading" aria-live="polite">Karte wird vorbereitet …</div>
+        <pre hidden data-ecosystem-map-source><%= map.content %></pre>
+        <script type="application/json" data-ecosystem-map-navigation><%- node_navigation_json %></script>
+        <details data-ecosystem-map-source-details>
+          <summary>Geprüfte Mermaid-Quelle anzeigen</summary>
+          <pre><%= map.content %></pre>
+        </details>
+      <% } else { %>
+        <p class="empty">Die kanonische Mermaid-Quelle ist nicht verfügbar. Grund: <%= map ? map.missing_reason : view_meta.missing_reason %>.</p>
+      <% } %>
+    </section>
+
+    <section class="panel" aria-label="Spezifische Leitstand-Verknüpfungen">
+      <h2>Spezifische Ansichten</h2>
+      <p class="artifact-meta">Vertrag: <%= cross_link_meta.source_kind %> / <%= cross_link_meta.missing_reason %> · <%= cross_link_meta.source_path %></p>
       <% if (cross_links.length === 0) { %>
-        <p class="empty">No cross-view mapping contract is available. Unknown nodes remain unlinked.</p>
+        <p class="empty">Kein Cross-View-Vertrag verfügbar. Die Kartenknoten verweisen weiterhin auf ihren exakten Systemkatalog-Ursprung.</p>
       <% } else { %>
         <ul>
           <% for (const link of cross_links) { %>
             <li>
-              <strong><%= link.node_id %></strong> — <%= link.label %> — <%= link.status %>
+              <strong><%= link.label %></strong> (<%= link.node_id %>)
               <% if (link.links.length > 0) { %>
                 <% for (const target of link.links) { %>
                   · <a href="<%= target.href %>"><%= target.title %></a>
                 <% } %>
               <% } else { %>
-                · <%= link.reason || 'unmapped' %>
+                · <%= link.reason || 'nicht zugeordnet' %>
               <% } %>
             </li>
           <% } %>
@@ -78,17 +132,7 @@
     </section>
 
     <section class="panel">
-      <h2>Canonical ecosystem map</h2>
-      <% if (map && map.content) { %>
-        <div class="artifact-meta"><%= map.path %> · <%= map.bytes %> bytes · sha256 <%= map.sha256 %></div>
-        <pre><%= map.content %></pre>
-      <% } else { %>
-        <p class="empty">Canonical Mermaid source is not available. Reason: <%= map ? map.missing_reason : view_meta.missing_reason %>.</p>
-      <% } %>
-    </section>
-
-    <section class="panel">
-      <h2>Does not establish</h2>
+      <h2>Belegt ausdrücklich nicht</h2>
       <ul>
         <% for (const item of view_meta.does_not_establish) { %>
           <li><%= item %></li>
@@ -96,5 +140,6 @@
       </ul>
     </section>
   </main>
+  <script type="module" src="/assets/ecosystem-map.mjs"></script>
 </body>
 </html>
