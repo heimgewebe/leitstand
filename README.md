@@ -29,18 +29,12 @@ Leitstand ist ausdrücklich **nicht**:
 Alle Änderungen im Repo müssen dieser Invariante entsprechen.
 Lokale Artefaktschreibvorgänge (Caches, Digests, Build-Outputs) sind zulässig, solange sie der reinen Darstellungs- und Observer-Pipeline dienen.
 
-### The Heimgewebe Organism
+### Heimgewebe system landscape
 
-The heimgewebe organization consists of several interconnected repositories and organs:
-- **Bureau**: Task registry, claims and queue truth.
-- **Grabowski**: Local execution, worktrees, receipts and operator-side tooling.
-- **Plexer**: Bounded operational event transport.
-- **Chronik**: Event history and audit/event store.
-- **WGX**: Fleet CLI and metrics snapshot generator.
-- **semantAH**: Semantic index and daily insights.
-- **Heimlern**: Learning/proposal reports from operational friction.
-- **metarepo**: Shared contracts, documentation and reusable CI.
-- **Leitstand**: This repository — read-only dashboard, digest and operator-observation view surface.
+Current system purposes, lifecycle states, and relationships are maintained in the
+[Systemkatalog](https://github.com/heimgewebe/systemkatalog). Leitstand consumes the
+[rendered system catalog](https://github.com/heimgewebe/systemkatalog/blob/main/rendered/system-catalog.md)
+as a read-only source and does not maintain a competing system-role inventory. Repository-local observer invariants remain defined here.
 
 ## Security & Public Usage
 
@@ -249,7 +243,7 @@ The underlying JSON schemas are documented in the **metarepo**:
 - `contracts/event.line.schema.json`
 - `audit.git.v1` – Currently implemented in acs and mirrored in leitstand types; a metarepo contract is planned.
 
-A curated index of all contracts can be found in `metarepo/docs/contracts-index.md`.
+A curated index of shared contracts is maintained in [`metarepo/docs/contracts/contracts-index.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/contracts/contracts-index.md).
 
 **Note:** New Leitstand features (like the Ops Viewer) fit into this model: they visualize data (artifacts) without violating the authority of generation or mutation (WGX/ACS).
 
@@ -344,13 +338,8 @@ This is the initial iteration focused on generating daily digests and operationa
 ## License
 MIT
 
-## Organism Context
+## System context
 
-This repository is part of the **Heimgewebe Organism**.
-
-The overarching architecture, axes, roles, and contracts are centrally described in:
-👉 [`metarepo/docs/system/heimgewebe-organismus.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-organismus.md)
-and the target vision:
-👉 [`metarepo/docs/heimgewebe-zielbild.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/heimgewebe-zielbild.md).
-
-All role definitions, data flows, and contract assignments for this repo are anchored there.
+Current cross-system purposes, lifecycle states, and relationships are maintained in the
+[Systemkatalog](https://github.com/heimgewebe/systemkatalog). Leitstand remains a read-only observer; its local implementation and
+observer boundary are defined in this repository.
