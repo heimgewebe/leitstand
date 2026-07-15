@@ -455,7 +455,7 @@ app.get('/intent', async (_req, res) => {
   }
 });
 
-// Anatomy View – Phase 1: Structural overview of the Heimgewebe organism
+// Historical Anatomy View – non-normative legacy topology; current roles come from Systemkatalog
 app.get('/anatomy', async (_req, res) => {
   try {
     const data = await getAnatomyData();
