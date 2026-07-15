@@ -1,0 +1,18 @@
+[Unit]
+Description=Collect bounded Leitstand storage health from Heim-PC evidence
+After=local-fs.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@RELEASE_ROOT@
+Environment=NODE_OPTIONS=--jitless
+Environment=HEIM_PC_ROOT=@HEIM_PC_ROOT@
+Environment=LEITSTAND_ARTIFACT_ROOT=@LEITSTAND_ARTIFACT_ROOT@
+Environment=LEITSTAND_STORAGE_HEALTH_STATE_ROOT=@STATE_ROOT@
+ExecStart=@RELEASE_ROOT@/scripts/collect-storage-health-runtime
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadOnlyPaths=@HEIM_PC_ROOT@
+ReadWritePaths=@LEITSTAND_ARTIFACT_ROOT@ @STATE_ROOT@ /tmp
+UMask=0077

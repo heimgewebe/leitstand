@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "kind": "leitstand_storage_health",
+  "generatedAt": "2026-07-15T18:00:00.000Z",
+  "retention": {
+    "hourlyMax": 168,
+    "dailyMax": 90,
+    "notificationMax": 128
+  },
+  "source": {
+    "inventory": {
+      "generatedAt": "2026-07-15T18:00:00.000Z",
+      "sha256": "c9dfe1f7bbf3862ddd0db6cb0d35ec710fd109ed54d06951ca1b1c7dd9d297ef",
+      "host": "heim-pc",
+      "truth": "observed"
+    },
+    "maintenancePlan": {
+      "generatedAt": null,
+      "planId": null,
+      "sha256": null,
+      "truth": "unavailable"
+    }
+  },
+  "current": {
+    "observedAt": "2026-07-15T18:00:00.000Z",
+    "filesystem": {
+      "path": "/",
+      "totalBytes": 2000000000000,
+      "usedBytes": 600000000000,
+      "availableBytes": 1300000000000,
+      "usedPercent": 30,
+      "status": "ok",
+      "truth": "observed"
+    },
+    "temporary": {
+      "usedBytes": 233000000000,
+      "status": "hard_limit",
+      "truth": "observed"
+    },
+    "growth24h": {
+      "bytes": 4000000000,
+      "percent": 0.67,
+      "baselineAt": "2026-07-14T18:00:00.000Z",
+      "truth": "estimated"
+    },
+    "topProducers": [
+      {
+        "id": "linked-worktrees",
+        "class": "temporary_workspace",
+        "owner": "grabowski",
+        "sizeBytes": 180000000000,
+        "warningBytes": 100000000000,
+        "hardBytes": 150000000000,
+        "status": "hard_limit",
+        "errorCount": 0,
+        "truth": "observed"
+      },
+      {
+        "id": "build-caches",
+        "class": "regenerable_cache",
+        "owner": "heim-pc",
+        "sizeBytes": 53000000000,
+        "warningBytes": 50000000000,
+        "hardBytes": 80000000000,
+        "status": "warning",
+        "errorCount": 1,
+        "truth": "estimated"
+      }
+    ],
+    "budgetViolations": [
+      {
+        "signal": "producer:linked-worktrees",
+        "status": "hard_limit",
+        "detail": "180000000000 / 150000000000 bytes",
+        "truth": "observed"
+      }
+    ],
+    "unownedArtifacts": [
+      {
+        "path": "/home/alex/repos/.unknown-worktree",
+        "sizeBytes": 5000000000,
+        "truth": "observed"
+      }
+    ],
+    "cleanupBlockers": [
+      {
+        "id": "maintenance-plan-unavailable",
+        "class": "maintenance",
+        "reason": "maintenance_plan_unavailable",
+        "count": null,
+        "truth": "unavailable"
+      }
+    ],
+    "summary": {
+      "producerCount": 2,
+      "budgetViolationCount": 1,
+      "cleanupBlockerCount": 1,
+      "unownedArtifactCount": 1,
+      "notificationCount": 1
+    }
+  },
+  "hourly": [
+    {
+      "bucket": "2026-07-14T18:00:00.000Z",
+      "observedAt": "2026-07-14T18:04:00.000Z",
+      "usedBytes": 596000000000,
+      "totalBytes": 2000000000000,
+      "usedPercent": 29.8,
+      "temporaryBytes": 229000000000,
+      "filesystemStatus": "ok",
+      "temporaryStatus": "warning",
+      "truth": "observed"
+    },
+    {
+      "bucket": "2026-07-15T18:00:00.000Z",
+      "observedAt": "2026-07-15T18:00:00.000Z",
+      "usedBytes": 600000000000,
+      "totalBytes": 2000000000000,
+      "usedPercent": 30,
+      "temporaryBytes": 233000000000,
+      "filesystemStatus": "ok",
+      "temporaryStatus": "hard_limit",
+      "truth": "observed"
+    }
+  ],
+  "daily": [
+    {
+      "date": "2026-07-15",
+      "observedAt": "2026-07-15T18:00:00.000Z",
+      "producers": [],
+      "unownedArtifacts": [],
+      "truth": "observed"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "a721751c9d7f5d2db6946f30b5ad9dcb6e98b2d4a8331551511d5756127e4367",
+      "signal": "temporary-storage",
+      "from": "warning",
+      "to": "hard_limit",
+      "observedAt": "2026-07-15T18:00:00.000Z",
+      "kind": "threshold_crossing",
+      "message": "temporary-storage crossed from warning to hard_limit"
+    }
+  ],
+  "alertState": {
+    "filesystem": "ok",
+    "temporary-storage": "hard_limit",
+    "producer:linked-worktrees": "hard_limit",
+    "producer:build-caches": "warning"
+  },
+  "doesNotEstablish": [
+    "cleanup_authority",
+    "complete_process_observation",
+    "deletion_permission",
+    "future_storage_growth"
+  ]
+}

@@ -34,6 +34,7 @@ Detailed procedures, explicitly separated from the normative core to preserve th
 - [Leitstand Gateway Updates](runbooks/ops.runbook.leitstand-gateway.updates.md)
 - [Leitstand Main Runbook](runbooks/leitstand.md)
 - [Operator Snapshot Producer Runbook](runbooks/operator-snapshots.md)
+- [Bounded Storage Health Projection](operations/storage-health.md)
 - [Local Test Runner Compatibility](runbooks/local-test-runner.md)
 
 ## 3. Tooling & Checks
@@ -70,6 +71,6 @@ Each Leitstand deployment instance operates in exactly one of two explicit modes
 - Scope: optional, read-only public mirror or PR preview.
 - Topology: static host. Cloudflare Pages is the primary preview path; GitHub Pages is manual-only.
 - Supported routes: `/`, `/observatory`, `/intent`; the build emits `dist/site/_static-boundary.json` with the exact route contract.
-- Dynamic-only routes: `/events`, `/ops`, `/bureau`, `/checkouts`, `/ecosystem-map`, `/repobriefs`, `/anatomy`, `/insights`, `/timeline`, `/reflexion`.
+- Dynamic-only routes: `/events`, `/ops`, `/bureau`, `/checkouts`, `/storage-health`, `/ecosystem-map`, `/repobriefs`, `/anatomy`, `/insights`, `/timeline`, `/reflexion`.
 - Nature: derived projection of Mode A; may be stale and is not an operational source of truth.
 - Documentation: [Static Mirror Boundary Decision](decisions/static-mirror-boundary.md), [Cloudflare Deployment](deploy-cloudflare.md), [../.github/workflows/pages.yml](../.github/workflows/pages.yml)

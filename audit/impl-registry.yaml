@@ -90,3 +90,60 @@ implementations:
       - tests/controllers/ecosystemMapNavigation.test.ts
     supersedes: []
     deprecated_by: []
+
+  - id: impl.storageHealth.snapshotBridge
+    path: scripts/storage-health-snapshot.mjs
+    impl_type: bridge
+    status: active
+    documented_by:
+      - docs/operations/storage-health.md
+    verified_by:
+      - tests/storage-health-snapshot.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.storageHealth.runtimeCollector
+    path: scripts/collect-storage-health-runtime
+    impl_type: service
+    status: active
+    documented_by:
+      - docs/operations/storage-health.md
+    verified_by:
+      - tests/storageHealthUnits.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.storageHealth.unitInstaller
+    path: scripts/install-storage-health-units.mjs
+    impl_type: installer
+    status: active
+    documented_by:
+      - docs/operations/storage-health.md
+    verified_by:
+      - tests/storageHealthUnits.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.controller.storageHealth
+    path: src/controllers/storageHealth.ts
+    impl_type: controller
+    status: active
+    documented_by:
+      - docs/operations/storage-health.md
+    verified_by:
+      - tests/controllers/storageHealth.test.ts
+      - tests/storageHealthServer.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.view.storageHealth
+    path: src/views/storage-health.ejs
+    impl_type: view
+    status: active
+    documented_by:
+      - docs/operations/storage-health.md
+    verified_by:
+      - tests/storageHealthServer.test.ts
+      - tests/views/navigation.test.ts
+    supersedes: []
+    deprecated_by: []
