@@ -6,100 +6,100 @@
     {
       "id": "metarepo",
       "label": "Metarepo",
-      "role": "Governance & Contracts",
+      "role": "Historisch: Governance & Contracts",
       "achse": "governance",
-      "description": "Zentrale Architektur-Dokumente, Contract-Definitionen, Cross-Repo-Richtlinien."
+      "description": "Historischer, nicht normativer Fixture-Stand. Zentrale Architektur-Dokumente, Contract-Definitionen, Cross-Repo-Richtlinien."
     },
     {
       "id": "chronik",
       "label": "Chronik",
-      "role": "Ereignis-Organ (Gedächtnis)",
+      "role": "Historisch: Ereignis-Organ (Gedächtnis)",
       "achse": "speicherung",
-      "description": "Zentraler Event-Store (event.line Append-only Log). Repräsentiert die Vergangenheit des Organismus."
+      "description": "Historischer, nicht normativer Fixture-Stand. Zentraler Event-Store (event.line Append-only Log). Repräsentiert die Vergangenheit des Organismus."
     },
     {
       "id": "semantah",
       "label": "SemantAH",
-      "role": "Wissens-Organ",
+      "role": "Historisch: Wissens-Organ",
       "achse": "semantik",
-      "description": "Analysiert und rekonstruiert Wissen aus Events und anderen Quellen – Insights, Einbettungen, Graph-Strukturen."
+      "description": "Historischer, nicht normativer Fixture-Stand. Analysiert und rekonstruiert Wissen aus Events und anderen Quellen – Insights, Einbettungen, Graph-Strukturen."
     },
     {
       "id": "hauski",
       "label": "HausKI",
-      "role": "Entscheidungszentrum",
+      "role": "Historisch: Entscheidungszentrum",
       "achse": "entscheidung",
-      "description": "Trifft als KI-Agent Entscheidungen auf Basis von Events, Insights und Metriken."
+      "description": "Historischer, nicht normativer Fixture-Stand. Trifft als KI-Agent Entscheidungen auf Basis von Events, Insights und Metriken."
     },
     {
       "id": "wgx",
       "label": "WGX",
-      "role": "Fleet-Motorik",
+      "role": "Historisch: Fleet-Motorik",
       "achse": "motorik",
-      "description": "Orchestriert als Nervensystem die Fleet in CI/CD: Standard-Checks, Metriken, Fleet-Zustandsbilder."
+      "description": "Historischer, nicht normativer Fixture-Stand. Orchestriert als Nervensystem die Fleet in CI/CD: Standard-Checks, Metriken, Fleet-Zustandsbilder."
     },
     {
       "id": "leitstand",
       "label": "Leitstand",
-      "role": "User-Interface (Observer)",
+      "role": "Historisch: User-Interface (Observer)",
       "achse": "interface",
-      "description": "Dashboard und Auge des Organismus. Visualisierung von Events, Insights und Fleet-Status."
+      "description": "Historischer, nicht normativer Fixture-Stand. Dashboard und Auge des Organismus. Visualisierung von Events, Insights und Fleet-Status."
     },
     {
       "id": "heimgeist",
       "label": "Heimgeist",
-      "role": "Meta-Agent (Reflexion)",
+      "role": "Historisch: Meta-Agent (Reflexion)",
       "achse": "reflexion",
-      "description": "Beobachtet Systemzustände, erkennt Muster, Lücken, Drift. Reflexionszentrum des Organismus."
+      "description": "Historischer, nicht normativer Fixture-Stand. Beobachtet Systemzustände, erkennt Muster, Lücken, Drift. Reflexionszentrum des Organismus."
     },
     {
       "id": "aussensensor",
       "label": "Aussensensor",
-      "role": "Externe Sensorik",
+      "role": "Historisch: Externe Sensorik",
       "achse": "sensorik",
-      "description": "Erfasst externe Umweltdaten und sendet sie als Events in den Organismus."
+      "description": "Historischer, nicht normativer Fixture-Stand. Erfasst externe Umweltdaten und sendet sie als Events in den Organismus."
     },
     {
       "id": "heimlern",
       "label": "Heimlern",
-      "role": "Mustererkennung & Lernen",
+      "role": "Historisch: Mustererkennung & Lernen",
       "achse": "reflexion",
-      "description": "Erkennt wiederkehrende Muster und gibt Policy-Feedback. Lernende Adaption."
+      "description": "Historischer, nicht normativer Fixture-Stand. Erkennt wiederkehrende Muster und gibt Policy-Feedback. Lernende Adaption."
     },
     {
       "id": "plexer",
       "label": "Plexer",
-      "role": "Event-Router",
+      "role": "Historisch: Event-Router",
       "achse": "motorik",
-      "description": "Vermittelt Events in Echtzeit zwischen Komponenten. Schnelles Routing."
+      "description": "Historischer, nicht normativer Fixture-Stand. Vermittelt Events in Echtzeit zwischen Komponenten. Schnelles Routing."
     },
     {
       "id": "mitschreiber",
       "label": "Mitschreiber",
-      "role": "OS-Kontext-Sensor",
+      "role": "Historisch: OS-Kontext-Sensor",
       "achse": "sensorik",
-      "description": "Erzeugt OS-Kontext-Events (Fenster, Aktivität, Umgebungsdaten)."
+      "description": "Historischer, nicht normativer Fixture-Stand. Erzeugt OS-Kontext-Events (Fenster, Aktivität, Umgebungsdaten)."
     },
     {
       "id": "lenskit",
       "label": "Lenskit",
-      "role": "Struktur-Analyse-Tooling",
+      "role": "Historisch: Struktur-Analyse-Tooling",
       "achse": "semantik",
-      "description": "Sammelt Strukturdaten aus Repos, erzeugt mehrstufige Repräsentationen und Snapshots."
+      "description": "Historischer, nicht normativer Fixture-Stand. Sammelt Strukturdaten aus Repos, erzeugt mehrstufige Repräsentationen und Snapshots."
     },
     {
       "id": "sichter",
       "label": "Sichter",
-      "role": "Code-Review-Agent",
+      "role": "Historisch: Code-Review-Agent",
       "achse": "motorik",
-      "description": "Automatisierte Code-Reviews und Qualitätsprüfungen."
+      "description": "Historischer, nicht normativer Fixture-Stand. Automatisierte Code-Reviews und Qualitätsprüfungen."
     },
     {
       "id": "vault-gewebe",
       "label": "Vault-Gewebe",
-      "role": "Statisches Wissen (Obsidian)",
+      "role": "Historisch: Statisches Wissen (Obsidian)",
       "achse": "speicherung",
-      "description": "Obsidian Vault mit statischem Wissen, das in den semantischen Graphen einfließt."
+      "description": "Historischer, nicht normativer Fixture-Stand. Obsidian Vault mit statischem Wissen, das in den semantischen Graphen einfließt."
     }
   ],
   "edges": [
@@ -259,13 +259,45 @@
     }
   ],
   "achsen": {
-    "governance": { "label": "Governance", "color": "#8B5CF6", "description": "Richtlinien, Contracts, Architektur" },
-    "sensorik": { "label": "Sensorik", "color": "#06B6D4", "description": "Externe und OS-Datenerfassung" },
-    "speicherung": { "label": "Speicherung", "color": "#F59E0B", "description": "Event-Store, Knowledge-Vault" },
-    "semantik": { "label": "Semantik", "color": "#10B981", "description": "Wissensbildung, Analyse, Lens" },
-    "entscheidung": { "label": "Entscheidung", "color": "#EF4444", "description": "KI-gesteuerte Aktionsplanung" },
-    "motorik": { "label": "Motorik / Fleet", "color": "#F97316", "description": "CI/CD-Orchestrierung, Routing, Reviews" },
-    "interface": { "label": "Interface", "color": "#3B82F6", "description": "User-facing Dashboard" },
-    "reflexion": { "label": "Reflexion", "color": "#EC4899", "description": "Meta-Analyse, Mustererkennung, Drift" }
+    "governance": {
+      "label": "Governance",
+      "color": "#8B5CF6",
+      "description": "Richtlinien, Contracts, Architektur"
+    },
+    "sensorik": {
+      "label": "Sensorik",
+      "color": "#06B6D4",
+      "description": "Externe und OS-Datenerfassung"
+    },
+    "speicherung": {
+      "label": "Speicherung",
+      "color": "#F59E0B",
+      "description": "Event-Store, Knowledge-Vault"
+    },
+    "semantik": {
+      "label": "Semantik",
+      "color": "#10B981",
+      "description": "Wissensbildung, Analyse, Lens"
+    },
+    "entscheidung": {
+      "label": "Entscheidung",
+      "color": "#EF4444",
+      "description": "KI-gesteuerte Aktionsplanung"
+    },
+    "motorik": {
+      "label": "Motorik / Fleet",
+      "color": "#F97316",
+      "description": "CI/CD-Orchestrierung, Routing, Reviews"
+    },
+    "interface": {
+      "label": "Interface",
+      "color": "#3B82F6",
+      "description": "User-facing Dashboard"
+    },
+    "reflexion": {
+      "label": "Reflexion",
+      "color": "#EC4899",
+      "description": "Meta-Analyse, Mustererkennung, Drift"
+    }
   }
 }

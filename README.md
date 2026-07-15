@@ -195,7 +195,7 @@ Leitstand acts strictly as a viewer; authentication and authorization enforcemen
 
 ## Data Flow & Contracts
 
-Leitstand is the **visual monitoring center** of the Heimgewebe organism. To provide accurate and stable views, Leitstand relies on clearly defined data contracts and a strict separation of concerns.
+Leitstand is a **read-only monitoring surface** for the Heimgewebe systems. Current system purposes, lifecycle states, and relationships come from the [Systemkatalog](https://github.com/heimgewebe/systemkatalog); Leitstand keeps only its repository-local observer and data-contract rules.
 
 ```mermaid
 flowchart TD

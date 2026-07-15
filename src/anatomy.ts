@@ -33,7 +33,7 @@ export interface AnatomyEdge {
 }
 
 /**
- * Axis definition – functional grouping of organs
+ * Axis definition – functional grouping in historical anatomy snapshots
  */
 export interface Achse {
   /** Display label */
@@ -45,7 +45,7 @@ export interface Achse {
 }
 
 /**
- * Complete anatomy snapshot – structural model of the Heimgewebe organism
+ * Complete anatomy snapshot – historical, non-normative structural model
  */
 export interface AnatomySnapshot {
   /** Schema version identifier */
@@ -54,7 +54,7 @@ export interface AnatomySnapshot {
   generated_at: string;
   /** Source identifier (fixture, artifact, etc.) */
   source: string;
-  /** All organs/repos as graph nodes */
+  /** Historical snapshot entries as graph nodes; current roles live in Systemkatalog. */
   nodes: AnatomyNode[];
   /** All contract-based relationships as edges */
   edges: AnatomyEdge[];
