@@ -21,6 +21,7 @@ import {
 import { getRepoBriefData } from './controllers/repoBrief.js';
 import { getBureauData } from './controllers/bureau.js';
 import { getCheckoutData } from './controllers/checkouts.js';
+import { getStorageHealthData } from './controllers/storageHealth.js';
 import { getRuntimeHealthData } from './runtimeHealth.js';
 import { getEventFamily, listEventFamilies } from './utils/eventKind.js';
 import fs from 'fs';
@@ -383,6 +384,19 @@ app.get('/checkouts', async (_req, res) => {
     if (!res.headersSent) {
       console.error('[Checkouts] Error:', error);
       res.status(500).send('Error loading checkout data');
+    }
+  }
+});
+
+// Storage Health – bounded read-only projection of Heim-PC inventory and maintenance evidence
+app.get('/storage-health', async (_req, res) => {
+  try {
+    const data = await getStorageHealthData();
+    res.render('storage-health', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[StorageHealth] Error:', error);
+      res.status(500).send('Error loading storage health data');
     }
   }
 });

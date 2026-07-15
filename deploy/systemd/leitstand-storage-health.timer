@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh bounded Leitstand storage health hourly
+
+[Timer]
+OnBootSec=3min
+OnCalendar=hourly
+AccuracySec=5min
+RandomizedDelaySec=5min
+Persistent=true
+Unit=leitstand-storage-health.service
+
+[Install]
+WantedBy=timers.target

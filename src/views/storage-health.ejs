@@ -1,0 +1,161 @@
+<%
+const formatBytes = (value) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+  let size = Math.abs(value);
+  let unit = 0;
+  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
+  const signed = value < 0 ? -size : size;
+  return `${signed.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+};
+const formatPercent = (value) => typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(2)} %` : '—';
+const truthLabel = { observed: 'beobachtet', estimated: 'geschätzt', unavailable: 'nicht verfügbar' };
+const statusClass = (status) => ['critical', 'hard_limit'].includes(status) ? 'bad' : ['warning', 'notice', 'degraded'].includes(status) ? 'warn' : 'ok';
+%>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Speicherzustand – Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; color: #f1f5f9; margin: 0; }
+    main { max-width: 1180px; margin: 0 auto; padding: 42px 24px 80px; }
+    h1, h2 { letter-spacing: -.02em; }
+    .subtitle, .muted { color: #94a3b8; line-height: 1.55; }
+    .notice, .card, .metric { background: rgba(17,24,39,.88); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; }
+    .notice, .card { padding: 20px 22px; margin-bottom: 18px; }
+    .notice strong { color: #60a5fa; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 22px 0; }
+    .metric { padding: 18px 20px; }
+    .label { color: #64748b; font-size: .72em; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; }
+    .value { font-size: 1.35em; font-weight: 650; overflow-wrap: anywhere; }
+    .detail { color: #94a3b8; font-size: .82em; margin-top: 7px; }
+    .truth { display: inline-block; margin-top: 8px; padding: 2px 8px; border-radius: 999px; font-size: .72em; border: 1px solid rgba(255,255,255,.14); }
+    .truth-observed { color: #22c55e; } .truth-estimated { color: #f59e0b; } .truth-unavailable { color: #ef4444; }
+    .ok { color: #22c55e; } .warn { color: #f59e0b; } .bad { color: #ef4444; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .84em; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.07); vertical-align: top; }
+    th { color: #64748b; font-size: .78em; text-transform: uppercase; letter-spacing: .06em; }
+    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    ul { margin: 10px 0 0 20px; padding: 0; }
+    li { margin: 8px 0; color: #cbd5e1; }
+    .empty { color: #64748b; font-style: italic; }
+    .source-fixture { color: #f59e0b; } .source-missing, .source-corrupt { color: #ef4444; }
+    .pill { display: inline-block; padding: 2px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; font-size: .78em; }
+  </style>
+  <link rel="stylesheet" href="/assets/shell.css">
+  <script type="module" src="/assets/shell.mjs"></script>
+</head>
+<body>
+  <%- include('_nav') %>
+  <main>
+    <h1>Speicherzustand</h1>
+    <p class="subtitle">Gebundene, read-only Projektion der Heim-PC-Speicherinventare. Stundenwerte, Tagesdetails und Benachrichtigungen sind fest begrenzt; Leitstand scannt und bereinigt den Rechner nicht selbst.</p>
+
+    <section class="notice">
+      <strong>Beobachtung, keine Wirkung.</strong> Diese Ansicht erteilt keine Löschbefugnis. Unsichere oder fehlende Quellen werden ausdrücklich als geschätzt oder nicht verfügbar markiert.
+    </section>
+
+    <section class="metrics" aria-label="Quellen- und Zeitreihenstatus">
+      <div class="metric"><div class="label">Quelle</div><div class="value source-<%= view_meta.source_kind %>"><%= view_meta.source_kind %></div><div class="detail"><code><%= view_meta.missing_reason %></code> · <%= view_meta.source_path_display %></div></div>
+      <div class="metric"><div class="label">Aktualität</div><div class="value <%= view_meta.freshness_state === 'fresh' ? 'ok' : view_meta.freshness_state === 'stale' ? 'warn' : 'bad' %>"><%= view_meta.freshness_state %></div><div class="detail"><%= view_meta.generated_at || 'kein Zeitstempel' %></div></div>
+      <div class="metric"><div class="label">Stundenfenster</div><div class="value"><%= view_meta.hourly_count %> / <%= view_meta.hourly_max || '—' %></div><div class="detail">feste Obergrenze</div></div>
+      <div class="metric"><div class="label">Tagesfenster</div><div class="value"><%= view_meta.daily_count %> / <%= view_meta.daily_max || '—' %></div><div class="detail">feste Obergrenze</div></div>
+      <div class="metric"><div class="label">Wahrheitszustände</div><div class="value"><span class="ok"><%= view_meta.observed_count %></span> / <span class="warn"><%= view_meta.estimated_count %></span> / <span class="bad"><%= view_meta.unavailable_count %></span></div><div class="detail">beobachtet / geschätzt / nicht verfügbar</div></div>
+    </section>
+
+    <% if (view_meta.source_kind === 'fixture') { %>
+      <section class="card"><p class="muted">Fixture-Fallback aktiv. Die angezeigten Werte demonstrieren den Vertrag, sind aber kein operativer Systemzustand.</p></section>
+    <% } else if (view_meta.source_kind !== 'artifact') { %>
+      <section class="card"><p class="muted">Kein gültiges Speicherzustands-Artefakt verfügbar. Dieser degradierte Zustand wird nicht als grün interpretiert.</p></section>
+    <% } %>
+
+    <% if (current) { %>
+      <section class="metrics" aria-label="Aktuelle Speicherwerte">
+        <div class="metric">
+          <div class="label">Belegter Speicher</div>
+          <div class="value"><%= formatBytes(current.filesystem.usedBytes) %></div>
+          <div class="detail"><%= formatPercent(current.filesystem.usedPercent) %> von <%= formatBytes(current.filesystem.totalBytes) %> · <span class="<%= statusClass(current.filesystem.status) %>"><%= current.filesystem.status %></span></div>
+          <span class="truth truth-<%= current.filesystem.truth %>"><%= truthLabel[current.filesystem.truth] %></span>
+        </div>
+        <div class="metric">
+          <div class="label">Temporär / regenerierbar</div>
+          <div class="value"><%= formatBytes(current.temporary.usedBytes) %></div>
+          <div class="detail"><span class="<%= statusClass(current.temporary.status) %>"><%= current.temporary.status %></span></div>
+          <span class="truth truth-<%= current.temporary.truth %>"><%= truthLabel[current.temporary.truth] %></span>
+        </div>
+        <div class="metric">
+          <div class="label">Wachstum 24 Stunden</div>
+          <div class="value"><%= formatBytes(current.growth24h.bytes) %></div>
+          <div class="detail"><%= formatPercent(current.growth24h.percent) %><% if (current.growth24h.baselineAt) { %> · Basis <%= current.growth24h.baselineAt %><% } %></div>
+          <span class="truth truth-<%= current.growth24h.truth %>"><%= truthLabel[current.growth24h.truth] %></span>
+        </div>
+        <div class="metric">
+          <div class="label">Verstöße / Blocker / Unzugeordnet</div>
+          <div class="value"><span class="<%= current.summary.budgetViolationCount ? 'bad' : 'ok' %>"><%= current.summary.budgetViolationCount %></span> / <span class="<%= current.summary.cleanupBlockerCount ? 'warn' : 'ok' %>"><%= current.summary.cleanupBlockerCount %></span> / <%= current.summary.unownedArtifactCount %></div>
+          <div class="detail">Budget / Cleanup / Artefakte</div>
+        </div>
+      </section>
+
+      <section class="card table-wrap">
+        <h2>Größte Erzeuger</h2>
+        <% if (current.topProducers.length === 0) { %><p class="empty">Keine Erzeugerdaten verfügbar.</p><% } else { %>
+        <table>
+          <thead><tr><th>Erzeuger</th><th>Klasse / Eigentümer</th><th>Größe</th><th>Budget</th><th>Status</th><th>Wahrheit</th></tr></thead>
+          <tbody>
+            <% current.topProducers.forEach(function(producer) { %>
+              <tr>
+                <td class="mono"><%= producer.id %></td>
+                <td><%= producer.class %><div class="muted"><%= producer.owner %></div></td>
+                <td><%= formatBytes(producer.sizeBytes) %></td>
+                <td><%= formatBytes(producer.warningBytes) %> / <%= formatBytes(producer.hardBytes) %></td>
+                <td class="<%= statusClass(producer.status) %>"><%= producer.status %></td>
+                <td><span class="truth truth-<%= producer.truth %>"><%= truthLabel[producer.truth] %></span></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        <% } %>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <h2>Budgetverstöße</h2>
+          <% if (current.budgetViolations.length === 0) { %><p class="empty">Keine Verstöße beobachtet.</p><% } else { %>
+            <ul><% current.budgetViolations.forEach(function(item) { %><li><code><%= item.signal %></code>: <span class="<%= statusClass(item.status) %>"><%= item.status %></span> · <%= item.detail %> <span class="truth truth-<%= item.truth %>"><%= truthLabel[item.truth] %></span></li><% }); %></ul>
+          <% } %>
+        </section>
+        <section class="card">
+          <h2>Cleanup-Blocker</h2>
+          <% if (current.cleanupBlockers.length === 0) { %><p class="empty">Keine Blocker im gelieferten Plan.</p><% } else { %>
+            <ul><% current.cleanupBlockers.forEach(function(item) { %><li><code><%= item.class %></code>: <%= item.reason %><% if (item.count !== null) { %> · <%= item.count %><% } %> <span class="truth truth-<%= item.truth %>"><%= truthLabel[item.truth] %></span></li><% }); %></ul>
+          <% } %>
+        </section>
+      </div>
+
+      <div class="grid">
+        <section class="card">
+          <h2>Unzugeordnete Artefakte</h2>
+          <% if (current.unownedArtifacts.length === 0) { %><p class="empty">Keine unzugeordneten Kandidaten beobachtet.</p><% } else { %>
+            <ul><% current.unownedArtifacts.forEach(function(item) { %><li><code><%= item.path %></code> · <%= formatBytes(item.sizeBytes) %> <span class="truth truth-<%= item.truth %>"><%= truthLabel[item.truth] %></span></li><% }); %></ul>
+          <% } %>
+        </section>
+        <section class="card">
+          <h2>Deduplizierte Meldungen</h2>
+          <% if (notifications.length === 0) { %><p class="empty">Keine Schwellenänderung im begrenzten Fenster.</p><% } else { %>
+            <ul><% notifications.slice(0, 12).forEach(function(item) { %><li><span class="pill"><%= item.kind %></span> <code><%= item.signal %></code>: <%= item.from %> → <%= item.to %><div class="muted"><%= item.observedAt %></div></li><% }); %></ul>
+          <% } %>
+        </section>
+      </div>
+    <% } %>
+
+    <section class="card">
+      <h2>Does not establish</h2>
+      <ul><% view_meta.does_not_establish.forEach(function(item) { %><li><%= item %></li><% }); %></ul>
+    </section>
+  </main>
+</body>
+</html>

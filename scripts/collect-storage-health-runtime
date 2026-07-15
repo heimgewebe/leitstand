@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+RELEASE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+HEIM_PC_ROOT="${HEIM_PC_ROOT:-/home/alex/repos/heim-pc}"
+LEITSTAND_ARTIFACT_ROOT="${LEITSTAND_ARTIFACT_ROOT:-/home/alex/repos/leitstand/artifacts}"
+STATE_ROOT="${LEITSTAND_STORAGE_HEALTH_STATE_ROOT:-${XDG_STATE_HOME:-$HOME/.local/state}/leitstand/storage-health}"
+PYTHON_BIN="${PYTHON_BIN:-/usr/bin/python3}"
+NODE_BIN="${NODE_BIN:-/usr/bin/node}"
+
+INVENTORY_SCRIPT="$HEIM_PC_ROOT/scripts/storage_inventory.py"
+MAINTENANCE_SCRIPT="$HEIM_PC_ROOT/scripts/cache_maintenance.py"
+INVENTORY_PATH="$STATE_ROOT/storage-inventory.json"
+MAINTENANCE_PATH="$STATE_ROOT/cache-maintenance-plan.json"
+OUTPUT_PATH="$LEITSTAND_ARTIFACT_ROOT/storage-health.json"
+LOCK_PATH="$STATE_ROOT/collector.lock"
+
+for required in "$INVENTORY_SCRIPT" "$MAINTENANCE_SCRIPT" "$RELEASE_ROOT/scripts/storage-health-snapshot.mjs"; do
+  if [[ ! -f "$required" ]]; then
+    printf 'storage-health collector missing required file: %s\n' "$required" >&2
+    exit 2
+  fi
+done
+
+mkdir -p -- "$STATE_ROOT" "$LEITSTAND_ARTIFACT_ROOT"
+exec 9>"$LOCK_PATH"
+if ! flock -n 9; then
+  printf 'storage-health collector already running\n' >&2
+  exit 75
+fi
+
+maintenance_tmp="$(mktemp --tmpdir="$STATE_ROOT" .cache-maintenance-plan.XXXXXX)"
+trap 'rm -f -- "$maintenance_tmp"' EXIT
+
+"$PYTHON_BIN" "$INVENTORY_SCRIPT" --output "$INVENTORY_PATH" >/dev/null
+"$PYTHON_BIN" "$MAINTENANCE_SCRIPT" plan --no-write >"$maintenance_tmp"
+chmod 0600 "$maintenance_tmp"
+mv -f -- "$maintenance_tmp" "$MAINTENANCE_PATH"
+
+NODE_OPTIONS="${NODE_OPTIONS:---jitless}" "$NODE_BIN" "$RELEASE_ROOT/scripts/storage-health-snapshot.mjs" \
+  --inventory "$INVENTORY_PATH" \
+  --maintenance-plan "$MAINTENANCE_PATH" \
+  --output "$OUTPUT_PATH"
