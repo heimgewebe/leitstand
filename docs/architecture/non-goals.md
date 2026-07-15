@@ -10,7 +10,7 @@ summary: >
 
 # Explizite Nicht-Ziele (Non-Goals)
 
-Um Leitstand stabil als **Observer** im Heimgewebe-Organismus zu verankern, wird definiert, was das System *nicht* tun wird. 
+Um Leitstand stabil als **Observer** im Heimgewebe-Systemverbund zu verankern, wird definiert, was das System *nicht* tun wird.
 
 Leitstand wird nicht:
 * **mutierende oder orchestrierende Commands ausführen:** Leitstand führt keine Kommandos aus, die den Zustand anderer Repositories oder externer Systemdienste verändern oder steuern. Lokale read-orientierte Hilfsskripte (z. B. Fetch-Skripte für Datenabruf) sind davon ausgenommen, solange sie keinen schreibenden Einfluss auf externe Systeme haben.

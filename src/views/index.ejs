@@ -9,7 +9,7 @@
   <title>Leitstand</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Leitstand – Beobachtungs- und Verdichtungsmodul des Heimgewebe-Organismus.">
+  <meta name="description" content="Leitstand – Beobachtungs- und Verdichtungsmodul der Heimgewebe-Systeme.">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -337,25 +337,6 @@
     .info-card a { color: #93c5fd; }
     .info-card a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-    .info-card .role-list {
-      list-style: none;
-      padding: 0;
-      margin-top: 12px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 8px;
-      font-size: 0.82em;
-      color: var(--text-secondary);
-    }
-
-    .info-card .role-list li {
-      padding: 6px 10px;
-      background: var(--bg-glass);
-      border: 1px solid var(--border-glass);
-      border-radius: 8px;
-    }
-
-    .info-card .role-list strong { color: var(--text-primary); font-weight: 600; }
 
     @media (max-width: 860px) {
       .surface-grid { grid-template-columns: 1fr; }
@@ -395,7 +376,7 @@
     <header class="page-header">
       <h1>Leitstand</h1>
       <p class="subtitle">
-        Beobachtungs- und Verdichtungsmodul des Heimgewebe-Organismus.
+        Beobachtungs- und Verdichtungsmodul der Heimgewebe-Systeme.
         Strikter Observer: visualisiert Zustände, ohne externe Systeme zu mutieren.
       </p>
     </header>
@@ -534,17 +515,13 @@
     <section class="info-card" aria-labelledby="rolle-heading">
       <h2 id="rolle-heading">Rolle des Leitstands</h2>
       <p>
-        Der Leitstand beobachtet, verdichtet und visualisiert den Zustand des Heimgewebe-Organismus.
+        Der Leitstand beobachtet, verdichtet und visualisiert belegte Zustände der Heimgewebe-Systeme.
         Er ist ausdrücklich kein Orchestrator, keine Steuerinstanz und schreibt nicht in externe Systeme.
       </p>
-      <ul class="role-list">
-        <li><strong>chronik</strong> – Event-Log</li>
-        <li><strong>semantAH</strong> – Semantik &amp; Insights</li>
-        <li><strong>wgx</strong> – Fleet-Metriken</li>
-        <li><strong>heimgeist</strong> – Reflexion</li>
-        <li><strong>hauski</strong> – Entscheidungen</li>
-        <li><strong>metarepo</strong> – Contracts &amp; Governance</li>
-      </ul>
+      <p>
+        Systemrollen und Beziehungen stammen aus dem Systemkatalog.
+        <a href="/ecosystem-map">Systemkarte öffnen</a>.
+      </p>
     </section>
   </main>
 </body>

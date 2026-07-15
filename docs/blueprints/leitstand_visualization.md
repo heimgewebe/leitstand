@@ -2,13 +2,17 @@
 id: docs.blueprints.leitstand_visualization
 title: Blaupause: Visualisierung des Heimgewebes im Leitstand
 doc_type: architecture
-status: active
-canonicality: canonical
+status: historical
+canonicality: non-normative
 summary: >
   Blaupause: Visualisierung des Heimgewebes im Leitstand
 ---
 
 # Blaupause: Visualisierung des Heimgewebes im Leitstand
+
+> **Historischer Konzeptstand:** Diese Blaupause dokumentiert die frühere Organismusmetapher
+> und ist keine aktuelle System-, Rollen- oder Quellenwahrheit. Aktuelle Systemzwecke und
+> Beziehungen werden im [Systemkatalog](https://github.com/heimgewebe/systemkatalog) geführt.
 
 ## Abhakbare Umsetzungsroadmap
 
