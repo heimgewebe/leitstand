@@ -20,7 +20,8 @@
     "start:server": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "check:vendor-contracts": "node scripts/check-vendored-contracts.mjs",
-    "test:browser-shell": "node scripts/browser-shell-regression.mjs"
+    "test:browser-shell": "node scripts/browser-shell-regression.mjs",
+    "test:release-runtime": "python3 -B -m unittest tests/test_release_runtime.py"
   },
   "bin": {
     "leitstand": "./dist/cli.js"

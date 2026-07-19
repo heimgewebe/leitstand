@@ -1,0 +1,29 @@
+[Unit]
+Description=Leitstand read-only operator ecosystem display
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@RELEASE_ROOT@
+Environment=PORT=3000
+Environment=NODE_ENV=production
+Environment=NODE_OPTIONS=--jitless
+Environment=LEITSTAND_BIND_HOST=127.0.0.1
+Environment=LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH=@ECOSYSTEM_MAP_MANIFEST_PATH@
+Environment=LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT=@ECOSYSTEM_MAP_SOURCE_ROOT@
+Environment=LEITSTAND_BUREAU_SNAPSHOT_PATH=@BUREAU_SNAPSHOT_PATH@
+Environment=LEITSTAND_CHECKOUT_SNAPSHOT_PATH=@CHECKOUT_SNAPSHOT_PATH@
+Environment=LEITSTAND_STORAGE_HEALTH_PATH=@STORAGE_HEALTH_PATH@
+ExecStartPre=/usr/bin/test -f @RELEASE_ROOT@/release-manifest.json
+ExecStartPre=/usr/bin/test -f @RELEASE_ROOT@/dist/server.js
+ExecStart=/usr/bin/node @RELEASE_ROOT@/dist/server.js
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=@ARTIFACT_ROOT@ /tmp
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "kind": "leitstand_local_runtime_config",
+  "canonical_origin": "https://leitstand.heimgewebe.home.arpa",
+  "ecosystem_map_manifest_path": "/home/alex/.local/share/systemkatalog/releases/<commit>/rendered/ecosystem-map-artifact-manifest.json",
+  "ecosystem_map_source_root": "/home/alex/.local/share/systemkatalog/releases/<commit>",
+  "artifact_root": "/home/alex/repos/leitstand/artifacts",
+  "heim_pc_root": "/home/alex/repos/heim-pc",
+  "storage_state_root": "/home/alex/.local/state/leitstand/storage-health"
+}

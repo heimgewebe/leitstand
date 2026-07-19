@@ -1,130 +1,90 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --- Configuration ---
-
 if ! command -v git >/dev/null 2>&1; then
-    echo "❌ Error: git is not installed or not in PATH." >&2
+    echo "Error: git is not installed or not in PATH." >&2
     exit 1
 fi
 
-# Resolve repo root robustly to handle calls from anywhere
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-
-# Adjust paths relative to repo root
-SCRIPT_PATH="scripts/leitstand-up"
+RELEASE_SCRIPT="scripts/leitstand-release.py"
+COMPOSE_SCRIPT="scripts/leitstand-up"
+RUNBOOK_RELEASE="docs/runbooks/local-release-runtime.md"
 RUNBOOK_GATEWAY="docs/runbooks/ops.runbook.leitstand-gateway.md"
 RUNBOOK_MAIN="docs/runbooks/leitstand.md"
 
 log_info() { echo "→ $1"; }
 log_success() { echo "✓ $1"; }
-log_error() { echo "❌ $1" >&2; }
-fail() { log_error "$1"; exit 1; }
+fail() { echo "Error: $1" >&2; exit 1; }
 
-# --- Checks ---
+log_info "Checking operative deployment invariants..."
 
-log_info "Checking Operative Invariants..."
+for script in "$RELEASE_SCRIPT" "$COMPOSE_SCRIPT"; do
+    [[ -f "$REPO_ROOT/$script" ]] || fail "Deployment entry point '$script' is missing."
+    [[ -x "$REPO_ROOT/$script" ]] || fail "Deployment entry point '$script' is not executable."
+done
+log_success "Versioned runtime and optional Compose entry points exist and are executable."
 
-# 1. Deployment Script
-if [[ ! -f "$REPO_ROOT/$SCRIPT_PATH" ]]; then
-    fail "Deployment script '$SCRIPT_PATH' is missing!"
-fi
-if [[ ! -x "$REPO_ROOT/$SCRIPT_PATH" ]]; then
-    fail "Deployment script '$SCRIPT_PATH' is not executable!"
-fi
-log_success "Deployment script exists and is executable."
+REQUIRED_RELEASE_FILES=(
+    "deploy/systemd/leitstand.service"
+    "deploy/systemd/leitstand-storage-health.service"
+    "deploy/systemd/runtime-config.example.json"
+    "tests/test_release_runtime.py"
+)
+for file in "${REQUIRED_RELEASE_FILES[@]}"; do
+    [[ -f "$REPO_ROOT/$file" ]] || fail "Required release-runtime file '$file' is missing."
+done
+log_success "Coupled user-systemd release files exist."
 
-# 2. Compose Files
 COMPOSE_FILES=(
     "deploy/docker-compose.yml"
     "deploy/docker-compose.loopback.yml"
     "deploy/docker-compose.lan.yml"
     "deploy/docker-compose.proxy.yml"
 )
-
 for file in "${COMPOSE_FILES[@]}"; do
-    if [[ ! -f "$REPO_ROOT/$file" ]]; then
-        fail "Required Compose file '$file' is missing!"
-    fi
+    [[ -f "$REPO_ROOT/$file" ]] || fail "Optional Compose contract file '$file' is missing."
 done
-log_success "All required Compose files exist."
+log_success "Optional Compose development files remain complete."
 
-# 3. Runbook Consistency
 REQUIRED_STRINGS=(
-    "./scripts/leitstand-up"
-    "LEITSTAND_BIND_IP"
+    "scripts/leitstand-release.py"
+    "leitstand-storage-health.service"
+    "runtime-config.example.json"
 )
-
-# Function to check a runbook
 check_runbook() {
-    local rb="$1"
-    if [[ ! -f "$REPO_ROOT/$rb" ]]; then
-        fail "Runbook '$rb' is missing!"
-    fi
-    for str in "${REQUIRED_STRINGS[@]}"; do
-        if ! grep -F -e "$str" "$REPO_ROOT/$rb" >/dev/null; then
-            fail "Runbook '$rb' is missing required reference: '$str'. Ensure the canonical deployment method is documented."
-        fi
+    local runbook="$1"
+    [[ -f "$REPO_ROOT/$runbook" ]] || fail "Runbook '$runbook' is missing."
+    for value in "${REQUIRED_STRINGS[@]}"; do
+        grep -F -e "$value" "$REPO_ROOT/$runbook" >/dev/null \
+            || fail "Runbook '$runbook' is missing canonical release reference '$value'."
     done
-    log_success "Runbook '$rb' contains required operative references."
+    log_success "Runbook '$runbook' contains the canonical coupled-release contract."
 }
-
+check_runbook "$RUNBOOK_RELEASE"
 check_runbook "$RUNBOOK_GATEWAY"
 check_runbook "$RUNBOOK_MAIN"
 
-# 4. Drift Prevention: Ensure deprecated script is NOT referenced
-# We search for "leitstand-deploy" but exclude this script itself from the check.
-
-DEPRECATED_TERM="leitstand-deploy"
-THIS_SCRIPT_NAME="check-runbook-invariants.sh"
-
-GREP_EXCLUDES=(
-    "--exclude-dir=.git"
-    "--exclude-dir=node_modules"
-    "--exclude-dir=dist"
-    "--exclude-dir=coverage"
-    "--exclude-dir=.venv"
-    "--exclude-dir=tmp"
-    "--exclude=$THIS_SCRIPT_NAME"
-)
-
-if grep -R -F "$DEPRECATED_TERM" "$REPO_ROOT" "${GREP_EXCLUDES[@]}" >/dev/null 2>&1; then
-    FOUND=$(grep -R -F "$DEPRECATED_TERM" "$REPO_ROOT" "${GREP_EXCLUDES[@]}" -l || true)
-
-    if [[ -n "$FOUND" ]]; then
-        echo -e "❌ Found references to deprecated '$DEPRECATED_TERM' in repository:\n$FOUND" >&2
-        fail "Please remove these references and use 'scripts/leitstand-up' instead."
-    fi
+if grep -R -F "leitstand-deploy" "$REPO_ROOT" \
+    --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist \
+    --exclude-dir=coverage --exclude-dir=.venv --exclude-dir=tmp \
+    --exclude=check-runbook-invariants.sh >/dev/null 2>&1; then
+    fail "Deprecated 'leitstand-deploy' references remain; use scripts/leitstand-release.py."
 fi
-log_success "No deprecated '$DEPRECATED_TERM' references found."
+log_success "No deprecated deployment entry point remains."
 
-# 5. Reference Copy Integrity
-# If docs/deploy/heimserver.naming.md exists, it must contain a valid provenance marker.
 NAMING_REF="docs/deploy/heimserver.naming.md"
 if [[ -f "$REPO_ROOT/$NAMING_REF" ]]; then
-    # Check for existence of the field
-    if ! grep -q "Upstream-Commit:" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy '$NAMING_REF' must contain 'Upstream-Commit:' field to ensure traceability."
-    fi
-
-    # A) Strict Format Check
-    # Must be exactly 40 hex chars, anchored, no trailing/leading garbage
-    if ! grep -Eq "^[[:space:]]*Upstream-Commit:[[:space:]]*[0-9a-f]{40}[[:space:]]*$" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy '$NAMING_REF' must contain a valid 40-hex 'Upstream-Commit:' field."
-    fi
-
-    # Check for ZERO HASH (strict mode) - technically matches hex regex, so we keep explicit ban
-    if grep -q "Upstream-Commit: 0000000000000000000000000000000000000000" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy '$NAMING_REF' uses a zero-hash placeholder. Please provide a real upstream commit hash."
-    fi
-
-    # B) Strict Verified-Flag Check
-    # Must be exactly 'true', anchored
-    if ! grep -Eq "^[[:space:]]*Upstream-Verified:[[:space:]]*true[[:space:]]*$" "$REPO_ROOT/$NAMING_REF"; then
-        fail "Reference copy '$NAMING_REF' must declare 'Upstream-Verified: true'."
-    fi
-
-    log_success "Reference copy '$NAMING_REF' contains valid provenance marker."
+    grep -Eq "^[[:space:]]*Upstream-Commit:[[:space:]]*[0-9a-f]{40}[[:space:]]*$" \
+        "$REPO_ROOT/$NAMING_REF" \
+        || fail "Reference copy '$NAMING_REF' lacks a valid 40-hex Upstream-Commit."
+    ! grep -q "Upstream-Commit: 0000000000000000000000000000000000000000" \
+        "$REPO_ROOT/$NAMING_REF" \
+        || fail "Reference copy '$NAMING_REF' uses a zero-hash placeholder."
+    grep -Eq "^[[:space:]]*Upstream-Verified:[[:space:]]*true[[:space:]]*$" \
+        "$REPO_ROOT/$NAMING_REF" \
+        || fail "Reference copy '$NAMING_REF' must declare Upstream-Verified: true."
+    log_success "Reference copy provenance is valid."
 fi
 
-log_info "All invariants passed."
+log_info "All operative deployment invariants passed."
