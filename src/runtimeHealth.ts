@@ -61,10 +61,16 @@ export interface RuntimeHealthOptions {
   checkoutSnapshotPath?: string;
   storageHealthSnapshotPath?: string;
   ecosystemMapManifestPath?: string;
-  staleAfterMs?: number;
+  staleAfterMsOverrides?: Partial<Record<SnapshotKind, number>>;
 }
 
-const SNAPSHOT_STALE_AFTER_MS = 20 * 60 * 1000;
+const SNAPSHOT_STALE_LIMITS_MS: Record<SnapshotKind, number> = {
+  bureau_tasks: 20 * 60 * 1000,
+  checkout_inventory: 20 * 60 * 1000,
+  storage_health: 90 * 60 * 1000,
+  ecosystem_map: 168 * 60 * 60 * 1000,
+};
+
 const GIT_HEAD_RE = /^[0-9a-f]{40}$/;
 
 const DOES_NOT_ESTABLISH = [
@@ -345,7 +351,14 @@ function checkFromSnapshot(snapshot: RuntimeHealthSnapshot): RuntimeHealthCheck 
 export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): Promise<RuntimeHealthReceipt> {
   const cwd = resolve(options.cwd || process.cwd());
   const now = options.now || new Date();
-  const staleAfterMs = options.staleAfterMs ?? SNAPSHOT_STALE_AFTER_MS;
+  
+  const staleLimits = {
+    bureau_tasks: options.staleAfterMsOverrides?.bureau_tasks ?? SNAPSHOT_STALE_LIMITS_MS.bureau_tasks,
+    checkout_inventory: options.staleAfterMsOverrides?.checkout_inventory ?? SNAPSHOT_STALE_LIMITS_MS.checkout_inventory,
+    storage_health: options.staleAfterMsOverrides?.storage_health ?? SNAPSHOT_STALE_LIMITS_MS.storage_health,
+    ecosystem_map: options.staleAfterMsOverrides?.ecosystem_map ?? SNAPSHOT_STALE_LIMITS_MS.ecosystem_map,
+  };
+
   const bureauPath = options.bureauSnapshotPath || snapshotPathFromEnv('bureau_tasks', cwd);
   const checkoutPath = options.checkoutSnapshotPath || snapshotPathFromEnv('checkout_inventory', cwd);
   const storageHealthPath = options.storageHealthSnapshotPath || snapshotPathFromEnv('storage_health', cwd);
@@ -353,10 +366,10 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
 
   const [git, bureauSnapshot, checkoutSnapshot, storageHealthSnapshot, ecosystemMapSnapshot] = await Promise.all([
     readGitHealth(cwd),
-    readSnapshotHealth('bureau_tasks', bureauPath, cwd, now, staleAfterMs),
-    readSnapshotHealth('checkout_inventory', checkoutPath, cwd, now, staleAfterMs),
-    readSnapshotHealth('storage_health', storageHealthPath, cwd, now, staleAfterMs),
-    readSnapshotHealth('ecosystem_map', ecosystemMapPath, cwd, now, staleAfterMs),
+    readSnapshotHealth('bureau_tasks', bureauPath, cwd, now, staleLimits.bureau_tasks),
+    readSnapshotHealth('checkout_inventory', checkoutPath, cwd, now, staleLimits.checkout_inventory),
+    readSnapshotHealth('storage_health', storageHealthPath, cwd, now, staleLimits.storage_health),
+    readSnapshotHealth('ecosystem_map', ecosystemMapPath, cwd, now, staleLimits.ecosystem_map),
   ]);
 
   const checks: RuntimeHealthReceipt['checks'] = {

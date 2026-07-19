@@ -199,72 +199,76 @@
       line-height: 1.45;
     }
 
-    .phase-grid {
+    .source-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 16px;
       margin-bottom: 40px;
     }
 
-    .phase-card {
-      display: block;
-      text-decoration: none;
-      color: inherit;
+    .source-card {
       background: var(--bg-card);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border-glass);
       border-radius: 14px;
-      padding: 18px 20px;
-      transition: border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
-    }
-
-    .phase-card:hover,
-    .phase-card:focus-visible {
-      border-color: rgba(59, 130, 246, 0.4);
-      background: rgba(17, 24, 39, 0.95);
-      outline: none;
-    }
-
-    .phase-card:focus-visible {
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-
-    .phase-card .phase-header {
+      padding: 22px 24px;
+      text-decoration: none;
+      color: inherit;
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .source-card:hover,
+    .source-card:focus-visible {
+      border-color: rgba(255, 255, 255, 0.15);
+      background: rgba(30, 41, 59, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .source-card:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .source-card .source-header {
+      display: flex;
       justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 10px;
     }
 
-    .phase-card .phase-number {
-      font-size: 0.65em;
+    .source-card .source-title {
+      font-size: 1em;
       font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--text-muted);
+      color: var(--text-primary);
+      margin: 0;
     }
 
-    .phase-card h2 {
-      font-size: 1.05em;
+    .source-card h2 {
+      font-size: 1.1em;
       font-weight: 600;
-      letter-spacing: -0.01em;
-      margin-bottom: 6px;
+      margin: 0 0 8px;
+      color: var(--text-primary);
     }
 
-    .phase-card .description {
-      font-size: 0.85em;
+    .source-card .description {
+      font-size: 0.88em;
       color: var(--text-secondary);
       line-height: 1.5;
-      margin-bottom: 14px;
+      margin: 0 0 16px;
+      flex-grow: 1;
     }
 
-    .phase-card .metric {
-      font-size: 0.85em;
-      color: var(--text-primary);
-      margin-bottom: 10px;
-      font-variant-numeric: tabular-nums;
+    .source-card .metric {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.88em;
+      color: var(--accent);
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-glass);
     }
 
     .meta-row {
@@ -438,14 +442,14 @@
           <p>Die Quellenübersicht ist aktuell nicht verfügbar. Einzelne Ansichten sind weiterhin über die Navigation erreichbar.</p>
         </div>
       <% } else { %>
-        <div class="phase-grid">
+        <div class="source-grid">
           <% sourceCards.forEach(function(p) { %>
-            <a class="phase-card"
+            <a class="source-card"
                href="<%= p.href %>"
                data-source-id="<%= p.id %>"
                aria-label="<%= p.title %> – <%= p.description %>">
-              <div class="phase-header">
-                <span class="phase-number"><%= p.title %></span>
+              <div class="source-header">
+                <span class="source-title"><%= p.title %></span>
                 <span class="source-pill source-<%= p.source_kind %>">
                   <% if (p.source_kind === 'artifact') { %>Artefakt<% } %>
                   <% if (p.source_kind === 'fixture') { %>Fixture<% } %>

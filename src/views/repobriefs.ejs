@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <title>RepoBriefs – Leitstand</title>
+  <title>RepoGround – Leitstand</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
@@ -26,14 +26,14 @@
   <%- include('_nav') %>
 
   <main>
-    <h1>RepoBrief / rLens Observability</h1>
+    <h1>RepoGround Observability</h1>
     <p class="subtitle">Read-only surface for repository snapshot bundles. This view shows status, required artifacts and export-safety warnings; it does not generate bundles or claim repository understanding.</p>
 
     <section class="notice">
       <strong>View only.</strong> Local bundle paths are operator pointers. Export-safety failures must remain visible and block public-share framing.
     </section>
 
-    <section class="meta-grid" aria-label="RepoBrief source metadata">
+    <section class="meta-grid" aria-label="RepoGround source metadata">
       <div class="meta-item"><div class="label">Source state</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
       <div class="meta-item"><div class="label">Source path</div><div class="value"><%= view_meta.source_path %></div></div>
       <div class="meta-item"><div class="label">Generated</div><div class="value"><%= view_meta.generated_at || '—' %></div></div>
@@ -43,7 +43,7 @@
     </section>
 
     <% if (bundles.length === 0) { %>
-      <section class="card"><p class="muted">No RepoBrief bundle index is available. This is a degraded read-only state, not a green status.</p></section>
+      <section class="card"><p class="muted">No RepoGround bundle index is available. This is a degraded read-only state, not a green status.</p></section>
     <% } %>
 
     <% for (const bundle of bundles) { %>

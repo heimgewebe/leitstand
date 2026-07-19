@@ -206,7 +206,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       id: 'repo_ground',
       title: 'RepoGround',
       description: 'Bundle-Ansicht.',
-      href: '/repobriefs',
+      href: '/repoground',
       source_kind: repo.error ? 'error' : (repo.data?.view_meta.source_kind ?? 'missing'),
       freshness_state: repo.data?.view_meta.freshness_state ?? 'unknown',
       metric: repo.data ? `${repo.data.bundles.length} Bundles` : 'keine Repos',

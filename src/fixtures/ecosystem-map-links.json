@@ -35,35 +35,6 @@
       ]
     },
     {
-      "nodeId": "repo:chronik",
-      "label": "Chronik",
-      "status": "linked",
-      "links": [
-        {
-          "view": "timeline",
-          "href": "/timeline?node=repo%3Achronik",
-          "title": "Chronik timeline context"
-        }
-      ]
-    },
-    {
-      "nodeId": "repo:weltgewebe",
-      "label": "Weltgewebe",
-      "status": "linked",
-      "links": [
-        {
-          "view": "anatomy",
-          "href": "/anatomy?node=repo%3Aweltgewebe",
-          "title": "Weltgewebe structural context"
-        },
-        {
-          "view": "timeline",
-          "href": "/timeline?node=repo%3Aweltgewebe",
-          "title": "Weltgewebe timeline context"
-        }
-      ]
-    },
-    {
       "nodeId": "repo:schauwerk",
       "label": "Schauwerk",
       "status": "linked",
@@ -81,9 +52,9 @@
       "status": "linked",
       "links": [
         {
-          "view": "repobriefs",
-          "href": "/repobriefs",
-          "title": "RepoBrief bundle observability"
+          "view": "repoground",
+          "href": "/repoground",
+          "title": "RepoGround bundle observability"
         }
       ]
     },
@@ -93,9 +64,9 @@
       "status": "linked",
       "links": [
         {
-          "view": "repobriefs",
-          "href": "/repobriefs",
-          "title": "RepoBrief bundle observability"
+          "view": "repoground",
+          "href": "/repoground",
+          "title": "RepoGround bundle observability"
         }
       ]
     }

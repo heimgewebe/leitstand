@@ -66,7 +66,7 @@ describe('runtime health receipt', () => {
   it('reports ok when git and operator snapshots are fresh', async () => {
     await writeSnapshots('2026-07-08T17:55:00.000Z');
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
 
     expect(receipt.status).toBe('ok');
     expect(receipt.kind).toBe('leitstand_runtime_health_receipt');
@@ -93,7 +93,7 @@ describe('runtime health receipt', () => {
     await writeFile(join(worktreeGitDir, 'commondir'), '../..\n', 'utf-8');
     await writeFile(join(commonGitDir, 'refs', 'heads', 'feature'), `${'b'.repeat(40)}\n`, 'utf-8');
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
 
     expect(receipt.status).toBe('ok');
     expect(receipt.git.status).toBe('ok');
@@ -116,7 +116,7 @@ describe('runtime health receipt', () => {
       'utf-8',
     );
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
 
     expect(receipt.status).toBe('ok');
     expect(receipt.git.status).toBe('ok');
@@ -127,7 +127,7 @@ describe('runtime health receipt', () => {
   it('warns when snapshots are stale', async () => {
     await writeSnapshots('2026-07-08T17:00:00.000Z');
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
 
     expect(receipt.status).toBe('warn');
     expect(receipt.snapshots.bureau_tasks.status).toBe('warn');
@@ -176,7 +176,7 @@ describe('runtime health receipt', () => {
       }),
       'utf-8',
     );
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
 
     expect(receipt.status).toBe('fail');
     expect(receipt.snapshots.bureau_tasks.status).toBe('fail');
@@ -213,7 +213,7 @@ describe('runtime health receipt', () => {
       }),
       'utf-8',
     );
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
 
     expect(receipt.status).toBe('fail');
     expect(receipt.snapshots.bureau_tasks.status).toBe('fail');

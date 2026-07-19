@@ -9,7 +9,7 @@ const canonicalRoutes = [
   '/checkouts',
   '/storage-health',
   '/ecosystem-map',
-  '/repobriefs',
+  '/repoground',
 ];
 
 const navViews = [

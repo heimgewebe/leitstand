@@ -38,11 +38,6 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.string().default('development'),
   LEITSTAND_STRICT: z.string().optional(),
-  LEITSTAND_EVENTS_TOKEN: z.string().optional(),
-  OBSERVATORY_STRICT: z.string().optional(),
-  OBSERVATORY_STRICT_FAIL: z.string().optional(),
-  OBSERVATORY_URL: z.string().default('https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json'),
-  OBSERVATORY_ARTIFACT_PATH: z.string().optional(),
   INTEGRITY_URL: z.string().optional(),
   // Ops Viewer Configuration
   LEITSTAND_ACS_URL: z.string()
@@ -99,12 +94,7 @@ const parsedEnv = (): EnvType => {
     const defaults: EnvType = {
         PORT: 3000,
         NODE_ENV: 'development',
-        OBSERVATORY_URL: 'https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json',
         LEITSTAND_STRICT: undefined,
-        LEITSTAND_EVENTS_TOKEN: undefined,
-        OBSERVATORY_STRICT: undefined,
-        OBSERVATORY_STRICT_FAIL: undefined,
-        OBSERVATORY_ARTIFACT_PATH: undefined,
         INTEGRITY_URL: undefined,
         LEITSTAND_ACS_URL: '', // Default to disabled for safety
         LEITSTAND_OPS_ALLOW_JOB_FALLBACK: undefined,
@@ -135,9 +125,6 @@ export const envConfig = {
     get PORT() { return parsedEnv().PORT; },
     get bindHost() { return parsedBindEnv().LEITSTAND_BIND_HOST; },
     get NODE_ENV() { return parsedEnv().NODE_ENV; },
-    get OBSERVATORY_URL() { return parsedEnv().OBSERVATORY_URL; },
-    get token() { return parsedEnv().LEITSTAND_EVENTS_TOKEN; },
-    get OBSERVATORY_ARTIFACT_PATH() { return parsedEnv().OBSERVATORY_ARTIFACT_PATH; },
     get INTEGRITY_URL() { return parsedEnv().INTEGRITY_URL; },
     get acsUrl() { return parsedEnv().LEITSTAND_ACS_URL.replace(/\/+$/, ''); },
     get allowJobFallback() { return isTruthy(parsedEnv().LEITSTAND_OPS_ALLOW_JOB_FALLBACK); },
@@ -145,11 +132,7 @@ export const envConfig = {
 
     get isStrict() {
         const env = parsedEnv();
-        return env.LEITSTAND_STRICT === '1' || env.NODE_ENV === 'production' || env.OBSERVATORY_STRICT === '1';
-    },
-
-    get isStrictFail() {
-        return parsedEnv().OBSERVATORY_STRICT_FAIL === '1';
+        return env.LEITSTAND_STRICT === '1' || env.NODE_ENV === 'production';
     },
 
     paths: {
