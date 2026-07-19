@@ -56,13 +56,18 @@ Expected properties:
 
 - HTTPS through the internal reverse proxy;
 - no WAN publication;
-- exact versioned Git release;
-- safe application bind, default `127.0.0.1:3000` for direct operation;
-- current read-only route set only;
+- exact immutable Git release with commit and tree identity;
+- `leitstand.service` and `leitstand-storage-health.service` switched as one rollback-capable transaction;
+- create-only deployment receipts and idempotent same-release replay;
+- safe application bind on `127.0.0.1:3000`;
+- structured local and canonical route readbacks;
 - source-specific artifact freshness.
+
+The canonical effect path is `scripts/leitstand-release.py`; host-specific paths come from an exact runtime JSON based on `deploy/systemd/runtime-config.example.json`.
 
 See:
 
+- [Local Versioned Release Runtime](docs/runbooks/local-release-runtime.md)
 - [Runtime Contract](docs/runtime.contract.md)
 - [Data Flow](docs/data-flow.md)
 - [Drift Signals](docs/drift.signals.md)
@@ -177,6 +182,7 @@ The pull-request quality gates are:
 pnpm check:vendor-contracts
 pnpm lint
 pnpm typecheck
+pnpm test:release-runtime
 pnpm test
 pnpm test:browser-shell
 pnpm build

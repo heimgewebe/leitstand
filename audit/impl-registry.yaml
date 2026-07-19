@@ -147,3 +147,13 @@ implementations:
       - tests/views/navigation.test.ts
     supersedes: []
     deprecated_by: []
+  - id: impl.release.localSystemdAdapter
+    path: scripts/leitstand-release.py
+    impl_type: installer
+    status: active
+    documented_by:
+      - docs/runbooks/local-release-runtime.md
+    verified_by:
+      - tests/test_release_runtime.py
+    supersedes: []
+    deprecated_by: []

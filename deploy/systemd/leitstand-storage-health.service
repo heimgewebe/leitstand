@@ -9,6 +9,8 @@ Environment=NODE_OPTIONS=--jitless
 Environment=HEIM_PC_ROOT=@HEIM_PC_ROOT@
 Environment=LEITSTAND_ARTIFACT_ROOT=@LEITSTAND_ARTIFACT_ROOT@
 Environment=LEITSTAND_STORAGE_HEALTH_STATE_ROOT=@STATE_ROOT@
+ExecStartPre=/usr/bin/test -f @RELEASE_ROOT@/release-manifest.json
+ExecStartPre=/usr/bin/test -x @RELEASE_ROOT@/scripts/collect-storage-health-runtime
 ExecStart=@RELEASE_ROOT@/scripts/collect-storage-health-runtime
 NoNewPrivileges=true
 PrivateTmp=true

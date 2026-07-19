@@ -19,6 +19,7 @@ When an observed state requires action, perform that action in the authoritative
 - `agent-policy.yaml`: change policy
 - `docs/index.md`: current documentation router
 - `docs/runtime.contract.md`: runtime, route, and health boundary
+- `docs/runbooks/local-release-runtime.md`: canonical user-systemd deployment and rollback contract
 - `docs/data-flow.md`: artifact and authority flow
 - vendored contracts: pinned external schemas
 
@@ -34,6 +35,8 @@ Historical reports and blueprints do not override current contracts.
 - `/repoground` is canonical; `/repobriefs` is compatibility-only.
 - Removed legacy routes must remain unavailable.
 - Do not expose internal paths or secrets in browser output.
+- Production releases must use `scripts/leitstand-release.py`; do not reconstruct systemd cutovers with ad hoc unit edits.
+- Treat the web and storage-health units as one transaction and preserve exact prior-unit evidence.
 
 ## Discovery and Generated Files
 
@@ -55,6 +58,7 @@ New canonical documents require frontmatter and discoverability through `docs/in
 - repository structure, document relation, generated-file, and drift guards
 - `pnpm lint`
 - `pnpm typecheck`
+- `pnpm test:release-runtime`
 - `pnpm build`
 - `pnpm test`
 - `pnpm build:static`

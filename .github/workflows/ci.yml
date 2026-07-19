@@ -44,6 +44,10 @@ jobs:
       if: success()
       run: pnpm run typecheck
 
+    - name: Release runtime tests
+      if: success()
+      run: pnpm run test:release-runtime
+
     - name: Test
       if: success()
       run: pnpm run test

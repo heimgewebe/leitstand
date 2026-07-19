@@ -24,6 +24,7 @@ Leitstand is the read-only observation surface for the Heimgewebe operator ecosy
 ## Operative runbooks
 
 - [Leitstand Main Runbook](runbooks/leitstand.md)
+- [Local Versioned Release Runtime](runbooks/local-release-runtime.md)
 - [Leitstand Gateway](runbooks/ops.runbook.leitstand-gateway.md)
 - [Leitstand Gateway Updates](runbooks/ops.runbook.leitstand-gateway.updates.md)
 - [Operator Snapshot Producer Runbook](runbooks/operator-snapshots.md)
@@ -46,11 +47,11 @@ Leitstand is the read-only observation surface for the Heimgewebe operator ecosy
 
 ## Deployment modes
 
-**Canonical runtime:** Internal read-only service with the current runtime surfaces above.
+**Canonical runtime:** Internal read-only service deployed as an immutable, exact-commit user-systemd release. The web and storage-health units are switched and rolled back as one receipt-bound transaction.
 
 **Static mirror:** Optional preview containing only `/`. Its `_static-boundary.json` records supported, runtime-only, and removed routes. It does not prove runtime availability or source freshness.
 
-See [Deployment](DEPLOYMENT.md), [Static Mirror Boundary](decisions/static-mirror-boundary.md), and [Cloudflare Deployment](deploy-cloudflare.md).
+See [Deployment](DEPLOYMENT.md), [Local Versioned Release Runtime](runbooks/local-release-runtime.md), [Static Mirror Boundary](decisions/static-mirror-boundary.md), and [Cloudflare Deployment](deploy-cloudflare.md).
 
 ## Historical material
 

@@ -108,7 +108,12 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" || "${CI:-}" == "true" ]]; then
 else
     # 3. Local developer environment
     # Use uncommitted dirty files, or fallback to the latest commit if clean
-    MODIFIED_FILES=$(git diff --name-only HEAD || git ls-files --modified)
+    MODIFIED_FILES=$(
+        {
+            git diff --name-only HEAD || true
+            git ls-files --others --exclude-standard || true
+        } | awk 'NF' | sort -u
+    )
     if [[ -z "$MODIFIED_FILES" ]]; then
         log_info "Clean working tree. Diffing against latest commit..."
         MODIFIED_FILES=$(git show --name-only --pretty='' HEAD || true)
