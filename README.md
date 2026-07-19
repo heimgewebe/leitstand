@@ -10,7 +10,7 @@ Read-only dashboard, digest and observation surface for the **heimgewebe** opera
 
 ## Overview
 
-`leitstand` is the central read-only monitoring and reporting surface for the heimgewebe multi-repo ecosystem. It combines digest generation with browser views for knowledge, fleet and operator-observation artifacts. Execution authority stays with Bureau, Grabowski, Plexer and the runtime operators; Leitstand renders their exported state only.
+`leitstand` is the central read-only monitoring and reporting surface for the heimgewebe multi-repo ecosystem. It combines digest generation with browser views for fleet and operator-observation artifacts. Execution authority stays with Bureau, Grabowski, Plexer and the runtime operators; Leitstand renders their exported state only.
 
 ## Purpose
 
@@ -70,15 +70,9 @@ For details, refer to:
 
 The daily digest generator combines:
 
-1. **Semantic Insights** from semantAH (`today.json`)
-   - Top topics with frequency counts
-   - Semantic questions
-   - Detected deltas/changes
-
 2. **Events** from chronik (JSONL files)
    - Recent events within a 24-hour window
    - Filtered and sorted by timestamp
-   - Support for multiple event types (CI, deploy, etc.)
 
 3. **Fleet Health Metrics** from WGX snapshots
    - Total repository count
@@ -155,43 +149,7 @@ Create a `leitstand.config.json` file in your project root:
 
 **Environment Variables**: Paths support environment variable expansion using `$VAR_NAME` syntax.
 
-## Ops Viewer Setup
 
-The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the `agent-control-surface` (acs). In the default safe mode it is a strict viewer. A legacy opt-in job fallback may request audit jobs from acs, but that behavior is outside the core Observer Invariant and must not be treated as Leitstand execution authority.
-
-### Naming & Compatibility
-
-The service is officially named `agent-control-surface` (short: **acs**). However, stable interface identifiers retain the legacy `ACS` prefix for compatibility:
-- **Environment:** `LEITSTAND_ACS_URL`
-- **Headers:** `X-ACS-Viewer-Token`
-- **CORS (acs-side):** `ACS_CORS_ALLOW_ORIGINS`
-
-Leitstand acts strictly as a viewer; authentication and authorization enforcement are responsibilities of the acs or its reverse proxy. Exact endpoint paths are defined by the acs API; Leitstand only consumes them.
-
-### Environment Variables
-
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `LEITSTAND_ACS_URL` | `''` (disabled) | Base URL of the `agent-control-surface`. Must be a valid HTTP/HTTPS URL. |
-| `LEITSTAND_OPS_ALLOW_JOB_FALLBACK` | `false` | If `true`, the viewer falls back to triggering async jobs (`POST /api/audit/git`) if the sync endpoint is missing. |
-| `LEITSTAND_REPOS` | `metarepo,wgx,leitstand` | Comma-separated list of repositories to display in the selector. |
-| `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. **Note:** Enforcement depends on acs configuration (e.g., via reverse proxy or middleware); Leitstand merely sends it. |
-
-**Note:** If any environment variable validation fails (e.g., invalid `LEITSTAND_ACS_URL` format), the system falls back to safe defaults (disabling acs integration entirely).
-
-### Deployment & Security Notes
-
-1.  **Mixed Content Warning**:
-    If Leitstand is served via **HTTPS**, the browser will block requests to an **HTTP** acs URL.
-    - **Fix:** Deploy `agent-control-surface` behind an HTTPS reverse proxy (e.g., Caddy, Nginx) or configure `LEITSTAND_ACS_URL` to use HTTPS.
-
-2.  **CORS Configuration (acs Side)**:
-    The `agent-control-surface` must explicitly allow the Leitstand origin to make requests, especially if credentials or cookies are involved.
-    - **acs Config:** Ensure `ACS_CORS_ALLOW_ORIGINS` includes your Leitstand URL (e.g., `https://leitstand.internal`).
-    - *Avoid using `*` if possible.*
-
-3.  **Viewer vs. Actor**:
-    By default (`LEITSTAND_OPS_ALLOW_JOB_FALLBACK=false`), Leitstand only attempts non-mutating fetches (the sync endpoint, if exposed by acs). Enabling fallback allows it to trigger jobs (the job-trigger endpoint, e.g. `POST /api/audit/git`), which is a state-changing action (even if just starting an audit). The UI will display a disclaimer reflecting the current mode. **Crucially, if enabled, Leitstand may *request* an audit job, but authorization and execution remain strictly on the acs side.**
 
 ## Data Flow & Contracts
 
@@ -207,7 +165,6 @@ flowchart TD
     BUREAU[Bureau<br/>Tasks / Claims Snapshot] --> LEITSTAND
     GRABOWSKI[Grabowski<br/>Checkout Inventory Snapshot] --> LEITSTAND
     HEIMLERN[Heimlern<br/>Learning Proposals] -. future artifact .-> LEITSTAND
-    ACS[agent-control-surface<br/>Ops Audit Data] -. optional viewer input .-> LEITSTAND
 ```
 
 ### Roles in the flow
@@ -220,7 +177,6 @@ flowchart TD
 - **semantAH**: Builds the semantic index and writes daily insights.
 - **WGX**: Generates fleet metrics snapshots.
 - **Heimlern**: Emits learning/proposal reports; Leitstand may later render derived artifacts.
-- **agent-control-surface** (acs): Provides operational audit data consumed by the Ops Viewer when configured.
 
 ### Central Inputs
 
@@ -231,7 +187,6 @@ The authoritative view of the data streams is documented in `docs/data-flow.md`.
 - `event.line` – Event backbone from Chronik
 - `leitstand_bureau_task_snapshot` – Bureau task/claim lifecycle snapshot rendered by `/bureau`
 - `leitstand_checkout_inventory` – Grabowski checkout/worktree snapshot rendered by `/checkouts`
-- `audit.git.v1` – Ops Viewer data from acs (not part of the Chronik event backbone unless explicitly exported)
 
 ### JSON Schemas
 
@@ -241,11 +196,10 @@ The underlying JSON schemas are documented in the **metarepo**:
 - `contracts/insights.daily.schema.json`
 - `contracts/insights.schema.json`
 - `contracts/event.line.schema.json`
-- `audit.git.v1` – Currently implemented in acs and mirrored in leitstand types; a metarepo contract is planned.
 
 A curated index of shared contracts is maintained in [`metarepo/docs/contracts/contracts-index.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/contracts/contracts-index.md).
 
-**Note:** New Leitstand features (like the Ops Viewer) fit into this model: they visualize data (artifacts) without violating the authority of generation or mutation (WGX/ACS).
+**Note:** New Leitstand features fit into this model: they visualize data (artifacts) without violating the authority of generation or mutation (WGX).
 
 ## Usage
 
@@ -299,17 +253,15 @@ pnpm test:watch
 leitstand/
 ├── src/
 │   ├── config.ts          # Configuration loading and validation
-│   ├── insights.ts        # Load semantAH insights
 │   ├── events.ts          # Load chronik events
 │   ├── metrics.ts         # Load WGX metrics
 │   ├── digest.ts          # Combine data sources
 │   ├── renderMarkdown.ts  # Render digest to markdown
-│   ├── server.ts          # Express server & Ops Viewer
-│   ├── views/             # EJS templates (ops, observatory, etc.)
+│   ├── server.ts          # Express server
+│   ├── views/             # EJS templates
 │   └── cli.ts             # CLI entry point
 ├── tests/
 │   ├── config.test.ts
-│   ├── ops_integration.test.ts
 │   └── ...
 ├── package.json
 ├── tsconfig.json

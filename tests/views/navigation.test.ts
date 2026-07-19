@@ -8,14 +8,8 @@ const canonicalRoutes = [
   '/bureau',
   '/checkouts',
   '/storage-health',
-  '/observatory',
   '/ecosystem-map',
   '/repobriefs',
-  '/anatomy',
-  '/timeline',
-  '/insights',
-  '/reflexion',
-  '/ops',
 ];
 
 const navViews = [
@@ -23,15 +17,8 @@ const navViews = [
   'bureau.ejs',
   'checkouts.ejs',
   'storage-health.ejs',
-  'observatory.ejs',
   'ecosystem-map.ejs',
   'repobriefs.ejs',
-  'anatomy.ejs',
-  'timeline.ejs',
-  'insights.ejs',
-  'reflexion.ejs',
-  'ops.ejs',
-  'intent.ejs',
 ];
 
 const viewsRoot = join(process.cwd(), 'src', 'views');
@@ -71,11 +58,6 @@ describe('canonical navigation parity', () => {
       ...html.matchAll(/<a class="leitstand-nav__link active"\s+href="([^"]+)"\s+aria-current="page">/g),
     ].map((match) => match[1]);
     expect(activeMatches).toEqual([route]);
-  });
-
-  it.each(['/intent', '/intent/example'])('maps %s back to the Observatorium section', async (currentPath) => {
-    const html = await renderFile(navPartial, { currentPath });
-    expect(html).toMatch(/href="\/observatory"\s+aria-current="page"/);
   });
 
   it('provides progressive mobile navigation and a keyboard skip target', () => {
@@ -118,7 +100,5 @@ describe('canonical navigation parity', () => {
     expect(buildScript).toContain('copyFile(join(ROOT, "src", "public", name), join(assetsOut, name))');
     expect(buildScript).toContain('await copyStaticAssets()');
     expect(buildScript).toContain('{ currentPath: "/" }');
-    expect(buildScript).toContain('currentPath: "/observatory"');
-    expect(buildScript).toContain('{ currentPath: "/intent" }');
   });
 });

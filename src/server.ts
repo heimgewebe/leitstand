@@ -7,11 +7,6 @@ import { fileURLToPath } from 'url';
 import { readJsonFile } from './utils/fs.js';
 import { isLoopbackAddress } from './utils/network.js';
 import { envConfig } from './config.js';
-import { getObservatoryData } from './controllers/observatory.js';
-import { getAnatomyData } from './controllers/anatomy.js';
-import { getInsightsData } from './controllers/insights.js';
-import { getTimelineData } from './controllers/timeline.js';
-import { getReflexionData } from './controllers/reflexion.js';
 import { getDashboardData } from './controllers/dashboard.js';
 import { getEcosystemMapData } from './controllers/ecosystemMap.js';
 import {
@@ -23,7 +18,6 @@ import { getBureauData } from './controllers/bureau.js';
 import { getCheckoutData } from './controllers/checkouts.js';
 import { getStorageHealthData } from './controllers/storageHealth.js';
 import { getRuntimeHealthData } from './runtimeHealth.js';
-import { getEventFamily, listEventFamilies } from './utils/eventKind.js';
 import fs from 'fs';
 import { validatePlexerReport } from './validation/validators.js';
 import { randomBytes } from 'crypto';
@@ -309,15 +303,46 @@ app.post('/events', async (req, res) => {
   }
 });
 
-// Ops Viewer Route - Viewer UI; may request orchestration from ACS depending on configuration (allowJobFallback).
-app.get('/ops', (_req, res) => {
-  res.render('ops', {
-    acsUrl: envConfig.acsUrl,
-    configuredRepos: envConfig.repos,
-    allowJobFallback: envConfig.allowJobFallback,
-    acsViewerToken: envConfig.acsViewerToken
+
+let isDirectRun = false;
+try {
+  isDirectRun =
+    !!process.argv[1] &&
+    realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url));
+} catch {
+  // If path resolution fails, treat as not a direct run to avoid crashing on import
+  isDirectRun = false;
+}
+
+export interface StartServerOptions {
+  port?: number;
+  bindHost?: string;
+  log?: boolean;
+}
+
+export function startServer(options: StartServerOptions = {}): Server {
+  const port = options.port ?? defaultPort;
+  const bindHost = options.bindHost ?? defaultBindHost;
+  return app.listen(port, bindHost, () => {
+    if (options.log === false) return;
+    const displayHost = bindHost.includes(':') ? `[${bindHost}]` : bindHost;
+    console.log(`Leitstand server running at http://${displayHost}:${port}`);
   });
-});
+}
+
+if (isDirectRun) {
+  startServer();
+}
+
+/**
+ * Test helper to wait for all currently enqueued metadata updates to complete.
+ * Not intended for production use.
+ */
+export async function __wait_for_meta_queue(): Promise<void> {
+  await metaUpdateQueue;
+}
+
+export { app };
 
 // Runtime Health Receipt – read-only in-process proof surface for service and snapshot freshness.
 app.get('/health', async (_req, res) => {
@@ -340,15 +365,10 @@ app.get('/', async (_req, res) => {
     const data = await getDashboardData();
     res.render('index', data);
   } catch (error) {
-    // The dashboard controller swallows per-phase errors into typed tiles, so
-    // an exception here is unexpected — render the bare nav-only shell rather
-    // than crashing the landing page.
     console.error('[Dashboard] Unexpected error:', error);
-    res.render('index', { phases: [] });
+    res.render('index', { sources: [] });
   }
 });
-
-
 
 app.get('/repobriefs', async (_req, res) => {
   try {
@@ -427,156 +447,3 @@ app.get('/ecosystem-map', async (_req, res) => {
   }
 });
 
-app.get('/observatory', async (_req, res) => {
-  try {
-    const data = await getObservatoryData();
-    res.render('observatory', data);
-  } catch (error) {
-    if (!res.headersSent) {
-       console.error('Final error handler:', error);
-       const msg = error instanceof Error ? error.message : String(error);
-       if (msg.includes('Strict Fail') || msg.includes('Strict Mode') || msg.includes('Strict:')) {
-          res.status(503).send('Service Unavailable');
-       } else {
-          res.status(500).send('Error loading observatory data');
-       }
-    }
-  }
-});
-
-app.get('/intent', async (_req, res) => {
-  try {
-    const dataPath = join(process.cwd(), 'src', 'fixtures', 'intent.json');
-    const data = await readJsonFile(dataPath);
-    res.render('intent', { data });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Error loading intent data');
-  }
-});
-
-// Historical Anatomy View – non-normative legacy topology; current roles come from Systemkatalog
-app.get('/anatomy', async (_req, res) => {
-  try {
-    const data = await getAnatomyData();
-    res.render('anatomy', data);
-  } catch (error) {
-    if (!res.headersSent) {
-      console.error('[Anatomy] Error:', error);
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes('Strict')) {
-        res.status(503).send('Service Unavailable');
-      } else {
-        res.status(500).send('Error loading anatomy data');
-      }
-    }
-  }
-});
-
-app.get('/insights', async (_req, res) => {
-  try {
-    const data = await getInsightsData();
-    res.render('insights', data);
-  } catch (error) {
-    if (!res.headersSent) {
-      console.error('[Insights] Error:', error);
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes('Strict')) {
-        res.status(503).send('Service Unavailable');
-      } else {
-        res.status(500).send('Error loading insights data');
-      }
-    }
-  }
-});
-
-// Timeline View – Phase 3: Temporal event chronology
-app.get('/timeline', async (req, res) => {
-  try {
-    const parsedHours = Number(req.query.hours);
-    const hoursBack = Number.isFinite(parsedHours) && parsedHours > 0
-      ? Math.min(parsedHours, 168)
-      : 48; // Default 48 h; max 7 days
-
-    const parsedMax = Number(req.query.max);
-    const maxEvents = Number.isFinite(parsedMax) && parsedMax > 0
-      ? Math.min(parsedMax, 1000)
-      : 200;
-
-    const rawUntil = typeof req.query.until === 'string' ? req.query.until : '';
-    // Only accept ISO strings with an explicit TZ indicator (Z or ±HH:MM) to prevent
-    // silent server-timezone drift when datetime-local values are submitted without TZ.
-    const hasExplicitTz = rawUntil ? /Z$|[+-]\d{2}:\d{2}$/.test(rawUntil) : false;
-    const parsedUntil = (rawUntil && hasExplicitTz) ? new Date(rawUntil) : null;
-    const untilOverride = parsedUntil && !Number.isNaN(parsedUntil.getTime()) ? parsedUntil : undefined;
-
-    const data = await getTimelineData(hoursBack, maxEvents, untilOverride);
-    res.render('timeline', {
-      ...data,
-      getEventFamily,
-      eventFamilies: listEventFamilies(),
-    });
-  } catch (error) {
-    if (!res.headersSent) {
-      console.error('[Timeline] Error:', error);
-      res.status(500).send('Error loading timeline data');
-    }
-  }
-});
-
-app.get('/reflexion', async (_req, res) => {
-  try {
-    const data = await getReflexionData();
-    res.render('reflexion', data);
-  } catch (error) {
-    if (!res.headersSent) {
-      console.error('[Reflexion] Error:', error);
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes('Strict')) {
-        res.status(503).send('Service Unavailable');
-      } else {
-        res.status(500).send('Error loading reflexion data');
-      }
-    }
-  }
-});
-
-let isDirectRun = false;
-try {
-  isDirectRun =
-    !!process.argv[1] &&
-    realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url));
-} catch {
-  // If path resolution fails, treat as not a direct run to avoid crashing on import
-  isDirectRun = false;
-}
-
-export interface StartServerOptions {
-  port?: number;
-  bindHost?: string;
-  log?: boolean;
-}
-
-export function startServer(options: StartServerOptions = {}): Server {
-  const port = options.port ?? defaultPort;
-  const bindHost = options.bindHost ?? defaultBindHost;
-  return app.listen(port, bindHost, () => {
-    if (options.log === false) return;
-    const displayHost = bindHost.includes(':') ? `[${bindHost}]` : bindHost;
-    console.log(`Leitstand server running at http://${displayHost}:${port}`);
-  });
-}
-
-if (isDirectRun) {
-  startServer();
-}
-
-/**
- * Test helper to wait for all currently enqueued metadata updates to complete.
- * Not intended for production use.
- */
-export async function __wait_for_meta_queue(): Promise<void> {
-  await metaUpdateQueue;
-}
-
-export { app };

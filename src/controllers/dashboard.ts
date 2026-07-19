@@ -1,47 +1,28 @@
-import { getAnatomyData } from './anatomy.js';
-import { getInsightsData } from './insights.js';
-import { getTimelineData } from './timeline.js';
-import { getReflexionData } from './reflexion.js';
+import { getBureauData } from './bureau.js';
+import { getCheckoutData } from './checkouts.js';
+import { getStorageHealthData } from './storageHealth.js';
+import { getEcosystemMapData } from './ecosystemMap.js';
+import { getRepoBriefData } from './repoBrief.js';
 
-/**
- * One row of summary data shown on the home dashboard for a single phase view.
- *
- * `source_kind` and `freshness_state` mirror the per-view contracts so a single
- * glance reveals whether data is live ("artifact"), falling back ("fixture") or
- * absent ("missing"), and how recent it is.
- */
-export interface DashboardPhase {
-  /** Stable id used for testing and CSS hooks. */
-  id: 'anatomie' | 'physiologie' | 'zeitachse' | 'erkenntnisse' | 'reflexion';
-  /** Roadmap phase number from the visualization blueprint (1–5). */
-  phase: number;
+export interface DashboardSource {
+  id: string;
   title: string;
-  /** Short German description for the card subtitle. */
   description: string;
-  /** Target href for the card link. */
   href: string;
-  /** Where the displayed data comes from. */
-  source_kind: 'artifact' | 'fixture' | 'missing' | 'error';
-  /** Freshness verdict on the displayed data (best-effort). */
+  source_kind: 'artifact' | 'fixture' | 'missing' | 'error' | 'corrupt';
   freshness_state: 'fresh' | 'stale' | 'unknown';
-  /** Human-readable metric to give an at-a-glance pulse. */
   metric: string;
-  /** When the underlying load failed, the message goes here. */
   error_reason: string | null;
 }
 
 export interface DashboardAttentionItem {
-  phase_id: DashboardPhase['id'];
+  source_id: DashboardSource['id'];
   title: string;
   href: string;
   severity: 'critical' | 'warning' | 'info';
   reason: string;
 }
 
-/**
- * Derived projection only. It does not introduce a second health source; every
- * field is calculated from the phase source/freshness contracts above.
- */
 export interface DashboardSummary {
   state: 'healthy' | 'attention' | 'critical';
   state_label: 'Stabil' | 'Prüfbedarf' | 'Kritisch';
@@ -54,24 +35,14 @@ export interface DashboardSummary {
 }
 
 export interface DashboardData {
-  phases: DashboardPhase[];
+  sources: DashboardSource[];
   summary: DashboardSummary;
 }
 
-/**
- * Maps error messages that contain strict-mode details (e.g. artifact paths) to an
- * opaque token so the dashboard tile never surfaces internal path information.
- * Case-insensitive match to handle variations (Strict, strict, STRICT).
- * Non-strict messages are also mapped to an opaque token; raw errors stay in logs.
- */
 function publicErrorReason(msg: string): string {
   return msg.toLowerCase().includes('strict') ? 'strict-load-failed' : 'controller-load-failed';
 }
 
-/**
- * Wraps a controller call so an upstream failure becomes a typed error tile
- * instead of crashing the whole dashboard. The home page must always render.
- */
 async function safeLoad<T>(name: string, loader: () => Promise<T>): Promise<{ data: T | null; error: string | null }> {
   try {
     return { data: await loader(), error: null };
@@ -82,22 +53,22 @@ async function safeLoad<T>(name: string, loader: () => Promise<T>): Promise<{ da
   }
 }
 
-function summarizePhase(phase: DashboardPhase): DashboardAttentionItem | null {
-  if (phase.source_kind === 'error') {
+function summarizeSource(source: DashboardSource): DashboardAttentionItem | null {
+  if (source.source_kind === 'error') {
     return {
-      phase_id: phase.id,
-      title: phase.title,
-      href: phase.href,
+      source_id: source.id,
+      title: source.title,
+      href: source.href,
       severity: 'critical',
       reason: 'Datenquelle konnte nicht geladen werden',
     };
   }
 
-  if (phase.source_kind === 'missing') {
+  if (source.source_kind === 'missing' || source.source_kind === 'corrupt') {
     return {
-      phase_id: phase.id,
-      title: phase.title,
-      href: phase.href,
+      source_id: source.id,
+      title: source.title,
+      href: source.href,
       severity: 'critical',
       reason: 'Keine belastbare Datenquelle verfügbar',
     };
@@ -106,41 +77,41 @@ function summarizePhase(phase: DashboardPhase): DashboardAttentionItem | null {
   const reasons: string[] = [];
   let severity: DashboardAttentionItem['severity'] = 'info';
 
-  if (phase.source_kind === 'fixture') {
+  if (source.source_kind === 'fixture') {
     reasons.push('Ersatzdaten statt eines Artefakts');
     severity = 'warning';
   }
-  if (phase.freshness_state === 'stale') {
+  if (source.freshness_state === 'stale') {
     reasons.push('Daten sind veraltet');
     severity = 'warning';
-  } else if (phase.freshness_state === 'unknown') {
+  } else if (source.freshness_state === 'unknown') {
     reasons.push('Datenfrische ist nicht belegt');
   }
 
   if (reasons.length === 0) return null;
 
   return {
-    phase_id: phase.id,
-    title: phase.title,
-    href: phase.href,
+    source_id: source.id,
+    title: source.title,
+    href: source.href,
     severity,
     reason: reasons.join(' · '),
   };
 }
 
-export function summarizeDashboard(phases: DashboardPhase[]): DashboardSummary {
+export function summarizeDashboard(sources: DashboardSource[]): DashboardSummary {
   const severityRank: Record<DashboardAttentionItem['severity'], number> = {
     critical: 0,
     warning: 1,
     info: 2,
   };
-  const attention = phases
-    .map(summarizePhase)
+  const attention = sources
+    .map(summarizeSource)
     .filter((item): item is DashboardAttentionItem => item !== null)
     .sort((left, right) => severityRank[left.severity] - severityRank[right.severity]
-      || phases.findIndex((phase) => phase.id === left.phase_id) - phases.findIndex((phase) => phase.id === right.phase_id));
-  const unavailableCount = phases.filter((phase) => phase.source_kind === 'missing' || phase.source_kind === 'error').length;
-  const verifiedFreshCount = phases.filter((phase) => phase.source_kind === 'artifact' && phase.freshness_state === 'fresh').length;
+      || sources.findIndex((s) => s.id === left.source_id) - sources.findIndex((s) => s.id === right.source_id));
+  const unavailableCount = sources.filter((s) => s.source_kind === 'missing' || s.source_kind === 'error' || s.source_kind === 'corrupt').length;
+  const verifiedFreshCount = sources.filter((s) => s.source_kind === 'artifact' && s.freshness_state === 'fresh').length;
   const hasCritical = attention.some((item) => item.severity === 'critical');
 
   if (hasCritical) {
@@ -148,7 +119,7 @@ export function summarizeDashboard(phases: DashboardPhase[]): DashboardSummary {
       state: 'critical',
       state_label: 'Kritisch',
       headline: `${unavailableCount} ${unavailableCount === 1 ? 'Bereich liefert' : 'Bereiche liefern'} keine belastbaren Daten`,
-      total_count: phases.length,
+      total_count: sources.length,
       verified_fresh_count: verifiedFreshCount,
       attention_count: attention.length,
       unavailable_count: unavailableCount,
@@ -161,7 +132,7 @@ export function summarizeDashboard(phases: DashboardPhase[]): DashboardSummary {
       state: 'attention',
       state_label: 'Prüfbedarf',
       headline: `${attention.length} ${attention.length === 1 ? 'Bereich benötigt' : 'Bereiche benötigen'} Prüfung`,
-      total_count: phases.length,
+      total_count: sources.length,
       verified_fresh_count: verifiedFreshCount,
       attention_count: attention.length,
       unavailable_count: unavailableCount,
@@ -173,7 +144,7 @@ export function summarizeDashboard(phases: DashboardPhase[]): DashboardSummary {
     state: 'healthy',
     state_label: 'Stabil',
     headline: 'Alle Bereiche liefern frische Artefakte',
-    total_count: phases.length,
+    total_count: sources.length,
     verified_fresh_count: verifiedFreshCount,
     attention_count: 0,
     unavailable_count: 0,
@@ -182,82 +153,66 @@ export function summarizeDashboard(phases: DashboardPhase[]): DashboardSummary {
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [anatomy, insights, timeline, reflexion] = await Promise.all([
-    safeLoad('Anatomy', getAnatomyData),
-    safeLoad('Insights', getInsightsData),
-    safeLoad('Timeline', getTimelineData),
-    safeLoad('Reflexion', getReflexionData),
+  const [bureau, checkouts, storage, eco, repo] = await Promise.all([
+    safeLoad('Bureau', getBureauData),
+    safeLoad('Checkouts', getCheckoutData),
+    safeLoad('Storage', getStorageHealthData),
+    safeLoad('Ecosystem', getEcosystemMapData),
+    safeLoad('RepoGround', getRepoBriefData),
   ]);
 
-  const phases: DashboardPhase[] = [
+  const sources: DashboardSource[] = [
     {
-      id: 'anatomie',
-      phase: 1,
-      title: 'Anatomie',
-      description: 'Historisches, nicht normatives Strukturmodell; aktuelle Rollen stehen in der Systemkarte.',
-      href: '/anatomy',
-      source_kind: anatomy.error ? 'error' : (anatomy.data?.view_meta.source_kind ?? 'missing'),
-      freshness_state: anatomy.data?.view_meta.freshness_state ?? 'unknown',
-      metric: anatomy.data?.anatomy
-        ? `${anatomy.data.anatomy.nodes?.length ?? 0} Knoten · ${anatomy.data.anatomy.edges?.length ?? 0} Kanten`
-        : 'keine Strukturdaten',
-      error_reason: anatomy.error,
+      id: 'bureau',
+      title: 'Bureau',
+      description: 'Task- und Claim-Projektion.',
+      href: '/bureau',
+      source_kind: bureau.error ? 'error' : (bureau.data?.view_meta.source_kind ?? 'missing'),
+      freshness_state: bureau.data?.view_meta.freshness_state ?? 'unknown',
+      metric: bureau.data ? `${bureau.data.view_meta.task_count} Tasks` : 'keine Tasks',
+      error_reason: bureau.error,
     },
     {
-      id: 'physiologie',
-      phase: 2,
-      title: 'Physiologie',
-      description: 'Health-Layer über dem historischen Strukturstand; aktuelle Rollen stehen in der Systemkarte.',
-      href: '/anatomy',
-      source_kind: anatomy.error ? 'error' : anatomy.data?.health.source_kind ?? 'missing',
-      freshness_state: anatomy.data?.health.freshness_state ?? 'unknown',
-      metric: anatomy.data?.health
-        ? `OK ${anatomy.data.health.totals.ok} · Warn ${anatomy.data.health.totals.warn} · Fail ${anatomy.data.health.totals.fail}`
-        : 'keine Health-Daten',
-      error_reason: anatomy.error,
+      id: 'checkouts',
+      title: 'Checkouts',
+      description: 'Grabowski-Inventar.',
+      href: '/checkouts',
+      source_kind: checkouts.error ? 'error' : (checkouts.data?.view_meta.source_kind ?? 'missing'),
+      freshness_state: checkouts.data?.view_meta.freshness_state ?? 'unknown',
+      metric: checkouts.data ? `${checkouts.data.view_meta.checkout_count} Checkouts` : 'keine Checkouts',
+      error_reason: checkouts.error,
     },
     {
-      id: 'zeitachse',
-      phase: 3,
-      title: 'Zeitachse',
-      description: 'Chronologische Events des Heimgewebes (48 h Fenster).',
-      href: '/timeline',
-      source_kind: timeline.error ? 'error' : (timeline.data?.view_meta.source_kind === 'chronik' ? 'artifact' : timeline.data?.view_meta.source_kind === 'fixture' ? 'fixture' : 'missing'),
-      // Timeline does not expose a freshness contract yet; event presence alone is
-      // not a reliable indicator for "fresh".
-      freshness_state: 'unknown',
-      metric: timeline.data
-        ? `${timeline.data.events.length} Events · ${timeline.data.view_meta.hours_back}h`
-        : 'keine Zeitachsendaten',
-      error_reason: timeline.error,
+      id: 'storage_health',
+      title: 'Speicherzustand',
+      description: 'Heim-PC Storage Metriken.',
+      href: '/storage-health',
+      source_kind: storage.error ? 'error' : (storage.data?.view_meta.source_kind ?? 'missing'),
+      freshness_state: storage.data?.view_meta.freshness_state ?? 'unknown',
+      metric: storage.data?.current ? `${storage.data.current.summary.producerCount} Producer` : 'kein Storage Zustand',
+      error_reason: storage.error,
     },
     {
-      id: 'erkenntnisse',
-      phase: 4,
-      title: 'Erkenntnisse',
-      description: 'Semantische Tagesanalyse – Topics, Fragen, Deltas.',
-      href: '/insights',
-      source_kind: insights.error ? 'error' : (insights.data?.view_meta.source_kind ?? 'missing'),
-      freshness_state: insights.data?.view_meta.freshness_state ?? 'unknown',
-      metric: insights.data?.insights
-        ? `${insights.data.insights.topics.length} Topics · ${insights.data.insights.questions.length} Fragen · ${insights.data.insights.deltas.length} Deltas`
-        : 'keine Erkenntnisse',
-      error_reason: insights.error,
+      id: 'ecosystem_map',
+      title: 'Systemkarte',
+      description: 'Systemkatalog Map Manifest.',
+      href: '/ecosystem-map',
+      source_kind: eco.error ? 'error' : (eco.data?.view_meta.source_kind ?? 'missing'),
+      freshness_state: eco.data?.view_meta.freshness_state ?? 'unknown',
+      metric: eco.data ? `${eco.data.view_meta.verified_artifact_count} Artefakte` : 'keine Systemkarte',
+      error_reason: eco.error,
     },
     {
-      id: 'reflexion',
-      phase: 5,
-      title: 'Reflexion',
-      description: 'Heimgeist-Meta-Analyse – Hypothesen, Drift, Wissenslücken.',
-      href: '/reflexion',
-      source_kind: reflexion.error ? 'error' : (reflexion.data?.view_meta.source_kind ?? 'missing'),
-      freshness_state: reflexion.data?.view_meta.freshness_state ?? 'unknown',
-      metric: reflexion.data?.reflexion
-        ? `${reflexion.data.reflexion.hypotheses?.length ?? 0} Hypothesen · ${reflexion.data.reflexion.drift_markers?.length ?? 0} Drift-Marker`
-        : 'keine Reflexionsdaten',
-      error_reason: reflexion.error,
-    },
+      id: 'repo_ground',
+      title: 'RepoGround',
+      description: 'Bundle-Ansicht.',
+      href: '/repobriefs',
+      source_kind: repo.error ? 'error' : (repo.data?.view_meta.source_kind ?? 'missing'),
+      freshness_state: repo.data?.view_meta.freshness_state ?? 'unknown',
+      metric: repo.data ? `${repo.data.bundles.length} Bundles` : 'keine Repos',
+      error_reason: repo.error,
+    }
   ];
 
-  return { phases, summary: summarizeDashboard(phases) };
+  return { sources, summary: summarizeDashboard(sources) };
 }

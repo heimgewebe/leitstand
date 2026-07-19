@@ -4,7 +4,7 @@ import { join, relative, resolve } from 'node:path';
 export type RuntimeHealthStatus = 'ok' | 'warn' | 'fail';
 export type RuntimeHealthCheckStatus = RuntimeHealthStatus | 'unknown';
 
-type SnapshotKind = 'bureau_tasks' | 'checkout_inventory';
+type SnapshotKind = 'bureau_tasks' | 'checkout_inventory' | 'storage_health' | 'ecosystem_map';
 
 export interface RuntimeHealthCheck {
   status: RuntimeHealthCheckStatus;
@@ -59,6 +59,8 @@ export interface RuntimeHealthOptions {
   now?: Date;
   bureauSnapshotPath?: string;
   checkoutSnapshotPath?: string;
+  storageHealthSnapshotPath?: string;
+  ecosystemMapManifestPath?: string;
   staleAfterMs?: number;
 }
 
@@ -84,21 +86,31 @@ function snapshotPathFromEnv(kind: SnapshotKind, cwd: string): string {
   if (kind === 'bureau_tasks') {
     return process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH || join(cwd, 'artifacts', 'bureau-tasks.json');
   }
+  if (kind === 'storage_health') {
+    return process.env.LEITSTAND_STORAGE_HEALTH_PATH || join(cwd, 'artifacts', 'storage-health.json');
+  }
+  if (kind === 'ecosystem_map') {
+    return process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH || join(cwd, 'artifacts', 'ecosystem-map-artifact-manifest.json');
+  }
   return process.env.LEITSTAND_CHECKOUT_SNAPSHOT_PATH || join(cwd, 'artifacts', 'checkout-inventory.json');
 }
 
 function snapshotRecordCount(kind: SnapshotKind, raw: unknown): number | null {
   if (!raw || typeof raw !== 'object') return null;
-  const snapshot = raw as { tasks?: unknown; checkouts?: unknown };
+  const snapshot = raw as Record<string, unknown>;
   if (kind === 'bureau_tasks') return Array.isArray(snapshot.tasks) ? snapshot.tasks.length : null;
-  return Array.isArray(snapshot.checkouts) ? snapshot.checkouts.length : null;
+  if (kind === 'checkout_inventory') return Array.isArray(snapshot.checkouts) ? snapshot.checkouts.length : null;
+  if (kind === 'storage_health') return typeof snapshot.current === 'object' && snapshot.current ? 1 : null;
+  if (kind === 'ecosystem_map') return Array.isArray(snapshot.artifacts) ? snapshot.artifacts.length : null;
+  return null;
 }
 
 function snapshotGeneratedAt(raw: unknown): string | null {
   if (!raw || typeof raw !== 'object') return null;
-  const snapshot = raw as { generatedAt?: unknown; generated_at?: unknown };
+  const snapshot = raw as Record<string, unknown>;
   if (typeof snapshot.generatedAt === 'string') return snapshot.generatedAt;
   if (typeof snapshot.generated_at === 'string') return snapshot.generated_at;
+  if (typeof snapshot.source === 'object' && snapshot.source && typeof (snapshot.source as Record<string, unknown>).generatedAt === 'string') return (snapshot.source as Record<string, unknown>).generatedAt as string;
   return null;
 }
 
@@ -110,6 +122,8 @@ function snapshotKind(raw: unknown): string | null {
 
 function expectedSnapshotKind(kind: SnapshotKind): string {
   if (kind === 'bureau_tasks') return 'leitstand_bureau_task_snapshot';
+  if (kind === 'storage_health') return 'leitstand_storage_health';
+  if (kind === 'ecosystem_map') return 'system_catalog_map_artifact_manifest';
   return 'leitstand_checkout_inventory';
 }
 
@@ -334,11 +348,15 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
   const staleAfterMs = options.staleAfterMs ?? SNAPSHOT_STALE_AFTER_MS;
   const bureauPath = options.bureauSnapshotPath || snapshotPathFromEnv('bureau_tasks', cwd);
   const checkoutPath = options.checkoutSnapshotPath || snapshotPathFromEnv('checkout_inventory', cwd);
+  const storageHealthPath = options.storageHealthSnapshotPath || snapshotPathFromEnv('storage_health', cwd);
+  const ecosystemMapPath = options.ecosystemMapManifestPath || snapshotPathFromEnv('ecosystem_map', cwd);
 
-  const [git, bureauSnapshot, checkoutSnapshot] = await Promise.all([
+  const [git, bureauSnapshot, checkoutSnapshot, storageHealthSnapshot, ecosystemMapSnapshot] = await Promise.all([
     readGitHealth(cwd),
     readSnapshotHealth('bureau_tasks', bureauPath, cwd, now, staleAfterMs),
     readSnapshotHealth('checkout_inventory', checkoutPath, cwd, now, staleAfterMs),
+    readSnapshotHealth('storage_health', storageHealthPath, cwd, now, staleAfterMs),
+    readSnapshotHealth('ecosystem_map', ecosystemMapPath, cwd, now, staleAfterMs),
   ]);
 
   const checks: RuntimeHealthReceipt['checks'] = {
@@ -346,6 +364,8 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
     git_head: { status: git.status, reason: git.reason },
     bureau_snapshot: checkFromSnapshot(bureauSnapshot),
     checkout_snapshot: checkFromSnapshot(checkoutSnapshot),
+    storage_health_snapshot: checkFromSnapshot(storageHealthSnapshot),
+    ecosystem_map_snapshot: checkFromSnapshot(ecosystemMapSnapshot),
   };
 
   return {
@@ -363,6 +383,8 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
     snapshots: {
       bureau_tasks: bureauSnapshot,
       checkout_inventory: checkoutSnapshot,
+      storage_health: storageHealthSnapshot,
+      ecosystem_map: ecosystemMapSnapshot,
     },
     checks,
     ingress: {

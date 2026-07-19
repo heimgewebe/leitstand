@@ -44,7 +44,6 @@ function checkFile(label, p, mustParse = true) {
     return true;
 }
 
-checkFile('Raw Observatory', RAW_PATH);
 checkFile('Daily Insights', DAILY_PATH);
 checkFile('Meta Forensics', META_PATH);
 

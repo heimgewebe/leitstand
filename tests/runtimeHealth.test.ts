@@ -43,6 +43,24 @@ describe('runtime health receipt', () => {
       }),
       'utf-8',
     );
+    await writeFile(
+      join(artifactsDir, 'storage-health.json'),
+      JSON.stringify({
+        kind: 'leitstand_storage_health',
+        generatedAt,
+        current: {}
+      }),
+      'utf-8',
+    );
+    await writeFile(
+      join(artifactsDir, 'ecosystem-map-artifact-manifest.json'),
+      JSON.stringify({
+        kind: 'system_catalog_map_artifact_manifest',
+        generatedAt,
+        artifacts: []
+      }),
+      'utf-8',
+    );
   }
 
   it('reports ok when git and operator snapshots are fresh', async () => {
@@ -57,6 +75,8 @@ describe('runtime health receipt', () => {
     expect(receipt.snapshots.bureau_tasks.status).toBe('ok');
     expect(receipt.snapshots.bureau_tasks.record_count).toBe(1);
     expect(receipt.snapshots.checkout_inventory.status).toBe('ok');
+    expect(receipt.snapshots.storage_health.status).toBe('ok');
+    expect(receipt.snapshots.ecosystem_map.status).toBe('ok');
     expect(receipt.ingress.status).toBe('not_checked');
     expect(receipt.doesNotEstablish).toContain('dns_correctness');
   });
@@ -113,6 +133,8 @@ describe('runtime health receipt', () => {
     expect(receipt.snapshots.bureau_tasks.status).toBe('warn');
     expect(receipt.snapshots.bureau_tasks.reason).toBe('snapshot_stale');
     expect(receipt.snapshots.checkout_inventory.status).toBe('warn');
+    expect(receipt.snapshots.storage_health.status).toBe('warn');
+    expect(receipt.snapshots.ecosystem_map.status).toBe('warn');
   });
 
   it('fails when a snapshot has the wrong contract kind', async () => {
@@ -136,7 +158,24 @@ describe('runtime health receipt', () => {
       }),
       'utf-8',
     );
-
+    await writeFile(
+      join(artifactsDir, 'storage-health.json'),
+      JSON.stringify({
+        kind: 'leitstand_storage_health',
+        generatedAt: '2026-07-08T17:55:00.000Z',
+        current: {}
+      }),
+      'utf-8',
+    );
+    await writeFile(
+      join(artifactsDir, 'ecosystem-map-artifact-manifest.json'),
+      JSON.stringify({
+        kind: 'system_catalog_map_artifact_manifest',
+        generatedAt: '2026-07-08T17:55:00.000Z',
+        artifacts: []
+      }),
+      'utf-8',
+    );
     const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
 
     expect(receipt.status).toBe('fail');
@@ -156,7 +195,24 @@ describe('runtime health receipt', () => {
       }),
       'utf-8',
     );
-
+    await writeFile(
+      join(artifactsDir, 'storage-health.json'),
+      JSON.stringify({
+        kind: 'leitstand_storage_health',
+        generatedAt: '2026-07-08T17:55:00.000Z',
+        current: {}
+      }),
+      'utf-8',
+    );
+    await writeFile(
+      join(artifactsDir, 'ecosystem-map-artifact-manifest.json'),
+      JSON.stringify({
+        kind: 'system_catalog_map_artifact_manifest',
+        generatedAt: '2026-07-08T17:55:00.000Z',
+        artifacts: []
+      }),
+      'utf-8',
+    );
     const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMs: 20 * 60 * 1000 });
 
     expect(receipt.status).toBe('fail');

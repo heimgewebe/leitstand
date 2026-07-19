@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 
 export type RepoBriefSourceKind = 'artifact' | 'missing' | 'corrupt';
 export type RepoBriefStatus = 'ok' | 'warn' | 'fail' | 'unknown';
+export type RepoBriefFreshness = 'fresh' | 'stale' | 'unknown';
 
 export interface RepoBriefBundleView {
   repo: string;
@@ -24,6 +25,7 @@ export interface RepoBriefBundleView {
 export interface RepoBriefViewData {
   bundles: RepoBriefBundleView[];
   view_meta: {
+    freshness_state: RepoBriefFreshness;
     source_kind: RepoBriefSourceKind;
     source_path: string;
     missing_reason: string;
@@ -71,6 +73,7 @@ function emptyData(kind: RepoBriefSourceKind, reason: string, sourcePath: string
   return {
     bundles: [],
     view_meta: {
+      freshness_state: 'unknown',
       source_kind: kind,
       source_path: sourcePath,
       missing_reason: reason,
@@ -158,6 +161,7 @@ export async function getRepoBriefData(): Promise<RepoBriefViewData> {
     return {
       bundles: parsed.bundles,
       view_meta: {
+        freshness_state: parsed.generatedAt ? 'fresh' : 'unknown',
         source_kind: 'artifact',
         source_path: sourcePath,
         missing_reason: 'ok',
