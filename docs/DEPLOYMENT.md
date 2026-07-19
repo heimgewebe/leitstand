@@ -5,36 +5,41 @@ doc_type: guide
 status: active
 canonicality: canonical
 summary: >
-  Deployment
+  Deployment contract for the read-only Leitstand runtime and static preview.
 ---
 
 # Deployment
 
-## Artifact Ingestion
+## Canonical runtime
 
-The `leitstand` build process is designed to be resilient to missing upstream data.
+The canonical service is an internal, read-only Express runtime. It renders local exported artifacts and exposes `/health` as a bounded proof surface.
 
-## Events Ingestion
+Required deployment properties:
 
-Leitstand can ingest events (e.g., `knowledge.observatory.published.v1`) via the `/events` endpoint.
+- bind to the configured internal interface;
+- run from a versioned release checkout;
+- provide Bureau, Grabowski, storage-health, Systemkatalog, and RepoGround artifacts at their configured paths;
+- publish no mutation, orchestration, event-ingestion, or task-dispatch endpoint;
+- verify `/health`, the expected Git head, and source-specific artifact freshness after rollout.
 
-**Security & Authorization:**
+The runtime intentionally returns 404 for `POST /events` because no such route is registered.
 
-The endpoint is protected to prevent unauthorized triggers.
+## Static preview
 
-*   **Production:** Authorization is **required**. The endpoint is disabled (403) if no token is configured.
-*   **Dev/Preview:** Authorization is **optional**. If no token is configured, the endpoint is open (permissive).
+`pnpm build:static` creates a preview containing only `/` and `_static-boundary.json`. Runtime-backed views are not copied into the preview. The manifest records supported, runtime-only, and removed routes.
 
-**Configuration:**
+A successful static build does not establish canonical runtime availability, DNS correctness, reverse-proxy persistence, or source freshness.
 
-| Variable | Description | Default / Required |
-| :--- | :--- | :--- |
-| `LEITSTAND_EVENTS_TOKEN` | Secret token to authorize event ingestion. | **Required in Prod** |
-| `LEITSTAND_STRICT` | If `1`, enables strict mode (fail-loud). Also enforces token requirement on `/events`. | `0` (Dev), `1` (Prod) |
+## Verification
 
-**Usage:**
+Run the repository quality gates and then verify the deployed release:
 
-Requests must include the token in headers:
+```text
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm test
+pnpm build:static
+```
 
-*   `Authorization: Bearer <token>`
-*   `X-Events-Token: <token>`
+Deployment-specific procedures live in the operator environment. Leitstand itself does not perform deployment actions.

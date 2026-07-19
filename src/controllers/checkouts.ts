@@ -50,7 +50,7 @@ export interface CheckoutViewData {
 
 const CONTRACT_KIND = 'leitstand_checkout_inventory';
 /** Checkout inventory changes slowly; a day-old snapshot is still useful but flagged. */
-const STALE_AFTER_MS = 24 * 60 * 60 * 1000; // 24h
+const STALE_AFTER_MS = 20 * 60 * 1000; // 20m
 
 const DEFAULT_NON_CLAIMS = [
   'checkout_ownership',

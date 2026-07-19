@@ -1,24 +1,17 @@
-import { z } from 'zod';
 import { isIP } from 'node:net';
-import { resolve, dirname, join } from 'path';
+import { dirname, join, resolve } from 'node:path';
+import { z } from 'zod';
 import { readJsonFile } from './utils/fs.js';
 
-/**
- * Robust boolean parser for environment variables.
- * Handles 'true', '1', 'yes', 'on' (case-insensitive).
- */
-function isTruthy(val?: string): boolean {
-    if (!val) return false;
-    return ['true', '1', 'yes', 'on'].includes(val.toLowerCase());
+function isTruthy(value?: string): boolean {
+  if (!value) return false;
+  return ['true', '1', 'yes', 'on'].includes(value.toLowerCase());
 }
 
 function isWildcardBindHost(host: string): boolean {
-    return host === '0.0.0.0' || host === '::';
+  return host === '0.0.0.0' || host === '::';
 }
 
-/**
- * Schema for runtime environment variables
- */
 const BindEnvSchema = z.object({
   LEITSTAND_BIND_HOST: z.string()
     .refine((value) => isIP(value) !== 0, { message: 'Must be an IPv4 or IPv6 literal' })
@@ -38,125 +31,68 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.string().default('development'),
   LEITSTAND_STRICT: z.string().optional(),
-  INTEGRITY_URL: z.string().optional(),
-  // Ops Viewer Configuration
-  LEITSTAND_ACS_URL: z.string()
-    .refine((val) => {
-      // Empty string is allowed (disabled/unconfigured)
-      if (val === '') return true;
-      try {
-        const url = new URL(val);
-        return ['http:', 'https:'].includes(url.protocol);
-      } catch {
-        return false;
-      }
-    }, { message: "Must be a valid HTTP/HTTPS URL or empty string" })
-    .default(''),
-  LEITSTAND_OPS_ALLOW_JOB_FALLBACK: z.string().optional(),
-  LEITSTAND_REPOS: z.string().optional(),
-  LEITSTAND_ACS_VIEWER_TOKEN: z.string().optional(),
 });
 
 type EnvType = z.infer<typeof EnvSchema>;
 type BindEnvType = z.infer<typeof BindEnvSchema>;
 
-// Memoization caches
 let cachedEnv: EnvType | null = null;
 let cachedBindEnv: BindEnvType | null = null;
 
-const parsedBindEnv = (): BindEnvType => {
-    if (cachedBindEnv) {
-        return cachedBindEnv;
-    }
+function parsedBindEnv(): BindEnvType {
+  if (cachedBindEnv) return cachedBindEnv;
 
-    const parsed = BindEnvSchema.safeParse(process.env);
-    if (!parsed.success) {
-        console.warn('Invalid bind environment variables:', parsed.error.format());
-        cachedBindEnv = {
-            LEITSTAND_BIND_HOST: '127.0.0.1',
-            LEITSTAND_ALLOW_WIDE_BIND: undefined,
-        };
-        return cachedBindEnv;
-    }
-
-    cachedBindEnv = parsed.data;
-    return parsed.data;
-};
-
-const parsedEnv = (): EnvType => {
-    if (cachedEnv) {
-        return cachedEnv;
-    }
-
-    const parsed = EnvSchema.safeParse(process.env);
-
-    // Default values if parsing fails completely
-    const defaults: EnvType = {
-        PORT: 3000,
-        NODE_ENV: 'development',
-        LEITSTAND_STRICT: undefined,
-        INTEGRITY_URL: undefined,
-        LEITSTAND_ACS_URL: '', // Default to disabled for safety
-        LEITSTAND_OPS_ALLOW_JOB_FALLBACK: undefined,
-        LEITSTAND_REPOS: undefined,
-        LEITSTAND_ACS_VIEWER_TOKEN: undefined
+  const parsed = BindEnvSchema.safeParse(process.env);
+  if (!parsed.success) {
+    console.warn('Invalid bind environment variables:', parsed.error.format());
+    cachedBindEnv = {
+      LEITSTAND_BIND_HOST: '127.0.0.1',
+      LEITSTAND_ALLOW_WIDE_BIND: undefined,
     };
+    return cachedBindEnv;
+  }
 
-    if (!parsed.success) {
-        console.warn('Invalid environment variables:', parsed.error.format());
-        cachedEnv = defaults;
-        return defaults;
-    }
+  cachedBindEnv = parsed.data;
+  return parsed.data;
+}
 
-    cachedEnv = parsed.data;
-    return parsed.data;
-};
+function parsedEnv(): EnvType {
+  if (cachedEnv) return cachedEnv;
 
-/**
- * Resets the environment configuration cache.
- * Call this in tests when using vi.stubEnv() to ensure changes are picked up.
- */
-export const resetEnvConfig = () => {
-    cachedEnv = null;
-    cachedBindEnv = null;
-};
+  const parsed = EnvSchema.safeParse(process.env);
+  if (!parsed.success) {
+    console.warn('Invalid environment variables:', parsed.error.format());
+    cachedEnv = {
+      PORT: 3000,
+      NODE_ENV: 'development',
+      LEITSTAND_STRICT: undefined,
+    };
+    return cachedEnv;
+  }
+
+  cachedEnv = parsed.data;
+  return parsed.data;
+}
+
+export function resetEnvConfig(): void {
+  cachedEnv = null;
+  cachedBindEnv = null;
+}
 
 export const envConfig = {
-    get PORT() { return parsedEnv().PORT; },
-    get bindHost() { return parsedBindEnv().LEITSTAND_BIND_HOST; },
-    get NODE_ENV() { return parsedEnv().NODE_ENV; },
-    get INTEGRITY_URL() { return parsedEnv().INTEGRITY_URL; },
-    get acsUrl() { return parsedEnv().LEITSTAND_ACS_URL.replace(/\/+$/, ''); },
-    get allowJobFallback() { return isTruthy(parsedEnv().LEITSTAND_OPS_ALLOW_JOB_FALLBACK); },
-    get acsViewerToken() { return parsedEnv().LEITSTAND_ACS_VIEWER_TOKEN; },
-
-    get isStrict() {
-        const env = parsedEnv();
-        return env.LEITSTAND_STRICT === '1' || env.NODE_ENV === 'production';
-    },
-
-    paths: {
-      artifacts: join(process.cwd(), 'artifacts'),
-      fixtures: join(process.cwd(), 'src', 'fixtures'),
-    },
-
-    // Default repos shown in Ops selector.
-    // LEITSTAND_REPOS env var overrides hardcoded defaults if present.
-    // Fallback defaults
-    get repos() {
-        const envRepos = parsedEnv().LEITSTAND_REPOS;
-        if (envRepos) {
-            return envRepos.split(',').map(r => r.trim()).filter(r => r.length > 0);
-        }
-        // Fallback SoT for now
-        return ['metarepo', 'wgx', 'leitstand'];
-    }
+  get PORT() { return parsedEnv().PORT; },
+  get bindHost() { return parsedBindEnv().LEITSTAND_BIND_HOST; },
+  get NODE_ENV() { return parsedEnv().NODE_ENV; },
+  get isStrict() {
+    const env = parsedEnv();
+    return env.LEITSTAND_STRICT === '1' || env.NODE_ENV === 'production';
+  },
+  paths: {
+    artifacts: join(process.cwd(), 'artifacts'),
+    fixtures: join(process.cwd(), 'src', 'fixtures'),
+  },
 };
 
-
-/**
- * Schema for the leitstand configuration file
- */
 const ConfigSchema = z.object({
   paths: z.object({
     semantah: z.object({
@@ -179,14 +115,9 @@ const ConfigSchema = z.object({
 
 export type Config = z.infer<typeof ConfigSchema>;
 
-/**
- * Expands environment variables in a path string
- * @throws Error if an environment variable is not set
- */
 function expandEnvVars(path: string): string {
   const unexpandedVars: string[] = [];
-  
-  const expanded = path.replace(/\$([A-Z0-9_]+)/g, (_, varName) => {
+  const expanded = path.replace(/\$([A-Z0-9_]+)/g, (_, varName: string) => {
     const value = process.env[varName];
     if (value === undefined) {
       unexpandedVars.push(varName);
@@ -194,41 +125,27 @@ function expandEnvVars(path: string): string {
     }
     return value;
   });
-  
+
   if (unexpandedVars.length > 0) {
     throw new Error(
-      `Environment variable(s) not set: ${unexpandedVars.join(', ')}. ` +
-      `Please set these variables or use absolute/relative paths instead.`
+      `Environment variable(s) not set: ${unexpandedVars.join(', ')}. `
+      + 'Please set these variables or use absolute/relative paths instead.',
     );
   }
-  
+
   return expanded;
 }
 
-/**
- * Resolves a path relative to a base directory
- * @throws Error if path contains unexpanded environment variables
- */
 function resolvePath(path: string, baseDir: string): string {
-  const expanded = expandEnvVars(path);
-  return resolve(baseDir, expanded);
+  return resolve(baseDir, expandEnvVars(path));
 }
 
-/**
- * Loads and validates the configuration from a JSON file
- * 
- * @param configPath - Path to the configuration file
- * @returns Validated configuration object
- * @throws Error if config file is invalid or cannot be read
- */
 export async function loadConfig(configPath: string): Promise<Config> {
   try {
     const rawConfig = await readJsonFile(configPath);
     const config = ConfigSchema.parse(rawConfig);
-    
-    // Resolve all paths relative to the config file directory
     const configDir = dirname(resolve(configPath));
-    
+
     return {
       ...config,
       paths: {
@@ -248,10 +165,9 @@ export async function loadConfig(configPath: string): Promise<Config> {
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const issues = error.issues.map(i => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
+      const issues = error.issues.map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`).join('\n');
       throw new Error(`Configuration validation failed:\n${issues}`);
     }
-    // readJsonFile handles syntax errors with specific message
     throw new Error(`Failed to load config: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

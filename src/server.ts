@@ -1,9 +1,12 @@
-import express, { Express } from 'express';
-import { realpathSync } from 'fs';
-import { join, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import express, { type Express } from 'express';
+import { realpathSync } from 'node:fs';
+import { type Server } from 'node:http';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { envConfig } from './config.js';
+import { getBureauData } from './controllers/bureau.js';
+import { getCheckoutData } from './controllers/checkouts.js';
 import { getDashboardData } from './controllers/dashboard.js';
 import { getEcosystemMapData } from './controllers/ecosystemMap.js';
 import {
@@ -11,8 +14,6 @@ import {
   serializeEcosystemMapNavigation,
 } from './controllers/ecosystemMapNavigation.js';
 import { getRepoBriefData } from './controllers/repoBrief.js';
-import { getBureauData } from './controllers/bureau.js';
-import { getCheckoutData } from './controllers/checkouts.js';
 import { getStorageHealthData } from './controllers/storageHealth.js';
 import { getRuntimeHealthData } from './runtimeHealth.js';
 
@@ -20,12 +21,7 @@ const app: Express = express();
 const defaultPort = envConfig.PORT;
 const defaultBindHost = envConfig.bindHost;
 
-app.use(express.json());
-
-// Set up EJS
 app.set('view engine', 'ejs');
-// We point to src/views for the MVP to avoid build complexity of copying assets
-// This assumes the process is run from the root of the repo
 app.set('views', join(process.cwd(), 'src', 'views'));
 
 // Release-local, read-only browser assets. Mermaid is served from the lockfile-bound
@@ -45,47 +41,6 @@ app.use((req, res, next) => {
   res.locals.currentPath = req.path;
   next();
 });
-
-app.post('/events', (_req, res) => {
-  res.status(404).send('Not Found');
-});
-
-
-let isDirectRun = false;
-try {
-  isDirectRun =
-    !!process.argv[1] &&
-    realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url));
-} catch {
-  // If path resolution fails, treat as not a direct run to avoid crashing on import
-  isDirectRun = false;
-}
-
-import { Server } from 'node:http';
-
-export interface StartServerOptions {
-  port?: number;
-  bindHost?: string;
-  log?: boolean;
-}
-
-export function startServer(options: StartServerOptions = {}): Server {
-  const port = options.port ?? defaultPort;
-  const bindHost = options.bindHost ?? defaultBindHost;
-  return app.listen(port, bindHost, () => {
-    if (options.log === false) return;
-    const displayHost = bindHost.includes(':') ? `[${bindHost}]` : bindHost;
-    console.log(`Leitstand server running at http://${displayHost}:${port}`);
-  });
-}
-
-if (isDirectRun) {
-  startServer();
-}
-
-
-
-export { app };
 
 // Runtime Health Receipt – read-only in-process proof surface for service and snapshot freshness.
 app.get('/health', async (_req, res) => {
@@ -125,11 +80,12 @@ app.get('/repoground', async (_req, res) => {
   }
 });
 
+// Compatibility redirect only; /repoground is the canonical route.
 app.get('/repobriefs', (_req, res) => {
   res.redirect(301, '/repoground');
 });
 
-// Bureau Task Board – Execution axis: read-only Bureau task/claim projection
+// Bureau task board – read-only projection of Bureau task and claim truth.
 app.get('/bureau', async (_req, res) => {
   try {
     const data = await getBureauData();
@@ -142,7 +98,7 @@ app.get('/bureau', async (_req, res) => {
   }
 });
 
-// Checkout Health – Execution axis: read-only Grabowski checkout inventory projection
+// Checkout health – read-only projection of Grabowski checkout inventory.
 app.get('/checkouts', async (_req, res) => {
   try {
     const data = await getCheckoutData();
@@ -155,7 +111,7 @@ app.get('/checkouts', async (_req, res) => {
   }
 });
 
-// Storage Health – bounded read-only projection of Heim-PC inventory and maintenance evidence
+// Storage health – bounded read-only projection of Heim-PC evidence.
 app.get('/storage-health', async (_req, res) => {
   try {
     const data = await getStorageHealthData();
@@ -194,3 +150,34 @@ app.get('/ecosystem-map', async (_req, res) => {
   }
 });
 
+export interface StartServerOptions {
+  port?: number;
+  bindHost?: string;
+  log?: boolean;
+}
+
+export function startServer(options: StartServerOptions = {}): Server {
+  const port = options.port ?? defaultPort;
+  const bindHost = options.bindHost ?? defaultBindHost;
+  return app.listen(port, bindHost, () => {
+    if (options.log === false) return;
+    const displayHost = bindHost.includes(':') ? `[${bindHost}]` : bindHost;
+    console.log(`Leitstand server running at http://${displayHost}:${port}`);
+  });
+}
+
+let isDirectRun = false;
+try {
+  isDirectRun =
+    !!process.argv[1] &&
+    realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url));
+} catch {
+  // If path resolution fails, treat as not a direct run to avoid crashing on import.
+  isDirectRun = false;
+}
+
+if (isDirectRun) {
+  startServer();
+}
+
+export { app };

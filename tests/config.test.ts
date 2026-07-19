@@ -1,21 +1,20 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { writeFile, rm, mkdtemp } from 'fs/promises';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { loadConfig, resetEnvConfig, envConfig } from '../src/config.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { envConfig, loadConfig, resetEnvConfig } from '../src/config.js';
 
 describe('config', () => {
   let testDir: string;
   let configPath: string;
-  
+
   beforeEach(async () => {
     testDir = await mkdtemp(join(tmpdir(), 'leitstand-test-config-'));
     configPath = join(testDir, 'test.config.json');
-    // Clear env config cache before each test
     resetEnvConfig();
     vi.unstubAllEnvs();
   });
-  
+
   afterEach(async () => {
     await rm(testDir, { recursive: true, force: true });
     vi.unstubAllEnvs();
@@ -33,133 +32,80 @@ describe('config', () => {
       warnSpy.mockRestore();
     });
 
-    it('should validate PORT as integer', () => {
+    it('validates PORT and falls back safely', () => {
       vi.stubEnv('PORT', '4000');
       resetEnvConfig();
       expect(envConfig.PORT).toBe(4000);
-    });
 
-    it('should fallback to default PORT 3000 if invalid', () => {
       vi.stubEnv('PORT', 'invalid-port');
       resetEnvConfig();
-      // z.coerce.number() coerces 'invalid-port' to NaN, failing .int().positive()
-      // safeParse() fails -> parsedEnv() warns and returns the defaults object (PORT: 3000)
       expect(envConfig.PORT).toBe(3000);
       expect(warnSpy).toHaveBeenCalled();
     });
 
-    it('should fallback to default PORT 3000 if non-positive', () => {
+    it('rejects non-positive ports', () => {
       vi.stubEnv('PORT', '-500');
       resetEnvConfig();
-      // -500 fails .positive() -> safeParse() fails -> warns and returns defaults (PORT: 3000)
       expect(envConfig.PORT).toBe(3000);
       expect(warnSpy).toHaveBeenCalled();
     });
 
-    describe('LEITSTAND_BIND_HOST', () => {
-      it('defaults to IPv4 loopback', () => {
-        resetEnvConfig();
-        expect(envConfig.bindHost).toBe('127.0.0.1');
-      });
-
-      it('accepts an explicit LAN IP literal', () => {
-        vi.stubEnv('LEITSTAND_BIND_HOST', '192.168.178.10');
-        resetEnvConfig();
-        expect(envConfig.bindHost).toBe('192.168.178.10');
-      });
-
-      it('accepts IPv6 loopback', () => {
-        vi.stubEnv('LEITSTAND_BIND_HOST', '::1');
-        resetEnvConfig();
-        expect(envConfig.bindHost).toBe('::1');
-      });
-
-      it('rejects hostnames and falls back to loopback', () => {
-        vi.stubEnv('PORT', '4001');
-        vi.stubEnv('NODE_ENV', 'production');
-        vi.stubEnv('LEITSTAND_BIND_HOST', 'leitstand.local');
-        resetEnvConfig();
-        expect(envConfig.bindHost).toBe('127.0.0.1');
-        expect(envConfig.PORT).toBe(4001);
-        expect(envConfig.NODE_ENV).toBe('production');
-        expect(envConfig.isStrict).toBe(true);
-        expect(warnSpy).toHaveBeenCalled();
-      });
-
-      it.each(['0.0.0.0', '::'])('rejects wildcard %s without acknowledgement', (host) => {
-        vi.stubEnv('LEITSTAND_BIND_HOST', host);
-        resetEnvConfig();
-        expect(envConfig.bindHost).toBe('127.0.0.1');
-        expect(warnSpy).toHaveBeenCalled();
-      });
-
-      it.each(['0.0.0.0', '::'])('accepts wildcard %s only with explicit acknowledgement', (host) => {
-        vi.stubEnv('LEITSTAND_BIND_HOST', host);
-        vi.stubEnv('LEITSTAND_ALLOW_WIDE_BIND', 'true');
-        resetEnvConfig();
-        expect(envConfig.bindHost).toBe(host);
-        expect(warnSpy).not.toHaveBeenCalled();
-      });
+    it('defaults to IPv4 loopback', () => {
+      expect(envConfig.bindHost).toBe('127.0.0.1');
     });
 
-    describe('LEITSTAND_ACS_URL', () => {
-      // Ops Viewer specific config tests
-      it('should accept valid HTTP/HTTPS URLs', () => {
-        vi.stubEnv('LEITSTAND_ACS_URL', 'http://localhost:8000');
-        resetEnvConfig();
-        expect(envConfig.acsUrl).toBe('http://localhost:8000');
+    it('accepts explicit IPv4 and IPv6 literals', () => {
+      vi.stubEnv('LEITSTAND_BIND_HOST', '192.168.178.10');
+      resetEnvConfig();
+      expect(envConfig.bindHost).toBe('192.168.178.10');
 
-        vi.stubEnv('LEITSTAND_ACS_URL', 'https://acs.internal');
-        resetEnvConfig();
-        expect(envConfig.acsUrl).toBe('https://acs.internal');
-      });
-
-      it('should allow empty string (disabled/unconfigured)', () => {
-        vi.stubEnv('LEITSTAND_ACS_URL', '');
-        resetEnvConfig();
-        expect(envConfig.acsUrl).toBe('');
-      });
-
-      it('should reject invalid URLs (non-http/s) and trigger global fallback', () => {
-        // Set a valid PORT override alongside invalid URL
-        vi.stubEnv('PORT', '4001');
-        vi.stubEnv('LEITSTAND_ACS_URL', 'ftp://malicious-server.com');
-        resetEnvConfig();
-
-        // Validation fails -> global fallback to defaults
-        // This confirms safeParse failure invalidates the ENTIRE env config object
-        expect(envConfig.acsUrl).toBe('');
-        expect(envConfig.PORT).toBe(3000); // Should revert to default, ignoring the valid 4001
-        expect(warnSpy).toHaveBeenCalled();
-      });
-
-      it('should reject invalid URL strings', () => {
-        vi.stubEnv('LEITSTAND_ACS_URL', 'not-a-url');
-        resetEnvConfig();
-        expect(envConfig.acsUrl).toBe('');
-        expect(warnSpy).toHaveBeenCalled();
-      });
+      vi.stubEnv('LEITSTAND_BIND_HOST', '::1');
+      resetEnvConfig();
+      expect(envConfig.bindHost).toBe('::1');
     });
 
-    it('should reset the cache when resetEnvConfig is called', () => {
+    it('rejects hostnames without corrupting unrelated environment values', () => {
+      vi.stubEnv('PORT', '4001');
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('LEITSTAND_BIND_HOST', 'leitstand.local');
+      resetEnvConfig();
+
+      expect(envConfig.bindHost).toBe('127.0.0.1');
+      expect(envConfig.PORT).toBe(4001);
+      expect(envConfig.NODE_ENV).toBe('production');
+      expect(envConfig.isStrict).toBe(true);
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it.each(['0.0.0.0', '::'])('rejects wildcard %s without acknowledgement', (host) => {
+      vi.stubEnv('LEITSTAND_BIND_HOST', host);
+      resetEnvConfig();
+      expect(envConfig.bindHost).toBe('127.0.0.1');
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it.each(['0.0.0.0', '::'])('accepts wildcard %s only with explicit acknowledgement', (host) => {
+      vi.stubEnv('LEITSTAND_BIND_HOST', host);
+      vi.stubEnv('LEITSTAND_ALLOW_WIDE_BIND', 'true');
+      resetEnvConfig();
+      expect(envConfig.bindHost).toBe(host);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('resets the environment cache explicitly', () => {
       vi.stubEnv('PORT', '5000');
       resetEnvConfig();
-      // Accessing PORT to populate the cache
       expect(envConfig.PORT).toBe(5000);
 
-      // Change environment variable without resetting
       vi.stubEnv('PORT', '6000');
-      // Should still be cached as 5000
       expect(envConfig.PORT).toBe(5000);
 
-      // Reset the cache
       resetEnvConfig();
-      // Now it should pick up the new value
       expect(envConfig.PORT).toBe(6000);
     });
   });
-  
-  it('should load valid configuration', async () => {
+
+  it('loads valid digest configuration', async () => {
     const configData = {
       paths: {
         semantah: { todayInsights: './insights/today.json' },
@@ -168,37 +114,26 @@ describe('config', () => {
       },
       output: { dir: './digests/daily' },
     };
-    
+
     await writeFile(configPath, JSON.stringify(configData), 'utf-8');
-    
     const config = await loadConfig(configPath);
-    
-    expect(config).toBeDefined();
+
     expect(config.paths.semantah.todayInsights).toContain('insights/today.json');
     expect(config.paths.chronik.dataDir).toContain('chronik/data');
   });
-  
-  it('should reject invalid configuration', async () => {
-    const invalidConfig = {
-      paths: {
-        semantah: {},  // Missing todayInsights
-      },
-    };
-    
-    await writeFile(configPath, JSON.stringify(invalidConfig), 'utf-8');
-    
+
+  it('rejects invalid configuration', async () => {
+    await writeFile(configPath, JSON.stringify({ paths: { semantah: {} } }), 'utf-8');
     await expect(loadConfig(configPath)).rejects.toThrow('Configuration validation failed');
   });
-  
-  it('should reject invalid JSON', async () => {
+
+  it('rejects invalid JSON', async () => {
     await writeFile(configPath, '{ invalid json }', 'utf-8');
-    
     await expect(loadConfig(configPath)).rejects.toThrow('Invalid JSON');
   });
-  
-  it('should expand environment variables', async () => {
+
+  it('expands configured environment variables', async () => {
     process.env.TEST_ROOT = '/test/root';
-    
     const configData = {
       paths: {
         semantah: { todayInsights: '$TEST_ROOT/insights/today.json' },
@@ -207,17 +142,14 @@ describe('config', () => {
       },
       output: { dir: './digests/daily' },
     };
-    
+
     await writeFile(configPath, JSON.stringify(configData), 'utf-8');
-    
     const config = await loadConfig(configPath);
-    
     expect(config.paths.semantah.todayInsights).toContain('/test/root/insights/today.json');
-    
     delete process.env.TEST_ROOT;
   });
-  
-  it('should fail when environment variables are not set', async () => {
+
+  it('fails when a referenced environment variable is unset', async () => {
     const configData = {
       paths: {
         semantah: { todayInsights: '$UNDEFINED_VAR/insights/today.json' },
@@ -226,9 +158,8 @@ describe('config', () => {
       },
       output: { dir: './digests/daily' },
     };
-    
+
     await writeFile(configPath, JSON.stringify(configData), 'utf-8');
-    
     await expect(loadConfig(configPath)).rejects.toThrow('Environment variable(s) not set: UNDEFINED_VAR');
   });
 });

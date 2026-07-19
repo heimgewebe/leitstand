@@ -5,165 +5,56 @@ doc_type: architecture
 status: active
 canonicality: canonical
 summary: >
-  Leitstand – Data Flow & Required Inputs
+  Canonical read-only data flow and authority boundaries.
 ---
 
 # Leitstand – Data Flow & Required Inputs
 
-Dieses Dokument beschreibt die Datenströme, die der Leitstand konsumiert.
-Es ist die verbindliche Sicht auf den Organismus-Fluss:
+Leitstand is a terminal projection layer:
 
-    aussensensor → chronik → semantAH → leitstand → hausKI → chronik
-
-Leitstand ist damit das **Beobachtungs- und Visualisierungszentrum** des Heimgewebes.
-
-Wichtig (Invariante, bezogen auf den Kern-Datenpfad `aussensensor → chronik → semantAH → leitstand → hausKI → chronik`):
-- Leitstand **orchestriert nicht** und **mutiert keine externen Systeme** im Normalbetrieb entlang dieses Datenpfads.
-- Leitstand konsumiert Artefakte/Events und erzeugt entlang dieses Pfads lediglich **lokale Darstellungs-/Digest-Artefakte**.
-- Ausnahme (bewusstes, optionales Fallback): Wenn `LEITSTAND_OPS_ALLOW_JOB_FALLBACK=true` gesetzt ist, kann der Ops Viewer POST-Requests an acs (`/api/audit/git`) auslösen; dies ist ein explizit opt-in konfigurierter externer Seiteneffekt außerhalb des Kern-Datenpfads.
-
----
-
-## 1. Eingehende Datenströme (Stand heute)
-
-Leitstand konsumiert **Stand heute** drei zentrale Contract-Typen. Weitere können in Zukunft hinzukommen.
-
-### 1.1 `fleet.health`
-Schema: `contracts/fleet.health.schema.json`
-
-Quelle:
-  - wgx metrics (periodisch)
-  - leitstand-intern generierte Aggregationen
-
-Bedeutung:
-  - zeigt den Zustand der gesamten Fleet
-  - wird in Panels wie „Fleet Overview“ verwendet
-
----
-
-### 1.2 `insights.daily`
-Schema (semantische Ebene):
-  → `contracts/insights.daily.schema.json`
-
-Technische Grundlage (Feldtypen, Validierung):
-  → `contracts/insights.schema.json`
-
-Hinweis:
-`insights.daily.schema.json` ist die **Daily-Spezialisierung** des allgemeineren
-`insights.schema.json`. Leitstand validiert primär gegen das Daily-Schema;
-`insights.schema.json` definiert die geteilten Feldstrukturen.
-
-Quelle:
-  - semantAH (`.gewebe/insights/daily/YYYY-MM-DD.json`)
-
-Garantierte Felder:
-  - `ts: YYYY-MM-DD`
-  - `topics`: Liste thematischer Einträge, sortiert nach Relevanz
-    (konkrete Struktur → `insights.daily.schema.json`, Feldtypen → `insights.schema.json`)
-  - `questions: [...]`
-  - `deltas: [...]`
-  - optional: `source`, `metadata`
-
-Verwendung:
-  - semantische Tagesansicht
-  - Trendanalysen über mehrere Tage
-
-**Atomizität:**
-Daily-Dateien werden atomar erzeugt (tmp → rename).
-Leitstand liest nie „teilbeschriebene“ Dateien; entweder die alte oder eine vollständig neue Version.
-
----
-
-### 1.3 `event.line`
-Schema: `contracts/event.line.schema.json`
-
-Quelle:
-  - chronik (JSONL)
-
-Verwendung:
-  - „Recent Activity“
-  - Filterbares Logbuch
-
----
-
-### 1.4 `leitstand_bureau_task_snapshot` (Ausführungs-Achse)
-Contract-`kind`: `leitstand_bureau_task_snapshot` (schemaVersion 1)
-
-Quelle:
-  - Primär: `artifacts/bureau-tasks.json`
-  - Bureau-Task-/Claim-Zustand, normalisiert durch die Producer-Bridge
-    `scripts/export-operator-snapshots.mjs`
-  - Dev/Preview-Fixture nur bei explizitem Fallback:
-    `LEITSTAND_BUREAU_FIXTURE_FALLBACK=1` oder `LEITSTAND_STRICT=false|0`
-
-Wichtig (Invariante):
-  - Leitstand ruft Bureau/Grabowski **nicht zur Laufzeit** auf. Der Zustand kommt
-    ausschließlich als Snapshot-Artefakt eines separaten Producers. Fällt
-    Leitstand aus, läuft die Ausführungswahrheit ungestört weiter.
-
-Verwendung:
-  - Task-Board (`/bureau`): Lifecycle-Zustände, Claims, Blocked/Failed-Zähler.
-
-### 1.5 `leitstand_checkout_inventory` (Ausführungs-Achse)
-Contract-`kind`: `leitstand_checkout_inventory` (schemaVersion 1)
-
-Quelle:
-  - Primär: `artifacts/checkout-inventory.json`
-  - Grabowski-Linked-Checkout-Inventar (`grabowski_checkout_inventory`),
-    normalisiert durch dieselbe Producer-Bridge.
-  - Dev/Preview-Fixture nur bei explizitem Fallback:
-    `LEITSTAND_CHECKOUT_FIXTURE_FALLBACK=1` oder `LEITSTAND_STRICT=false|0`
-
-Verwendung:
-  - Checkout Health (`/checkouts`): Retention-Ampel und **Sprawl**-Erkennung
-    (Worktrees ohne Retention-Owner, Prozess oder Lease).
-
-Details: siehe [Operator Execution Observability Blueprint](blueprints/operator-execution-observability.md) und [Operator Snapshot Producer Runbook](runbooks/operator-snapshots.md).
-
----
-
-## 2. Aktualisierungsfrequenzen
-
-- `fleet.health` – bei jedem wgx-guard/smoke Lauf, min. täglich
-- `insights.daily` – 1× täglich, bereit bis 08:00
-- `event.line` – kontinuierlich, Append-only
-
-Leitstand verarbeitet diese Daten asynchron; fehlende Quellen werden angezeigt, nicht verschwiegen. Fixture-Fallbacks werden als `fixture` angezeigt und gelten nicht als operative Wahrheit. Demo-Fixtures verwenden synthetische Beispielpfade; Source-Pfade werden in den Views als Anzeigename gerendert, nicht als rohe interne Operator-Pfade.
-
----
-
-## 3. Fehler- und Toleranzregeln
-
-### 3.1 Fehlende Dateien
-- `insights.daily`: wenn `today.json` fehlt → Panel zeigt „Keine Insights heute“
-- `fleet.health`: falls kein Health-Snapshot → Warnung
-- `event.line`: falls leer → Panel bleibt leer, Leitstand fährt trotzdem hoch
-
-### 3.2 Ungültige Schemas
-- Leitstand validiert Inputs gegen die Contracts
-- Bei Verstoß:
-  - Datei wird ignoriert
-  - Eintrag erscheint im internen „Diagnostics“-Panel
-
----
-
-## 4. Organismus-Graph
-
-```mermaid
-flowchart TD
-    FEEDS[aussensensor<br/>Feeds/News]
-        --> CHRONIK[chronik<br/>Event Store]
-
-    CHRONIK --> SEMANTAH[semantAH<br/>Semantic Index]
-    SEMANTAH --> INSIGHTS[insights.daily]
-
-    CHRONIK --> LS[leitstand<br/>Dashboard]
-    INSIGHTS --> LS
-
-    LS --> KI[hausKI<br/>Decision Engine]
-    KI --> CHRONIK
+```text
+source systems → bounded producer artifacts → Leitstand views
 ```
 
----
+No arrow returns from Leitstand to a source system. Leitstand does not ingest events, dispatch tasks, trigger audits, alter repositories, or maintain independent operational truth.
 
-Dies ist die verbindliche Datensicht, nach der Leitstand implementiert wird.
+## Inputs
+
+| Contract kind | Default artifact | Runtime surface | Authority |
+| --- | --- | --- | --- |
+| `leitstand_bureau_task_snapshot` | `artifacts/bureau-tasks.json` | `/bureau`, `/health` | Bureau |
+| `leitstand_checkout_inventory` | `artifacts/checkout-inventory.json` | `/checkouts`, `/health` | Grabowski |
+| `leitstand_storage_health` | `artifacts/storage-health.json` | `/storage-health`, `/health` | storage-health producer |
+| `system_catalog_map_artifact_manifest` | `artifacts/ecosystem-map-artifact-manifest.json` | `/ecosystem-map`, `/health` | Systemkatalog publication |
+| RepoGround bundle index | configured RepoGround bundle path | `/repoground` | RepoGround publication |
+
+The dashboard at `/` summarizes these projections. It does not combine them into a new source of truth.
+
+## Producer boundary
+
+Producers run outside the Leitstand request path. They write complete files atomically. Leitstand reads only the published file version and never calls Bureau, Grabowski, Systemkatalog, or RepoGround to repair missing evidence.
+
+Development fixtures are allowed only as visibly marked non-operative examples. They must never be presented as current source truth.
+
+## Freshness and failure semantics
+
+| Source | Freshness limit | Stale | Missing, invalid, unreadable, wrong contract |
+| --- | ---: | --- | --- |
+| Bureau | 20 minutes | `warn` | `fail` |
+| Checkouts | 20 minutes | `warn` | `fail` |
+| Storage health | 90 minutes | `warn` | `fail` |
+| Systemkarte | 168 hours | `warn` | `fail` |
+
+Every snapshot entry in `/health` reports `age_seconds` and `stale_after_seconds`. RepoGround exposes its own source and freshness metadata in its view contract.
+
+## Authority boundary
+
+Leitstand may establish only what it directly observes from its process, Git checkout, and local files. It does not establish:
+
+- external reachability, DNS, or reverse-proxy persistence;
+- correctness of Bureau task decisions;
+- cleanup or execution authority in Grabowski;
+- correctness of Systemkatalog or RepoGround source claims;
+- deployment success solely from a successful static preview.
+
+This document supersedes older event-, insights-, anatomy-, physiology-, phase-, timeline-, reflexion-, and Ops-viewer flows. Historical reports and blueprints remain non-normative evidence only.

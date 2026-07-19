@@ -5,49 +5,30 @@ doc_type: guide
 status: active
 canonicality: canonical
 summary: >
-  Deploying Leitstand to Cloudflare Pages
+  Deployment of the bounded Leitstand static preview.
 ---
 
 # Deploying Leitstand to Cloudflare Pages
 
-> **Deployment Mode: B (Public Static Mirror)**
-> This mode acts purely as a static read-only mirror. Dynamic endpoints (`/events`) are inactive. The supported static routes are `/`; `dist/site/_static-boundary.json` records the exact route boundary.
+Cloudflare Pages hosts an optional static preview, not the canonical runtime. The preview contains only `/`, browser assets, and `_static-boundary.json`.
 
-Leitstand relies on a deterministic build process where data artifacts are fetched *before* the static site generation.
+## Build
 
-## Required Environment Variables
+Use `pnpm build:cf`. The command delegates to `pnpm build:static`; it does not fetch runtime artifacts because the preview does not render runtime-backed views.
 
-Set these in your Cloudflare Pages project settings:
+The boundary manifest records:
 
-*   **`NODE_ENV`**: `production`
-*   **`LEITSTAND_STRICT`**: `1` (Recommended to enforce artifact existence)
+- the supported static route;
+- current runtime-only routes;
+- removed routes;
+- truths that the preview does not establish.
 
-## Build Command
+## Required configuration
 
-The build command must explicitly fetch both artifacts before generating the static site:
+No Leitstand runtime artifact or ingestion variables are required for the static preview. `SOURCE_DATE_EPOCH` may be supplied for a reproducible manifest timestamp.
 
-```bash
-pnpm build:cf
-```
+## Verification
 
-This command runs `fetch:integrity` (populating the `artifacts/` directory) followed by `build:static`. The static build emits `dist/site/_static-boundary.json`; it is the machine-readable contract for the route set.
+A successful preview build proves only that the static shell and boundary manifest were generated. It does not prove canonical runtime availability, source freshness, DNS, reverse-proxy behavior, or runtime route parity.
 
-## Strict Mode Behavior
-
-If `LEITSTAND_STRICT=1` (or `NODE_ENV=production`), the build will **fail** if:
-1.  Artifacts cannot be fetched from the configured URLs.
-2.  Fetched artifacts are invalid or empty.
-3.  Artifact dependencies are fully resolvable. If one is missing, the build fails.
-
-This ensures that the deployed site never relies on fallback test fixtures in production.
-
-A `_meta.json` file is also generated in `artifacts/` to provide a forensic trail of what was fetched (size, timestamp, source). This is purely informational and not a source of truth for the build logic.
-
-## Common Misconfigurations
-
-1.  **Strict Mode without Fetch**: Setting `LEITSTAND_STRICT=1` but running only `pnpm build:static` (skipping fetch). This will cause the build to fail because artifacts are missing. **Always use `pnpm build:cf`**.
-2.  **Missing Artifacts**: Make sure all expected artifacts are populated in `artifacts/` prior to the static build.
-
-## GitHub Pages Boundary
-
-GitHub Pages is intentionally manual-only in this repository. The workflow exists as an optional smoke for Mode B output, not as the primary public mirror and not as evidence of Mode A runtime health. Main pushes must not depend on a repository-level Pages environment being enabled.
+GitHub Pages remains manual-only and may be used as an additional static smoke surface. Main-branch health must not depend on a Pages environment being enabled.

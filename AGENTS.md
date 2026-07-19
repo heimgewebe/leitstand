@@ -1,61 +1,66 @@
 # AGENTS
 
 ## Purpose
-This repository provides the dashboard and control-room for the heimgewebe organism (daily system digest generator). It is a Type B — Produkt-/Service-Repo.
+
+Leitstand is a read-only dashboard and evidence projection service for the Heimgewebe operator ecosystem. It is not a control plane, task runner, event-ingestion service, or independent source of truth.
 
 ## Read This First
-- **Primary read path**: Start with `README.md` and this `AGENTS.md` file. Then review `docs/index.md` for normative invariants and runbooks.
-- If actions are required, Leitstand does not execute them. Execution remains outside Leitstand.
+
+1. `README.md`
+2. `docs/index.md`
+3. `docs/runtime.contract.md`
+4. this file
+
+When an observed state requires action, perform that action in the authoritative source system, not through Leitstand.
 
 ## Canonical Sources
-- `repo.meta.yaml` (Repo identity and structure truth)
-- `AGENTS.md` (Agent reading path and working boundaries)
-- `agent-policy.yaml` (Change policies and rules)
-- `docs/index.md` (Canonical documentation router)
-- Vendored contracts from metarepo
 
-## Discovery Rules
-All new documents and critical implementations must be discoverable:
-- Markdown documents must have appropriate frontmatter.
-- Generated overviews must list them.
-- Critical implementations must be registered in `audit/impl-registry.yaml`.
+- `repo.meta.yaml`: repository identity and structure
+- `agent-policy.yaml`: change policy
+- `docs/index.md`: current documentation router
+- `docs/runtime.contract.md`: runtime, route, and health boundary
+- `docs/data-flow.md`: artifact and authority flow
+- vendored contracts: pinned external schemas
 
-## Generated Files
-- `docs/_generated/` currently contains structural placeholders for overviews (`doc-index.md`, `system-map.md`, `orphans.md`, etc.).
-- A full semantic graph generator is not yet active.
-- Generated files must **not** be manually edited, to preserve the placeholder structure.
+Historical reports and blueprints do not override current contracts.
 
-## Safe Read Paths
-- `README.md`
-- `AGENTS.md`
-- `repo.meta.yaml`
-- `agent-policy.yaml`
+## Change Rules
+
+- Keep every HTTP surface read-only.
+- Do not add mutation, orchestration, authentication, event-ingestion, or task-dispatch routes.
+- Do not create a second operational truth model.
+- Preserve source identity, contract kind, freshness, and explicit non-claims in projections.
+- Use source-specific freshness limits; do not reintroduce one global threshold.
+- `/repoground` is canonical; `/repobriefs` is compatibility-only.
+- Removed legacy routes must remain unavailable.
+- Do not expose internal paths or secrets in browser output.
+
+## Discovery and Generated Files
+
+New canonical documents require frontmatter and discoverability through `docs/index.md`. Critical implementations belong in `audit/impl-registry.yaml`.
+
+`docs/_generated/` contains structural placeholders. Do not edit those files manually.
+
+## Guarded Paths
+
 - `audit/`
 - `docs/`
-
-## Guarded / Risky Paths
-- `audit/`
-- `docs/` (Except generated content)
 - `scripts/`
 - `src/`
 - `deploy/`
 - `.github/workflows/`
 
 ## Required Checks
-- `repo-structure-guard`
-- `docs-relations-guard`
-- `generated-files-guard`
-- `check-drift-gates`
-- `lint` and `test` (pnpm run lint, pnpm test)
 
-## Common Traps
-- Hardcoding data paths: Use flexible loading logic that prioritizes filename timestamps over mtime.
-- Modifying external schemas: The schema logic relies on canonical vendored schemas.
-- Empty `catch` blocks: Ensure explicit `// Ignore ENOENT` comments are added when ignoring ENOENT errors.
+- repository structure, document relation, generated-file, and drift guards
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm build`
+- `pnpm test`
+- `pnpm build:static`
+- `pnpm test:browser-shell`
 
 ## Open Gaps
 
-- **Accessibility**: Tastaturfokus und ARIA sind partiell vorhanden (Home); ein systematischer A11y-Sweep über alle Views steht aus.
-- **Tests**: Visualmodell- und Mapping-Tests werden Phase für Phase ergänzt – derzeit liegen Schwerpunkte bei Controller- und Server-Tests.
-- **Semantic Graph Generator** (`docs/_generated/`): Die generierten Übersichten
-  sind aktuell Platzhalter; ein echter Generator ist nicht vorgesehen.
+- A systematic accessibility audit beyond current keyboard, focus, ARIA, and responsive-shell regressions remains useful.
+- Generated documentation overviews remain placeholders; no second semantic truth generator is planned.

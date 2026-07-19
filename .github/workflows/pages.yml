@@ -1,11 +1,5 @@
-# DEPLOYMENT MODE: Public Static Mirror
-# This workflow deploys Leitstand as static HTML to GitHub Pages.
-# It acts strictly as a "Mode B" public mirror/preview.
-# It does NOT represent the canonical Mode A internal runtime.
-# Consequently, dynamic endpoints (/events, /ops) are not available here.
-# GitHub Pages is intentionally manual-only. Cloudflare Pages is the primary
-# static preview path; GitHub Pages must not keep main red when the repository
-# has no enabled Pages environment.
+# DEPLOYMENT MODE: bounded public static preview.
+# The canonical Leitstand runtime is internal and is not represented by Pages.
 name: Deploy to Pages
 
 on:
@@ -17,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 
 env:
@@ -38,41 +32,17 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4.1.0
         with:
-          node-version: "20"
-          cache: "pnpm"
+          node-version: '20'
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Fetch Observatory Artifact
-        run: |
-          mkdir -p artifacts
-          echo "Fetching insights.daily.json from semantAH releases..."
-          # Fetch the latest daily insights artifact from semantAH.
-          # We use || echo to ensure the build continues (falling back to fixture) if the artifact is missing.
-          curl -f -L --retry 3 --retry-delay 2 -o artifacts/insights.daily.json https://github.com/heimgewebe/semantAH/releases/download/insights-daily/insights.daily.json || (echo "::notice::Using fixture fallback (artifact missing)" && echo "Failed to fetch artifact, continuing with build")
+      - name: Build bounded static preview
+        run: pnpm build:cf
 
-      - name: Validate Fetched Artifact
-        run: |
-          if [ -f artifacts/insights.daily.json ]; then
-            if [ ! -s artifacts/insights.daily.json ]; then
-              echo "::notice::Artifact is empty, using fixture fallback."
-              rm artifacts/insights.daily.json
-            else
-              echo "Validating JSON integrity..."
-              if ! node -e "JSON.parse(require('fs').readFileSync('artifacts/insights.daily.json','utf8'))"; then
-                echo "::notice::Invalid artifact (JSON parse failed), using fixture fallback."
-                rm artifacts/insights.daily.json
-              else
-                echo "Artifact is valid JSON."
-              fi
-            fi
-          else
-            echo "Artifact missing, skipping validation."
-          fi
-
-      - name: Build Static Site
-        run: pnpm run build:static
+      - name: Verify static boundary
+        run: node -e "const b=require('./dist/site/_static-boundary.json'); if (b.supportedRoutes.length !== 1 || b.supportedRoutes[0].route !== '/') process.exit(1)"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

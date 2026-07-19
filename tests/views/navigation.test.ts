@@ -93,12 +93,14 @@ describe('canonical navigation parity', () => {
     expect(ci).toContain('run: pnpm run test:browser-shell');
   });
 
-  it('copies the shared shell into the supported static mirror', () => {
+  it('copies the shared shell and emits the bounded static route manifest', () => {
     const buildScript = readFileSync(join(process.cwd(), 'scripts', 'build-static.mjs'), 'utf-8');
 
-    expect(buildScript).toContain('const STATIC_ASSETS = ["shell.css", "shell.mjs"]');
-    expect(buildScript).toContain('copyFile(join(ROOT, "src", "public", name), join(assetsOut, name))');
+    expect(buildScript).toMatch(/const STATIC_ASSETS = \[['"]shell\.css['"], ['"]shell\.mjs['"]\]/);
+    expect(buildScript).toMatch(/copyFile\(join\(ROOT, ['"]src['"], ['"]public['"], name\), join\(assetsOut, name\)\)/);
     expect(buildScript).toContain('await copyStaticAssets()');
-    expect(buildScript).toContain('{ currentPath: "/" }');
+    expect(buildScript).toMatch(/currentPath:\s*['"]\/['"]/);
+    expect(buildScript).toContain('runtimeOnlyRoutes: STATIC_MIRROR_RUNTIME_ONLY_ROUTES');
+    expect(buildScript).toContain("removedRoutes: ['/events', '/ops', '/observatory', '/intent', '/anatomy', '/timeline', '/insights', '/reflexion']");
   });
 });

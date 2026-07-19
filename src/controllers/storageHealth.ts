@@ -87,7 +87,7 @@ export interface StorageHealthViewData {
 }
 
 const CONTRACT_KIND = 'leitstand_storage_health';
-const STALE_AFTER_MS = 2 * 60 * 60 * 1000;
+const STALE_AFTER_MS = 90 * 60 * 1000;
 const CONTRACT_LIMITS = Object.freeze({
   hourly: 744,
   daily: 366,

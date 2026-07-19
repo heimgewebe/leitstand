@@ -1,8 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { getRuntimeHealthData } from '../src/runtimeHealth.js';
+
+type SnapshotTimes = {
+  bureau: string;
+  checkouts: string;
+  storage: string;
+  ecosystem: string;
+};
 
 describe('runtime health receipt', () => {
   let testDir: string;
@@ -22,13 +29,17 @@ describe('runtime health receipt', () => {
     await rm(testDir, { recursive: true, force: true });
   });
 
-  async function writeSnapshots(generatedAt: string): Promise<void> {
+  async function writeSnapshots(generatedAt: string | SnapshotTimes): Promise<void> {
+    const times = typeof generatedAt === 'string'
+      ? { bureau: generatedAt, checkouts: generatedAt, storage: generatedAt, ecosystem: generatedAt }
+      : generatedAt;
+
     await writeFile(
       join(artifactsDir, 'bureau-tasks.json'),
       JSON.stringify({
         schemaVersion: 1,
         kind: 'leitstand_bureau_task_snapshot',
-        generatedAt,
+        generatedAt: times.bureau,
         tasks: [{ id: 'T1', title: 'Task one', state: 'queued' }],
       }),
       'utf-8',
@@ -38,7 +49,7 @@ describe('runtime health receipt', () => {
       JSON.stringify({
         schemaVersion: 1,
         kind: 'leitstand_checkout_inventory',
-        generatedAt,
+        generatedAt: times.checkouts,
         checkouts: [{ path: '/tmp/repo', retention: 'retained' }],
       }),
       'utf-8',
@@ -47,8 +58,8 @@ describe('runtime health receipt', () => {
       join(artifactsDir, 'storage-health.json'),
       JSON.stringify({
         kind: 'leitstand_storage_health',
-        generatedAt,
-        current: {}
+        generatedAt: times.storage,
+        current: {},
       }),
       'utf-8',
     );
@@ -56,8 +67,8 @@ describe('runtime health receipt', () => {
       join(artifactsDir, 'ecosystem-map-artifact-manifest.json'),
       JSON.stringify({
         kind: 'system_catalog_map_artifact_manifest',
-        generatedAt,
-        artifacts: []
+        generatedAt: times.ecosystem,
+        artifacts: [],
       }),
       'utf-8',
     );
@@ -66,19 +77,78 @@ describe('runtime health receipt', () => {
   it('reports ok when git and operator snapshots are fresh', async () => {
     await writeSnapshots('2026-07-08T17:55:00.000Z');
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
 
     expect(receipt.status).toBe('ok');
     expect(receipt.kind).toBe('leitstand_runtime_health_receipt');
     expect(receipt.git.head).toBe('a'.repeat(40));
     expect(receipt.git.branch).toBe('main');
-    expect(receipt.snapshots.bureau_tasks.status).toBe('ok');
     expect(receipt.snapshots.bureau_tasks.record_count).toBe(1);
     expect(receipt.snapshots.checkout_inventory.status).toBe('ok');
     expect(receipt.snapshots.storage_health.status).toBe('ok');
     expect(receipt.snapshots.ecosystem_map.status).toBe('ok');
     expect(receipt.ingress.status).toBe('not_checked');
     expect(receipt.doesNotEstablish).toContain('dns_correctness');
+  });
+
+  it('pins source-specific default freshness limits and boundary transitions', async () => {
+    await writeSnapshots({
+      bureau: '2026-07-08T17:39:00.000Z',
+      checkouts: '2026-07-08T17:40:00.000Z',
+      storage: '2026-07-08T16:29:00.000Z',
+      ecosystem: '2026-07-01T19:00:00.000Z',
+    });
+
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
+
+    expect(receipt.snapshots.bureau_tasks.stale_after_seconds).toBe(20 * 60);
+    expect(receipt.snapshots.checkout_inventory.stale_after_seconds).toBe(20 * 60);
+    expect(receipt.snapshots.storage_health.stale_after_seconds).toBe(90 * 60);
+    expect(receipt.snapshots.ecosystem_map.stale_after_seconds).toBe(168 * 60 * 60);
+
+    expect(receipt.snapshots.bureau_tasks).toMatchObject({ status: 'warn', reason: 'snapshot_stale' });
+    expect(receipt.snapshots.checkout_inventory).toMatchObject({ status: 'ok', reason: 'snapshot_fresh' });
+    expect(receipt.snapshots.storage_health).toMatchObject({ status: 'warn', reason: 'snapshot_stale' });
+    expect(receipt.snapshots.ecosystem_map).toMatchObject({ status: 'ok', reason: 'snapshot_fresh' });
+    expect(receipt.status).toBe('warn');
+  });
+
+  it('marks the Systemkatalog manifest stale only after seven days', async () => {
+    await writeSnapshots({
+      bureau: '2026-07-08T17:55:00.000Z',
+      checkouts: '2026-07-08T17:55:00.000Z',
+      storage: '2026-07-08T17:00:00.000Z',
+      ecosystem: '2026-07-01T17:59:59.000Z',
+    });
+
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
+
+    expect(receipt.snapshots.ecosystem_map).toMatchObject({
+      status: 'warn',
+      reason: 'snapshot_stale',
+      stale_after_seconds: 168 * 60 * 60,
+    });
+  });
+
+  it('allows explicit per-source overrides for isolated tests', async () => {
+    await writeSnapshots('2026-07-08T17:00:00.000Z');
+
+    const receipt = await getRuntimeHealthData({
+      cwd: testDir,
+      now,
+      staleAfterMsOverrides: {
+        bureau_tasks: 20 * 60 * 1000,
+        checkout_inventory: 20 * 60 * 1000,
+        storage_health: 20 * 60 * 1000,
+        ecosystem_map: 20 * 60 * 1000,
+      },
+    });
+
+    expect(receipt.status).toBe('warn');
+    expect(receipt.snapshots.bureau_tasks.status).toBe('warn');
+    expect(receipt.snapshots.checkout_inventory.status).toBe('warn');
+    expect(receipt.snapshots.storage_health.status).toBe('warn');
+    expect(receipt.snapshots.ecosystem_map.status).toBe('warn');
   });
 
   it('resolves a loose branch ref from a linked worktree common Git directory', async () => {
@@ -93,7 +163,7 @@ describe('runtime health receipt', () => {
     await writeFile(join(worktreeGitDir, 'commondir'), '../..\n', 'utf-8');
     await writeFile(join(commonGitDir, 'refs', 'heads', 'feature'), `${'b'.repeat(40)}\n`, 'utf-8');
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
 
     expect(receipt.status).toBe('ok');
     expect(receipt.git.status).toBe('ok');
@@ -116,7 +186,7 @@ describe('runtime health receipt', () => {
       'utf-8',
     );
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
 
     expect(receipt.status).toBe('ok');
     expect(receipt.git.status).toBe('ok');
@@ -124,20 +194,8 @@ describe('runtime health receipt', () => {
     expect(receipt.git.branch).toBe('packed-feature');
   });
 
-  it('warns when snapshots are stale', async () => {
-    await writeSnapshots('2026-07-08T17:00:00.000Z');
-
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
-
-    expect(receipt.status).toBe('warn');
-    expect(receipt.snapshots.bureau_tasks.status).toBe('warn');
-    expect(receipt.snapshots.bureau_tasks.reason).toBe('snapshot_stale');
-    expect(receipt.snapshots.checkout_inventory.status).toBe('warn');
-    expect(receipt.snapshots.storage_health.status).toBe('warn');
-    expect(receipt.snapshots.ecosystem_map.status).toBe('warn');
-  });
-
   it('fails when a snapshot has the wrong contract kind', async () => {
+    await writeSnapshots('2026-07-08T17:55:00.000Z');
     await writeFile(
       join(artifactsDir, 'bureau-tasks.json'),
       JSON.stringify({
@@ -148,35 +206,8 @@ describe('runtime health receipt', () => {
       }),
       'utf-8',
     );
-    await writeFile(
-      join(artifactsDir, 'checkout-inventory.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        kind: 'leitstand_checkout_inventory',
-        generatedAt: '2026-07-08T17:55:00.000Z',
-        checkouts: [],
-      }),
-      'utf-8',
-    );
-    await writeFile(
-      join(artifactsDir, 'storage-health.json'),
-      JSON.stringify({
-        kind: 'leitstand_storage_health',
-        generatedAt: '2026-07-08T17:55:00.000Z',
-        current: {}
-      }),
-      'utf-8',
-    );
-    await writeFile(
-      join(artifactsDir, 'ecosystem-map-artifact-manifest.json'),
-      JSON.stringify({
-        kind: 'system_catalog_map_artifact_manifest',
-        generatedAt: '2026-07-08T17:55:00.000Z',
-        artifacts: []
-      }),
-      'utf-8',
-    );
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
+
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
 
     expect(receipt.status).toBe('fail');
     expect(receipt.snapshots.bureau_tasks.status).toBe('fail');
@@ -185,35 +216,10 @@ describe('runtime health receipt', () => {
   });
 
   it('fails when a required snapshot is missing', async () => {
-    await writeFile(
-      join(artifactsDir, 'checkout-inventory.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        kind: 'leitstand_checkout_inventory',
-        generatedAt: '2026-07-08T17:55:00.000Z',
-        checkouts: [],
-      }),
-      'utf-8',
-    );
-    await writeFile(
-      join(artifactsDir, 'storage-health.json'),
-      JSON.stringify({
-        kind: 'leitstand_storage_health',
-        generatedAt: '2026-07-08T17:55:00.000Z',
-        current: {}
-      }),
-      'utf-8',
-    );
-    await writeFile(
-      join(artifactsDir, 'ecosystem-map-artifact-manifest.json'),
-      JSON.stringify({
-        kind: 'system_catalog_map_artifact_manifest',
-        generatedAt: '2026-07-08T17:55:00.000Z',
-        artifacts: []
-      }),
-      'utf-8',
-    );
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now, staleAfterMsOverrides: { bureau_tasks: 20 * 60 * 1000, checkout_inventory: 20 * 60 * 1000, storage_health: 20 * 60 * 1000, ecosystem_map: 20 * 60 * 1000 } });
+    await writeSnapshots('2026-07-08T17:55:00.000Z');
+    await rm(join(artifactsDir, 'bureau-tasks.json'));
+
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
 
     expect(receipt.status).toBe('fail');
     expect(receipt.snapshots.bureau_tasks.status).toBe('fail');

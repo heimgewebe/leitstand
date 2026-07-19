@@ -5,17 +5,18 @@ doc_type: architecture
 status: active
 canonicality: informational
 summary: >
-  Ordnet die primären Systemblöcke von Leitstand ihren architektonischen Kernrollen zu.
+  Classifies the remaining Leitstand components by their read-only responsibility.
 ---
 
 # Feature Classification
 
-Diese Tabelle ordnet die primären Systemblöcke von Leitstand ihren architektonischen Kernrollen zu, um Mehrfachrollen zu vermeiden und den Beobachtungszweck zu sichern.
+| Component | Responsibility | Explicit non-responsibility |
+| --- | --- | --- |
+| EJS views and browser shell | render bounded projections accessibly | no source decisions, no mutation |
+| `server.ts` | route read-only views and health evidence | no ingestion, orchestration, authentication, or task dispatch |
+| snapshot controllers | validate and normalize published local artifacts | no producer calls or repair actions |
+| `runtimeHealth.ts` | report process, Git, artifact contract, and freshness evidence | no external reachability or authority claims |
+| static builder | publish a bounded preview and route manifest | no runtime-artifact fetch or route parity claim |
+| digest CLI | optional local report generation outside the web runtime | no HTTP route or operational authority |
 
-| Bereich                 | Primärrolle | Sekundäre Aspekte                                              | Begründung                                                                 |
-| ----------------------- | ----------- | -------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Digest                  | SUMMARIZE   |                                                                | Verdichtung von Daten aus verschiedenen Quellen.                           |
-| Views (EJS)             | VISUALIZE   |                                                                | Reine Darstellung von Daten; keine funktionale Logik.                      |
-| server.ts               | OBSERVE     | lokale Darstellungs-/Pipeline-Vorbereitung                     | Primär OBSERVE; liefert lokale Artifact-/Cache-Mechanik zur Darstellungsvorbereitung. |
-| metrics/insights/events | OBSERVE     |                                                                | Reine Datenaufnahme aus Systemstreams und Metriken.                        |
-| ops viewer              | VISUALIZE   |                                                                | Nur Anzeige operationaler Zustände, mutierende Absichten verbleiben extern.|
+Removed event, Ops, anatomy, physiology, phase, timeline, insights, observatory, intent, and reflexion views are not active feature classes.

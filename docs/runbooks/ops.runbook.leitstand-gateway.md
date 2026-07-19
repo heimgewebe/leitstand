@@ -1,222 +1,55 @@
 ---
 id: docs.runbooks.ops.runbook.leitstand-gateway
-title: ops.runbook.leitstand-gateway
+title: Leitstand Gateway
 doc_type: runbook
 status: active
 canonicality: canonical
 summary: >
-  ops.runbook.leitstand-gateway
+  Canonical internal ingress boundary for the read-only Leitstand runtime.
 ---
 
-# ops.runbook.leitstand-gateway
+# Leitstand Gateway
 
-Stand: 2026-02-03 (abgeleitet aus heimserver.context.md)
-Dokumentklasse: OPERATIV · KANONISCH
-Scope: Heimserver-only
-Owner: ops / Heimserver; Änderungen an Proxy/Firewall/DNS müssen dieses Runbook im selben PR updaten.
+## Purpose
 
-## 0) Zweck
-Dieses Runbook beschreibt den kanonischen Betrieb eines dauerhaft erreichbaren Heimgewebe-Viewers:
-- Gateway handles UI (canonical) and API (optional/external config)
-- kein Public
-- WireGuard = Transport
-- Leitstand = einziges UI
-- ACS = kontrollierter Actor (kein Direktzugriff)
-- Artefakte = Primärwahrheit
-- Live = sanft, erklärbar (kein globales Dauerpolling)
+The gateway exposes one internal, read-only Leitstand service. It does not expose a companion API, ACS actor, event-ingestion endpoint, or public control surface.
 
-> **Hinweis:** Dies ist ein öffentliches Repository. Interne IPs, Subnetze und Domains erscheinen als Platzhalter (`<LAN_SUBNET>`, `<WG_SUBNET>`, `<GATEWAY_IP>`). Die realen Werte und Konfigurationen sind im privaten Heimserver-Runbook hinterlegt.
+## Invariants
 
-## 1) Unveränderliche Invarianten (nicht verhandelbar)
-- Zugriff ausschließlich aus LAN (<LAN_SUBNET>) und WireGuard (<WG_SUBNET>)
-- Reverse Proxy ist die einzige Eintrittsstelle
-- Docker-Netze sind keine Vertrauenszone
-- Docker-Caddy ist kanonisch; Host-Caddy (systemd) ist verboten
-- TLS via Caddy internal CA
-- Leitstand: Viewer-first, READ-ONLY default
-- Aktionen ausschließlich über ACS; keine Leitstand-Fallback-Writes
+- canonical FQDN: `leitstand.heimgewebe.home.arpa`;
+- HTTPS through the internal reverse proxy;
+- no WAN publication;
+- the application listener is internal and explicitly owned;
+- direct Node/systemd operation defaults to `127.0.0.1:3000`;
+- wildcard binding requires explicit acknowledgement and a separately verified host exposure boundary;
+- Leitstand routes remain read-only;
+- source artifacts remain authoritative outside Leitstand.
 
-## 2) Architektur (Zielbild)
-Client (iPad/Laptop)
-  -> WireGuard
-  -> Heimserver (Entry-Gateway)
-      Caddy (Docker, Gateway; FQDNs UI/API)
-        -> Leitstand (intern)
-        -> ACS (intern, via api.heimgewebe...)
+## Routing
 
-Ziel-URLs:
-- https://leitstand.heimgewebe.home.arpa (UI)
-- https://api.heimgewebe.home.arpa (API) (optional)
+The proxy forwards the canonical host to the single Leitstand upstream. It must not publish removed legacy paths through another backend or rewrite them into successful responses.
 
-Weltgewebe-FQDNs sind nicht Teil dieses Gateways, sofern nicht explizit aktiviert.
+Required route behavior:
 
-## 3) Trust-Zones (explizit)
-Trusted:
-- 127.0.0.1/8
-- <LAN_SUBNET>
-- <WG_SUBNET>
+- current runtime routes pass through unchanged;
+- `/repobriefs` may retain the application-level permanent redirect to `/repoground`;
+- removed routes return the application 404;
+- `/health` is not rewritten into a generic proxy health response.
 
-Not trusted:
-- Docker 172.16.0.0/12 (bridge/networks)
-- WAN
+## Verification
 
-## 4) DNS (Komfort ist Funktion)
-SOLL:
-- leitstand.heimgewebe.home.arpa -> <GATEWAY_IP> (Gateway DNS)
-- api.heimgewebe.home.arpa -> <GATEWAY_IP> (optional)
-- WireGuard-Clients verwenden DNS = <DNS_SERVER_IP> (Local Resolver / Pi-hole)
+Verify the same release across all layers:
 
-VALIDIERUNG:
-- getent hosts leitstand.heimgewebe.home.arpa
-- getent hosts api.heimgewebe.home.arpa
-- ping leitstand.heimgewebe.home.arpa
-- (optional) dig leitstand.heimgewebe.home.arpa @<DNS_SERVER_IP>
+1. DNS resolves the canonical internal name;
+2. TLS presents the intended internal certificate chain;
+3. the reverse proxy selects the Leitstand upstream only for the canonical host;
+4. the listener address and owning process match deployment intent;
+5. `/health` reports the deployed Git head and expected snapshot contract;
+6. removed routes remain unavailable;
+7. no direct public listener exists.
 
-## 5) Orchestrierungsregel (KANON)
-- systemd: Host-nahe Dienste (z. B. docker.service, netfilter-persistent)
-- Docker/Compose: HTTP-/HTTPS-Dienste, UIs, APIs, Proxies
-- Mischbetrieb (Host-Caddy) ist verboten, außer explizit dokumentierte Ausnahme
+A successful proxy response alone does not establish application health or release identity.
 
-## 6) Caddy Site (KANONISCH)
-Caddy läuft in Docker und ist die einzige Eintrittsstelle.
-Ingress ist ausschließlich für LAN/WireGuard erlaubt (Firewall/DOCKER-USER). Ob 80/443 an 127.0.0.1 oder 0.0.0.0 gebunden sind, ist deployment-spezifisch und wird im Heimserver-Runbook durchgesetzt.
+## Updates and rollback
 
-```caddy
-# Kanonische Caddy-Konfiguration liegt im Ops/Heimserver-Repo; dieses Snippet dient als Referenz und muss damit übereinstimmen.
-
-http://leitstand.heimgewebe.home.arpa {
-  redir https://leitstand.heimgewebe.home.arpa{uri} 308
-}
-
-leitstand.heimgewebe.home.arpa {
-  encode zstd gzip
-  reverse_proxy leitstand:3000
-  tls internal
-}
-
-# API/ACS configuration is managed in Ops/Heimserver-Repo (optional)
-# http://api.heimgewebe.home.arpa {
-#   redir https://api.heimgewebe.home.arpa{uri} 308
-# }
-# api.heimgewebe.home.arpa {
-#   tls internal
-#   reverse_proxy acs:8099
-# }
-```
-
-## 7) Firewall (KANON)
-
-Stack:
-- iptables
-- netfilter-persistent
-UFW: entfernt (keine Doppelsteuerung)
-
-Inbound-Policy (minimales Set):
-- 22/tcp aus LAN+WG
-- 51820/udp von WAN (WireGuard)
-- 443/tcp aus LAN+WG (Entry-Gateway)
-
-## 8) DOCKER-USER cage (KANON)
-
-Ziel: 80/443 nur für LAN+WG zulassen; alles andere drop.
-
-Regeln:
-- ACCEPT TCP 80/443 aus <LAN_SUBNET>
-- ACCEPT TCP 80/443 aus <WG_SUBNET>
-- DROP sonst für 80/443
-- RETURN für nicht relevante Pakete
-
-VALIDIERUNG:
-- sudo iptables -S DOCKER-USER
-
-Hinweis:
-DOCKER-USER wirkt nur, wenn Docker Traffic durch FORWARD/DOCKER-Ketten führt (Sonder-Setups verifizieren).
-
-## 9) Deploy-Runbook (Schritte)
-
-### 9.1 Standardweg: leitstand-up
-
-Deployment und Updates erfolgen **ausschließlich** über das zentrale Skript. Es kapselt Orchestrierung (Compose), Build und Netzwerk-Konfiguration.
-
-Pfad: `./scripts/leitstand-up`
-
-### 9.2 Modi
-
-1. **Proxy-First (Empfohlen)**
-   - Startet Container im externen Netzwerk (`heimnet`), keine Host-Ports.
-   - Ideal hinter Gateway/Caddy.
-   - Befehl: `./scripts/leitstand-up --proxy`
-
-2. **Loopback (Default)**
-   - Bindet `127.0.0.1:3000`.
-   - Sicher für lokale Entwicklung oder SSH-Tunnel.
-   - Befehl: `./scripts/leitstand-up`
-
-3. **LAN (Explizit)**
-   - Bindet an spezifische LAN-IP.
-   - **Security Warnung:** Nur in vertrauenswürdigen Netzen nutzen!
-   - Befehl: `LEITSTAND_BIND_IP=<GATEWAY_IP> ./scripts/leitstand-up --lan`
-
-### 9.3 Update & Redeploy
-
-Um den Dienst zu aktualisieren (Pull + Build + Restart):
-
-```bash
-# Proxy Mode (Gateway)
-./scripts/leitstand-up --proxy
-
-# Loopback (Local)
-./scripts/leitstand-up
-
-# LAN (Direct Access)
-LEITSTAND_BIND_IP=<GATEWAY_IP> ./scripts/leitstand-up --lan
-```
-
-### 9.4 Nützliche Diagnose-Befehle
-
-```bash
-# Status & Ports prüfen
-./scripts/leitstand-up --status
-
-# Logs live verfolgen
-./scripts/leitstand-up --logs
-
-# Manuell (direkt via Docker)
-docker compose ps
-ss -lntp | grep -E ':(3000)\b'
-```
-
-## 10) Live-Policy (sachlich, nicht nervös)
-- Dashboard: kein Auto-Reload
-- Health-Panels: Polling nur wenn sichtbar (z. B. 60s)
-- Ops-View: manuell + optional sanftes Polling wenn offen
-- Alles andere: Snapshot/Artefakt-basiert
-Ziel: nachvollziehbar, stabil, Safari-freundlich.
-
-## 11) Drift-Regel (bindend)
-
-Jede Änderung an DNS, Ports, Proxy, Firewall, Routen, Services
--> erfordert Update dieses Runbooks im selben Commit/PR.
-
-Beachte zudem die Naming Policy in `docs/deploy/heimserver.naming.md`.
-
----
-
-## Verdichtete Essenz
-**Ein Runbook, ein Name, ein Gesetz:** `ops.runbook.leitstand-gateway.md` beschreibt den kanonischen, nicht-öffentlichen Leitstand-Zugang über WireGuard + Docker-Caddy, mit ACS als kontrolliertem Actor unter `/acs/` und DOCKER-USER-Cage für LAN/WG-only.
-
----
-
-## Tiefgründig-ironische Randnotiz
-Versionen im Dateinamen sind wie „zur Sicherheit“ aufgeschriebene Passwörter: fühlt sich ordentlich an, ist aber meistens nur ein Ersatz für saubere Historie.
-
----
-
-## Ungewissheitsursachenanalyse (pflicht)
-**Unsicherheitsgrad:** 0.15
-**Interpolationsgrad:** 0.05
-
-**Ursachen:**
-- Dein Audit zeigte aktuell fehlende Pfade (`/opt/heimgewebe` etc.); das Runbook beschreibt die kanonische Zielstruktur, nicht deinen aktuellen Ist-Zustand.
-- Die konkrete Umsetzung von DNS (FritzBox vs eigener DNS) ist kontextabhängig und bleibt bewusst offen.
-- Exakte Polling-Details hängen von Leitstand-Implementierung ab; deshalb als Policy, nicht als Code.
+Use [Leitstand Gateway Updates](ops.runbook.leitstand-gateway.updates.md) for the release sequence, exact postflight, and bounded rollback. Gateway changes and application releases should remain separate unless one cannot function without the other.
