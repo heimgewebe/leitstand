@@ -1,127 +1,131 @@
 # Leitstand
 
-## Operator ecosystem correction
+Leitstand is the read-only observation surface for the Heimgewebe operator ecosystem. It renders bounded artifacts from authoritative source systems and also provides a local digest CLI. It does not orchestrate, dispatch tasks, ingest HTTP events, mutate external systems, or establish a second source of truth.
 
-Leitstand is a read-only observer surface in the new operator ecosystem. Chronik owns event history; Plexer transports bounded operational events; Bureau owns tasks and claims; Grabowski owns local execution and receipts; Heimlern produces learning and proposal reports. Leitstand renders views and digests and does not execute or orchestrate.
+## Responsibilities
 
-This correction is the current role boundary for this repository and supersedes older, incomplete local role lists.
+Leitstand has two deliberately separate surfaces.
 
-Read-only dashboard, digest and observation surface for the **heimgewebe** operator ecosystem.
+### Web runtime
 
-## Overview
+The internal Express service renders current exported evidence:
 
-`leitstand` is the central read-only monitoring and reporting surface for the heimgewebe multi-repo ecosystem. It combines digest generation with browser views for knowledge, fleet and operator-observation artifacts. Execution authority stays with Bureau, Grabowski, Plexer and the runtime operators; Leitstand renders their exported state only.
+| Route | Purpose | Authority remains with |
+| --- | --- | --- |
+| `/` | compact source and attention overview | individual source systems |
+| `/health` | process, Git, contract, and freshness receipt | current process and local files |
+| `/bureau` | task and claim projection | Bureau |
+| `/checkouts` | checkout and worktree projection | Grabowski |
+| `/storage-health` | bounded storage-health projection | storage-health producer |
+| `/ecosystem-map` | verified system relationships | Systemkatalog publication |
+| `/repoground` | repository-grounding bundles | RepoGround publication |
 
-## Purpose
+`/repobriefs` is a permanent compatibility redirect to `/repoground`.
 
-Leitstand ist das **epistemische Beobachtungs- und Verdichtungsmodul** des Systems.
+Removed legacy routes such as `/events`, `/ops`, `/observatory`, `/intent`, `/anatomy`, `/timeline`, `/insights`, and `/reflexion` are not active contracts.
 
-Er hat genau drei Kernfunktionen:
-- Beobachten (Events, Metrics, Insights konsumieren)
-- Verdichten (Digests, Zusammenfassungen erzeugen)
-- Visualisieren (UI, Views, Reports bereitstellen)
+### Digest CLI
 
-Leitstand ist ausdrücklich **nicht**:
-- ein Orchestrator
-- eine Steuerinstanz
-- eine extern mutierende bzw. gegenüber anderen Systemen schreibende Systemkomponente
+The local CLI reads configured files and writes daily digest output. It combines:
 
-Alle Änderungen im Repo müssen dieser Invariante entsprechen.
-Lokale Artefaktschreibvorgänge (Caches, Digests, Build-Outputs) sind zulässig, solange sie der reinen Darstellungs- und Observer-Pipeline dienen.
+1. semantic daily insights from semantAH;
+2. recent Chronik events;
+3. WGX fleet-health metrics.
 
-### Heimgewebe system landscape
+These local file writes are report generation, not external mutation or execution authority.
 
-Current system purposes, lifecycle states, and relationships are maintained in the
-[Systemkatalog](https://github.com/heimgewebe/systemkatalog). Leitstand consumes the
-[rendered system catalog](https://github.com/heimgewebe/systemkatalog/blob/main/rendered/system-catalog.md)
-as a read-only source and does not maintain a competing system-role inventory. Repository-local observer invariants remain defined here.
+## Authority boundary
 
-## Security & Public Usage
+- Bureau owns task and claim truth.
+- Grabowski owns local execution, worktrees, leases, and receipts.
+- Chronik owns event history.
+- Plexer transports bounded operational events.
+- Systemkatalog owns system purposes and relationships.
+- RepoGround owns repository-grounding publications.
+- Leitstand only validates, normalizes, summarizes, and renders their exported evidence.
 
-This repository is designed to be **public**.
+The [Systemkatalog](https://github.com/heimgewebe/systemkatalog) is the cross-system role inventory. Leitstand does not maintain a competing catalog.
 
-- No secrets are stored in this repository
-- All sensitive configuration is provided via environment variables (use `.env.example` as a template)
-- External schema references are allowlisted by hostname
-- Validation is performed against vendored contracts (SSOT)
-- CI blocks forbidden file names, not secret content (see `SECURITY.md`)
+## Canonical deployment
 
-If you believe a secret has been committed accidentally, report it immediately.
-See `SECURITY.md` for reporting details.
+The canonical runtime is internal:
 
-## Canonical Deployment
+`https://leitstand.heimgewebe.home.arpa`
 
-The Leitstand is operated exclusively **internally** under the following host:
+Expected properties:
 
-**`https://leitstand.heimgewebe.home.arpa`**
+- HTTPS through the internal reverse proxy;
+- no WAN publication;
+- exact versioned Git release;
+- safe application bind, default `127.0.0.1:3000` for direct operation;
+- current read-only route set only;
+- source-specific artifact freshness.
 
-This repository is public, but the deployment targets a private network. All security enforcement (firewall, ingress policy) happens outside this repository.
+See:
 
-- **Scope:** Deployment on the Heimserver is currently in the development/integration phase; however, the contract (FQDN, internal-only, Proxy/Host-Match) remains normative.
-- **Access:** Reachable only via LAN/WireGuard. Externally unavailable (blocked by ingress/firewall policy outside this repo).
-- **Contract:** Direct IP access is not part of the contract.
-
-For details, refer to:
-- [Runtime Contract](docs/runtime.contract.md) (Normative)
-- [Access Matrix](docs/access.matrix.md)
+- [Runtime Contract](docs/runtime.contract.md)
+- [Data Flow](docs/data-flow.md)
 - [Drift Signals](docs/drift.signals.md)
+- [Security Policy](SECURITY.md)
+- [Documentation Router](docs/index.md)
 
-## Features
+## Health semantics
 
-The daily digest generator combines:
+`/health` reports the applied freshness limit for every required source:
 
-1. **Semantic Insights** from semantAH (`today.json`)
-   - Top topics with frequency counts
-   - Semantic questions
-   - Detected deltas/changes
+| Source | Default limit |
+| --- | ---: |
+| Bureau snapshot | 20 minutes |
+| Checkout snapshot | 20 minutes |
+| Storage health | 90 minutes |
+| Systemkarte manifest | 168 hours |
 
-2. **Events** from chronik (JSONL files)
-   - Recent events within a 24-hour window
-   - Filtered and sorted by timestamp
-   - Support for multiple event types (CI, deploy, etc.)
+A stale source yields `warn`. A missing, unreadable, invalid, or contract-mismatched required source yields `fail` and HTTP 503.
 
-3. **Fleet Health Metrics** from WGX snapshots
-   - Total repository count
-   - Status breakdown (ok/warn/fail)
-   - Latest metrics timestamp
+The receipt does not by itself prove DNS, TLS trust, reverse-proxy persistence, external reachability, or source-system correctness.
 
-4. **Operator Observation Snapshots** from Bureau and Grabowski
-   - Bureau task/claim lifecycle board (`/bureau`)
-   - Checkout/worktree health view (`/checkouts`)
-   - Explicitly read-only; no task dispatch or cleanup actions
+## Static preview
 
-## WGX Profile
+`pnpm build:static` creates a bounded preview containing only `/`, browser assets, and `_static-boundary.json`.
 
-Leitstand intentionally tracks `.wgx/profile.yml` as documented in [WGX Leitstand Decision](docs/decisions/wgx-leitstand.md). The profile is minimal and points WGX at existing pnpm-based checks; it is not an execution-authority grant.
+The manifest records:
 
-## Ecosystem Map View
+- supported static routes;
+- runtime-only routes;
+- removed routes;
+- truths the preview does not establish.
 
-Leitstand is the right dashboard surface for a future read-only view of the ecosystem map owned by the Systemkatalog. The boundary is documented in [Ecosystem Map View Blueprint](docs/blueprints/ecosystem-map-view.md): The Systemkatalog owns map semantics; Leitstand may render and display pinned system catalog Mermaid artifacts with freshness metadata.
+The static preview is not the canonical runtime.
 
 ## Installation
 
-This project uses [pnpm](https://pnpm.io/) for package management.
+Requirements:
+
+- Node.js 20 or newer;
+- pnpm 9.1.0 through Corepack.
 
 ```bash
-# Enable pnpm (optional if you have it globally)
 corepack enable
-
-# Install dependencies (strictly respecting lockfile)
+corepack prepare pnpm@9.1.0 --activate
 pnpm install --frozen-lockfile
-
-# Build TypeScript
 pnpm build
+```
 
-# Start the compiled internal server
+Start the compiled internal server:
+
+```bash
 pnpm start:server
+```
 
-# Build the static preview/mirror
+Build the static preview:
+
+```bash
 pnpm build:static
 ```
 
-## Configuration
+## Digest configuration
 
-Create a `leitstand.config.json` file in your project root:
+Create a `leitstand.config.json` file:
 
 ```json
 {
@@ -145,201 +149,69 @@ Create a `leitstand.config.json` file in your project root:
 }
 ```
 
-### Configuration Options
+Configured paths may contain `$VARIABLE` references. Unset variables fail explicitly.
 
-- `paths.semantah.todayInsights`: Path to the daily insights JSON file from semantAH
-- `paths.chronik.dataDir`: Directory containing JSONL event files from chronik
-- `paths.wgx.metricsDir`: Directory containing metrics snapshot JSON files from WGX
-- `output.dir`: Output directory for generated digests
-- `digest.maxEvents`: Maximum number of events to include in the digest (default: 20)
-
-**Environment Variables**: Paths support environment variable expansion using `$VAR_NAME` syntax.
-
-## Ops Viewer Setup
-
-The **Ops Viewer** (`/ops`) allows operators to view Git health audits directly from the `agent-control-surface` (acs). In the default safe mode it is a strict viewer. A legacy opt-in job fallback may request audit jobs from acs, but that behavior is outside the core Observer Invariant and must not be treated as Leitstand execution authority.
-
-### Naming & Compatibility
-
-The service is officially named `agent-control-surface` (short: **acs**). However, stable interface identifiers retain the legacy `ACS` prefix for compatibility:
-- **Environment:** `LEITSTAND_ACS_URL`
-- **Headers:** `X-ACS-Viewer-Token`
-- **CORS (acs-side):** `ACS_CORS_ALLOW_ORIGINS`
-
-Leitstand acts strictly as a viewer; authentication and authorization enforcement are responsibilities of the acs or its reverse proxy. Exact endpoint paths are defined by the acs API; Leitstand only consumes them.
-
-### Environment Variables
-
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `LEITSTAND_ACS_URL` | `''` (disabled) | Base URL of the `agent-control-surface`. Must be a valid HTTP/HTTPS URL. |
-| `LEITSTAND_OPS_ALLOW_JOB_FALLBACK` | `false` | If `true`, the viewer falls back to triggering async jobs (`POST /api/audit/git`) if the sync endpoint is missing. |
-| `LEITSTAND_REPOS` | `metarepo,wgx,leitstand` | Comma-separated list of repositories to display in the selector. |
-| `LEITSTAND_ACS_VIEWER_TOKEN` | `undefined` | Optional token sent as `X-ACS-Viewer-Token` header. **Note:** Enforcement depends on acs configuration (e.g., via reverse proxy or middleware); Leitstand merely sends it. |
-
-**Note:** If any environment variable validation fails (e.g., invalid `LEITSTAND_ACS_URL` format), the system falls back to safe defaults (disabling acs integration entirely).
-
-### Deployment & Security Notes
-
-1.  **Mixed Content Warning**:
-    If Leitstand is served via **HTTPS**, the browser will block requests to an **HTTP** acs URL.
-    - **Fix:** Deploy `agent-control-surface` behind an HTTPS reverse proxy (e.g., Caddy, Nginx) or configure `LEITSTAND_ACS_URL` to use HTTPS.
-
-2.  **CORS Configuration (acs Side)**:
-    The `agent-control-surface` must explicitly allow the Leitstand origin to make requests, especially if credentials or cookies are involved.
-    - **acs Config:** Ensure `ACS_CORS_ALLOW_ORIGINS` includes your Leitstand URL (e.g., `https://leitstand.internal`).
-    - *Avoid using `*` if possible.*
-
-3.  **Viewer vs. Actor**:
-    By default (`LEITSTAND_OPS_ALLOW_JOB_FALLBACK=false`), Leitstand only attempts non-mutating fetches (the sync endpoint, if exposed by acs). Enabling fallback allows it to trigger jobs (the job-trigger endpoint, e.g. `POST /api/audit/git`), which is a state-changing action (even if just starting an audit). The UI will display a disclaimer reflecting the current mode. **Crucially, if enabled, Leitstand may *request* an audit job, but authorization and execution remain strictly on the acs side.**
-
-## Data Flow & Contracts
-
-Leitstand is a **read-only monitoring surface** for the Heimgewebe systems. Current system purposes, lifecycle states, and relationships come from the [Systemkatalog](https://github.com/heimgewebe/systemkatalog); Leitstand keeps only its repository-local observer and data-contract rules.
-
-```mermaid
-flowchart TD
-    PLEXER[Plexer<br/>Bounded Events] --> CHRONIK[Chronik<br/>Events / History]
-    CHRONIK --> SEMANTAH[semantAH<br/>Semantic Index]
-    WGX[WGX<br/>Fleet Metrics] --> LEITSTAND[Leitstand<br/>Read-only Views / Digests]
-    SEMANTAH --> LEITSTAND
-    CHRONIK --> LEITSTAND
-    BUREAU[Bureau<br/>Tasks / Claims Snapshot] --> LEITSTAND
-    GRABOWSKI[Grabowski<br/>Checkout Inventory Snapshot] --> LEITSTAND
-    HEIMLERN[Heimlern<br/>Learning Proposals] -. future artifact .-> LEITSTAND
-    ACS[agent-control-surface<br/>Ops Audit Data] -. optional viewer input .-> LEITSTAND
-```
-
-### Roles in the flow
-
-- **Leitstand**: Visualizes state by reading artifacts from `semantAH`, `chronik`, WGX snapshots, Bureau task snapshots and Grabowski checkout snapshots.
-- **Bureau**: Owns task and claim truth; Leitstand may render exported `leitstand_bureau_task_snapshot` artifacts.
-- **Grabowski**: Owns local execution and worktree/receipt state; Leitstand may render exported `leitstand_checkout_inventory` artifacts.
-- **Chronik**: Event log and audit store.
-- **Plexer**: Bounded event transport feeding operational event surfaces.
-- **semantAH**: Builds the semantic index and writes daily insights.
-- **WGX**: Generates fleet metrics snapshots.
-- **Heimlern**: Emits learning/proposal reports; Leitstand may later render derived artifacts.
-- **agent-control-surface** (acs): Provides operational audit data consumed by the Ops Viewer when configured.
-
-### Central Inputs
-
-The authoritative view of the data streams is documented in `docs/data-flow.md`. The central inputs are:
-
-- `fleet.health` – Fleet health (WGX / metarepo contracts)
-- `insights.daily` – Semantic daily insights from semantAH
-- `event.line` – Event backbone from Chronik
-- `leitstand_bureau_task_snapshot` – Bureau task/claim lifecycle snapshot rendered by `/bureau`
-- `leitstand_checkout_inventory` – Grabowski checkout/worktree snapshot rendered by `/checkouts`
-- `audit.git.v1` – Ops Viewer data from acs (not part of the Chronik event backbone unless explicitly exported)
-
-### JSON Schemas
-
-The underlying JSON schemas are documented in the **metarepo**:
-
-- `contracts/fleet.health.schema.json`
-- `contracts/insights.daily.schema.json`
-- `contracts/insights.schema.json`
-- `contracts/event.line.schema.json`
-- `audit.git.v1` – Currently implemented in acs and mirrored in leitstand types; a metarepo contract is planned.
-
-A curated index of shared contracts is maintained in [`metarepo/docs/contracts/contracts-index.md`](https://github.com/heimgewebe/metarepo/blob/main/docs/contracts/contracts-index.md).
-
-**Note:** New Leitstand features (like the Ops Viewer) fit into this model: they visualize data (artifacts) without violating the authority of generation or mutation (WGX/ACS).
-
-## Usage
-
-### Generate Today's Digest
+Generate today's digest:
 
 ```bash
-# Using the default config file
 pnpm daily-digest --config leitstand.config.json
-
-# Or if installed globally
-leitstand --config leitstand.config.json
 ```
 
-### Generate a Digest for a Specific Date
+Generate a digest for a specific date:
 
 ```bash
 pnpm daily-digest --config leitstand.config.json --date 2025-12-04
 ```
 
-### Output
+The CLI writes one Markdown file and one JSON file to the configured output directory.
 
-The command generates two files in the output directory:
+## Runtime artifact overrides
 
-1. **Markdown file**: `digests/daily/YYYY-MM-DD.md` - Human-readable digest
-2. **JSON file**: `digests/daily/YYYY-MM-DD.json` - Structured data for programmatic access
+The web runtime accepts dedicated read-only artifact path overrides. See `.env.example` for the current names. No event, ACS, Ops, or Observatory environment surface exists.
 
-## Development
+## Validation
 
-### Local validation and CI test truth
-
-GitHub CI is the source of truth for the full Vitest suite. The CI workflow runs `pnpm test` on Node 20.
-
-On the Heim-PC, the local Node 22 runtime may crash before application code runs unless Node is started with `NODE_OPTIONS=--jitless`. That workaround is suitable for lint, typecheck and build, but not for full Vitest because Vite/Vitest requires WebAssembly. See [Local Test Runner Compatibility](docs/runbooks/local-test-runner.md).
+The pull-request quality gates are:
 
 ```bash
-# Local Heim-PC preflight when the Node/V8 crash is present
-NODE_OPTIONS=--jitless pnpm lint
-NODE_OPTIONS=--jitless pnpm typecheck
-NODE_OPTIONS=--jitless pnpm build
-
-# Full test suite when the local Node runtime supports it; otherwise rely on CI
+pnpm check:vendor-contracts
+pnpm lint
+pnpm typecheck
 pnpm test
-
-# Watch mode when the local Node runtime supports it
-pnpm test:watch
+pnpm test:browser-shell
+pnpm build
+scripts/ci/repo-structure-guard.sh
+scripts/ci/docs-relations-guard.sh
+scripts/ci/generated-files-guard.sh
+scripts/ci/check-drift-gates.sh
+bash scripts/ci/observer-invariant-guard.sh
 ```
 
-## Project Structure
+The browser regression verifies the shared shell on mobile and desktop, including focus restoration, responsive navigation, overflow, and the canonical RepoGround route.
 
-```
-leitstand/
-├── src/
-│   ├── config.ts          # Configuration loading and validation
-│   ├── insights.ts        # Load semantAH insights
-│   ├── events.ts          # Load chronik events
-│   ├── metrics.ts         # Load WGX metrics
-│   ├── digest.ts          # Combine data sources
-│   ├── renderMarkdown.ts  # Render digest to markdown
-│   ├── server.ts          # Express server & Ops Viewer
-│   ├── views/             # EJS templates (ops, observatory, etc.)
-│   └── cli.ts             # CLI entry point
-├── tests/
-│   ├── config.test.ts
-│   ├── ops_integration.test.ts
-│   └── ...
-├── package.json
-├── tsconfig.json
-├── vitest.config.ts
-└── leitstand.config.json  # Example configuration
+## Repository structure
+
+```text
+src/
+  server.ts          read-only Express runtime
+  runtimeHealth.ts   bounded process, Git, and snapshot receipt
+  controllers/       artifact validation and view models
+  views/             EJS projections
+  cli.ts             local digest entry point
+  insights.ts        semantAH digest input
+  events.ts          Chronik digest input
+  metrics.ts         WGX digest input
+scripts/
+  build-static.mjs   bounded static preview
+  ci/                repository and observer guards
+docs/
+  index.md           canonical documentation router
 ```
 
-## Requirements
+## WGX profile
 
-- Node.js >= 18.0.0
-- pnpm >= 8.0.0
-
-## Repository Discovery
-- See [AGENTS.md](AGENTS.md) for agentic discovery rules and paths.
-- See [docs/index.md](docs/index.md) for the canonical documentation index.
-
-## Future Enhancements
-
-This is the initial iteration focused on generating daily digests and operational views. Future versions may include:
-
-- Real-time metrics streaming
-- Historical digest comparison
-- Custom alert rules
-- Multi-day trend analysis
+`.wgx/profile.yml` provides standardized `up`, `guard`, and `smoke` entry points by delegating to the repository's pnpm scripts. It is not an execution-authority grant and does not establish deployed health. See [the WGX decision](docs/decisions/wgx-leitstand.md).
 
 ## License
+
 MIT
-
-## System context
-
-Current cross-system purposes, lifecycle states, and relationships are maintained in the
-[Systemkatalog](https://github.com/heimgewebe/systemkatalog). Leitstand remains a read-only observer; its local implementation and
-observer boundary are defined in this repository.

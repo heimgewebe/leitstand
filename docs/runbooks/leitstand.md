@@ -5,104 +5,62 @@ doc_type: runbook
 status: active
 canonicality: canonical
 summary: >
-  Leitstand Runbook
+  Operative checks for the read-only Leitstand runtime.
 ---
 
 # Leitstand Runbook
 
-## Inputs and Data Flow
+## Runtime contract
 
-Leitstand aggregates data from multiple sources to provide a unified dashboard.
+Leitstand reads exported evidence and renders it. It does not ingest events, dispatch tasks, trigger audits, alter source systems, or maintain a second truth model.
 
-### 1. Knowledge Observatory
-- **Source:** SemantAH (`knowledge.observatory.json`)
-- **Ingest:** Via Plexer Event (`knowledge.observatory.published.v1`) -> `scripts/fetch-observatory.mjs`
-- **Validation:** Strict AJV against `vendor/contracts/knowledge/observatory.schema.json` (Vendored snapshot from metarepo SSOT)
-  - **Schema Ref Hardening:** `OBSERVATORY_SCHEMA_REF` is allowlisted by host. Configure via `OBSERVATORY_SCHEMA_REF_ALLOWED_HOSTS` (comma-separated). Default: `schemas.heimgewebe.org`.
+Current inputs:
 
-### 2. System Integrity
-- **Source:** Chronik/WGX (`artifacts/integrity/*.summary.json`)
-- **Ingest:** Per-repo artifacts fetched via `scripts/fetch-integrity.mjs`
+| Surface | Input |
+| --- | --- |
+| Bureau | `bureau-tasks.json` |
+| Checkouts | `checkout-inventory.json` |
+| Storage | `storage-health.json` |
+| Systemkarte | `ecosystem-map-artifact-manifest.json` and verified map artifacts |
+| RepoGround | RepoGround bundle index |
 
-### 3. Plexer Delivery Reports
-- **Source:** Plexer (`plexer.delivery.report.json`)
-- **Ingest:** Via Plexer Event (`plexer.delivery.report.v1`) -> `src/server.ts` direct save
-- **Validation:** Strict AJV against `vendor/contracts/plexer/delivery.report.v1.schema.json`
-- **Visualization:** "Plexer Delivery Status" panel in Observatory.
+## Canonical deployment
 
-## Contract Vendoring (Maintenance)
+Use `./scripts/leitstand-up` from a clean, versioned checkout. The default mode binds to loopback. Proxy mode uses `./scripts/leitstand-up --proxy`. LAN mode uses `./scripts/leitstand-up --lan` and requires an explicit `LEITSTAND_BIND_IP`; an unacknowledged wildcard bind is not an acceptable release state.
 
-Contracts are synchronized from the `heimgewebe/metarepo` to ensure Single Source of Truth (SSOT).
-This process is **manual** and should be run whenever contracts are updated in the metarepo.
+The script is the canonical Compose entry point, but its successful exit does not replace Git-head, route, health, listener, DNS, TLS, or proxy readbacks.
 
-**Command:**
-```bash
-pnpm vendor:contracts
-```
-This script fetches canonical schemas and pins them in `vendor/contracts/_pin.json`.
-The vendored files must be committed to the repository. The build process (`build:cf`) relies on these local files and does **not** perform network requests to fetch contracts.
+## Freshness expectations
 
-## Alerts and Monitoring
+`/health` applies source-specific limits:
 
-### Plexer Delivery Status
-- **Green (OK):** `failed == 0`
-- **Amber (BUSY):** `pending > 10`
-- **Red (FAIL):** `failed > 0`
-  - Action: Check Plexer logs (`docker compose logs plexer`) or `last_error` in Leitstand.
-  - Likely causes: Downstream service (Heimgeist/Chronik) unreachable or Auth failures.
+- Bureau: 20 minutes
+- Checkouts: 20 minutes
+- Storage health: 90 minutes
+- Systemkarte: 168 hours
 
-### System Integrity
-- **Red (FAIL/GAP):** Schema violations or timestamp gaps in repo feeds.
-- **Gray (MISSING):** Repository defined in Metrics but no Integrity artifact found.
-  - Action: Check `fetch-integrity` logs.
+A stale snapshot is `warn`; a missing, unreadable, invalid, or contract-mismatched required snapshot is `fail`. The receipt reports its applied limit as `stale_after_seconds` for every source.
 
-## Deployment & Zugriff
+## Release verification
 
-Der Leitstand lauscht bei direktem Node-/systemd-Betrieb standardmäßig auf **127.0.0.1:3000** (sicherer Default). Der Node-Server setzt diesen Host explizit über `LEITSTAND_BIND_HOST`; ein fehlender Host darf nicht implizit zu einer Wildcard-Bindung führen. Ein konkretes LAN-IP-Literal ist zulässig. `0.0.0.0` oder `::` werden nur zusammen mit `LEITSTAND_ALLOW_WIDE_BIND=true` akzeptiert.
+A release is acceptable only when:
 
-Im Docker-Betrieb bindet der Prozess innerhalb des isolierten Container-Netzes bewusst an `0.0.0.0` und setzt die Bestätigung explizit. Die tatsächliche Host-Exposition bleibt ausschließlich in den Compose-Overrides: `docker-compose.loopback.yml` publiziert auf `127.0.0.1`, `docker-compose.lan.yml` nur auf die ausdrücklich gesetzte `LEITSTAND_BIND_IP`.
+1. lint, typecheck, build, tests, and static build pass on the exact release head;
+2. the deployed Git head matches the intended release;
+3. `/health` returns the expected process, Git, snapshot, and freshness evidence;
+4. `/events`, `/ops`, and the removed legacy views are unavailable;
+5. `/repoground` renders and `/repobriefs` redirects permanently to it;
+6. the runtime remains internally bound according to the deployment configuration.
 
-### Standard Update & Start
-Der einzige empfohlene Einstiegspunkt für Updates und Neustarts ist das `scripts/leitstand-up` Skript.
+## Contract vendoring
 
-**1. Update & Start (Default: Localhost)**
-```bash
-./scripts/leitstand-up
-```
-- **Verhalten:** `git pull` -> Rebuild -> Start auf `127.0.0.1:3000`.
-- **Zugriff:** `http://127.0.0.1:3000/` (oder via SSH Tunnel).
+`pnpm vendor:contracts` updates pinned contract copies. Vendored files and `_pin.json` must be reviewed and committed together. Runtime rendering must not fetch schemas dynamically.
 
-**2. LAN-Start (Optional)**
-Erlaubt den Zugriff aus dem Heimnetz (z.B. iPad/Blink).
-Erfordert explizites Setzen von `LEITSTAND_BIND_IP`.
+## Failure handling
 
-```bash
-export LEITSTAND_BIND_IP=<IP>
-./scripts/leitstand-up --lan
-```
-- **Verhalten:** Bindet explizit an die angegebene IP.
-- **Sicherheit:** Verhindert versehentliches Binden an `0.0.0.0`.
+- **Health `warn`:** inspect the named stale or timestamp-degraded producer; do not treat the warning as source failure without producer evidence.
+- **Health `fail`:** stop rollout or roll back to the last verified release; identify whether the file is missing, invalid, unreadable, or contract-mismatched.
+- **Git mismatch:** fail closed. A healthy process running the wrong head is not a successful deployment.
+- **Route regression:** fail closed when a removed mutation or legacy route becomes available again.
 
-### Manuelle Diagnose & Logs
-Falls das Start-Skript nicht ausreicht oder zur Fehlersuche:
-
-- **Logs verfolgen:** `docker compose logs -f`
-- **Container stoppen:** `docker compose down`
-- **Status prüfen:** `docker compose ps`
-
-## Troubleshooting
-
-### Deployment
-1. Wechsle in das Deploy-Verzeichnis:
-   ```bash
-   cd deploy
-   ```
-2. Überprüfe die Umgebungskonfiguration:
-   ```bash
-   # .env muss existieren (kopiere von .env.example)
-   ls -la .env
-   ```
-   **Wichtig:** `deploy/.env` wird absichtlich ignoriert und darf niemals committed werden.
-
-### Reverse Proxy
-Falls ein Reverse Proxy verwendet wird (siehe `ops.runbook.leitstand-gateway.md`), stelle sicher, dass Leitstand **nicht** öffentlich (0.0.0.0) lauscht, sondern nur auf dem internen Interface, das der Proxy erreicht (z.B. localhost oder docker network).
+The health receipt does not establish DNS, reverse-proxy persistence, external reachability, Bureau task truth, or cleanup authority.

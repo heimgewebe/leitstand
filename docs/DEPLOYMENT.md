@@ -5,76 +5,41 @@ doc_type: guide
 status: active
 canonicality: canonical
 summary: >
-  Deployment
+  Deployment contract for the read-only Leitstand runtime and static preview.
 ---
 
 # Deployment
 
-## Artifact Ingestion
+## Canonical runtime
 
-The `leitstand` build process is designed to be resilient to missing upstream data.
+The canonical service is an internal, read-only Express runtime. It renders local exported artifacts and exposes `/health` as a bounded proof surface.
 
-### Observatory Data (`knowledge.observatory.json`)
+Required deployment properties:
 
-The Observatory view relies on `knowledge.observatory.json`. It supports both **Build-time Ingestion** and **Runtime Fetching** to ensure freshness.
+- bind to the configured internal interface;
+- run from a versioned release checkout;
+- provide Bureau, Grabowski, storage-health, Systemkatalog, and RepoGround artifacts at their configured paths;
+- publish no mutation, orchestration, event-ingestion, or task-dispatch endpoint;
+- verify `/health`, the expected Git head, and source-specific artifact freshness after rollout.
 
-**Runtime Supply Chain (Live Freshness):**
-The browser fetches the artifact directly from the GitHub Release Asset (or configured `OBSERVATORY_URL`) when the page loads. This decouples data freshness from deployment frequency.
-- **Source:** `https://github.com/heimgewebe/semantAH/releases/download/knowledge-observatory/knowledge.observatory.json` (Default)
-- **Fallback:** If runtime fetch fails, the page displays the data baked in at build time (or fixture).
+The runtime intentionally returns 404 for `POST /events` because no such route is registered.
 
-**Build Supply Chain (Initial State):**
-In a production/CI environment (e.g., Cloudflare Pages build), this artifact is fetched from the same URL and placed in `artifacts/knowledge.observatory.json` before the build starts.
+## Static preview
 
-1.  `semantAH` (or producer) generates `knowledge.observatory.json` and publishes it as a Release Asset.
-2.  `leitstand` CI attempts to download this file to `artifacts/knowledge.observatory.json` using `pnpm fetch:observatory`.
-3.  `pnpm build:static` checks for this file and bakes it into the HTML (SSR).
+`pnpm build:static` creates a preview containing only `/` and `_static-boundary.json`. Runtime-backed views are not copied into the preview. The manifest records supported, runtime-only, and removed routes.
 
-**Environment Variables:**
+A successful static build does not establish canonical runtime availability, DNS correctness, reverse-proxy persistence, or source freshness.
 
-| Variable | Description | Default / Required |
-| :--- | :--- | :--- |
-| `OBSERVATORY_URL` | Canonical URL to fetch the artifact from (Build & Runtime). | `https://github.com/...` (Release Asset) |
-| `OBSERVATORY_ARTIFACT_PATH` | Local filesystem path to expect/write the artifact (Build time). | `artifacts/knowledge.observatory.json` |
-| `OBSERVATORY_STRICT` | If `1`, enforces strict fetch validation (fail on 404/invalid). | `0` (Dev), `1` (Prod) |
-| `NODE_ENV` | Set to `production` in live environments to enforce fail-loud behavior. | `production` (in Prod) |
-| `OBSERVATORY_OUT_PATH` | **Deprecated Alias** for `OBSERVATORY_ARTIFACT_PATH`. | - |
+## Verification
 
-> **Note:** `OBSERVATORY_URL` is the single source of truth for the artifact's origin. `OBSERVATORY_ARTIFACT_PATH` is purely for local filesystem handling during the build.
->
-> **Migration Note:** `OBSERVATORY_OUT_PATH` is deprecated. Please update your Cloudflare Pages variables to use `OBSERVATORY_ARTIFACT_PATH` if you need to override the local path.
+Run the repository quality gates and then verify the deployed release:
 
-**Fallback Mechanism:**
-In **Production** environments (`NODE_ENV=production` or `OBSERVATORY_STRICT=1`), the build will **fail** if the artifact is missing, empty, or invalid. This ensures no stale or dummy data is deployed silently as the "Initial State".
+```text
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm test
+pnpm build:static
+```
 
-In **Preview/Development** environments, if `artifacts/knowledge.observatory.json` is missing/invalid, the system automatically falls back to `src/fixtures/observatory.json`.
-
-**Verification:**
-The UI explicitly indicates the source of the data:
-- **"Artefakt (knowledge.observatory.json)"**: Data loaded successfully from `artifacts/knowledge.observatory.json`.
-- **"Fixture (Fallback)"**: Data loaded from `src/fixtures/observatory.json`.
-
-## Events Ingestion
-
-Leitstand can ingest events (e.g., `knowledge.observatory.published.v1`) via the `/events` endpoint.
-
-**Security & Authorization:**
-
-The endpoint is protected to prevent unauthorized triggers.
-
-*   **Production:** Authorization is **required**. The endpoint is disabled (403) if no token is configured.
-*   **Dev/Preview:** Authorization is **optional**. If no token is configured, the endpoint is open (permissive).
-
-**Configuration:**
-
-| Variable | Description | Default / Required |
-| :--- | :--- | :--- |
-| `LEITSTAND_EVENTS_TOKEN` | Secret token to authorize event ingestion. | **Required in Prod** |
-| `LEITSTAND_STRICT` | If `1`, enables strict mode (fail-loud). Also enforces token requirement on `/events`. | `0` (Dev), `1` (Prod) |
-
-**Usage:**
-
-Requests must include the token in headers:
-
-*   `Authorization: Bearer <token>`
-*   `X-Events-Token: <token>`
+Deployment-specific procedures live in the operator environment. Leitstand itself does not perform deployment actions.

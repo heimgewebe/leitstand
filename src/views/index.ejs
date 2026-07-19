@@ -1,5 +1,5 @@
 <%
-  const phaseCards = Array.isArray(locals.phases) ? locals.phases : [];
+  const sourceCards = Array.isArray(locals.sources) ? locals.sources : [];
   const dashboardSummary = locals.summary && typeof locals.summary === 'object' ? locals.summary : null;
   const attentionItems = Array.isArray(dashboardSummary?.attention) ? dashboardSummary.attention : [];
 %>
@@ -199,81 +199,76 @@
       line-height: 1.45;
     }
 
-    .surface-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin-bottom: 40px;
-    }
-
-    .surface-grid .info-card { margin-bottom: 0; }
-
-    .phase-grid {
+    .source-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 16px;
       margin-bottom: 40px;
     }
 
-    .phase-card {
-      display: block;
-      text-decoration: none;
-      color: inherit;
+    .source-card {
       background: var(--bg-card);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border-glass);
       border-radius: 14px;
-      padding: 18px 20px;
-      transition: border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
-    }
-
-    .phase-card:hover,
-    .phase-card:focus-visible {
-      border-color: rgba(59, 130, 246, 0.4);
-      background: rgba(17, 24, 39, 0.95);
-      outline: none;
-    }
-
-    .phase-card:focus-visible {
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-
-    .phase-card .phase-header {
+      padding: 22px 24px;
+      text-decoration: none;
+      color: inherit;
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .source-card:hover,
+    .source-card:focus-visible {
+      border-color: rgba(255, 255, 255, 0.15);
+      background: rgba(30, 41, 59, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .source-card:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .source-card .source-header {
+      display: flex;
       justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 10px;
     }
 
-    .phase-card .phase-number {
-      font-size: 0.65em;
+    .source-card .source-title {
+      font-size: 1em;
       font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--text-muted);
+      color: var(--text-primary);
+      margin: 0;
     }
 
-    .phase-card h2 {
-      font-size: 1.05em;
+    .source-card h2 {
+      font-size: 1.1em;
       font-weight: 600;
-      letter-spacing: -0.01em;
-      margin-bottom: 6px;
+      margin: 0 0 8px;
+      color: var(--text-primary);
     }
 
-    .phase-card .description {
-      font-size: 0.85em;
+    .source-card .description {
+      font-size: 0.88em;
       color: var(--text-secondary);
       line-height: 1.5;
-      margin-bottom: 14px;
+      margin: 0 0 16px;
+      flex-grow: 1;
     }
 
-    .phase-card .metric {
-      font-size: 0.85em;
-      color: var(--text-primary);
-      margin-bottom: 10px;
-      font-variant-numeric: tabular-nums;
+    .source-card .metric {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.88em;
+      color: var(--accent);
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-glass);
     }
 
     .meta-row {
@@ -301,7 +296,8 @@
     .source-pill.source-artifact { color: var(--ok); border-color: rgba(34, 197, 94, 0.25); }
     .source-pill.source-fixture { color: var(--warn); border-color: rgba(245, 158, 11, 0.25); }
     .source-pill.source-missing,
-    .source-pill.source-error { color: var(--fail); border-color: rgba(239, 68, 68, 0.25); }
+    .source-pill.source-error,
+    .source-pill.source-corrupt { color: var(--fail); border-color: rgba(239, 68, 68, 0.25); }
 
     .freshness-pill.freshness-fresh { color: var(--ok); border-color: rgba(34, 197, 94, 0.25); }
     .freshness-pill.freshness-stale { color: var(--warn); border-color: rgba(245, 158, 11, 0.25); }
@@ -337,9 +333,7 @@
     .info-card a { color: #93c5fd; }
     .info-card a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-
     @media (max-width: 860px) {
-      .surface-grid { grid-template-columns: 1fr; }
       .summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
@@ -353,7 +347,6 @@
       .attention-arrow { display: none; }
     }
 
-    /* Visually hidden text accessible to screen readers */
     .sr-only {
       position: absolute;
       width: 1px;
@@ -418,7 +411,7 @@
             <ol class="attention-list">
               <% attentionItems.forEach(function(item) { %>
                 <li class="attention-item">
-                  <a href="<%= item.href %>" data-attention-phase="<%= item.phase_id %>">
+                  <a href="<%= item.href %>" data-attention-source="<%= item.source_id %>">
                     <span class="severity-dot severity-<%= item.severity %>" aria-hidden="true"></span>
                     <span>
                       <span class="attention-title"><%= item.title %></span><br>
@@ -440,60 +433,31 @@
       </section>
     <% } %>
 
-    <section aria-labelledby="surfaces-heading">
-      <h2 id="surfaces-heading" class="section-title">Arbeitsflächen</h2>
-      <div class="surface-grid">
-        <article class="info-card" aria-labelledby="ecosystem-map-heading">
-          <h2 id="ecosystem-map-heading">Ecosystem Map</h2>
-          <p>
-            Systemkatalog als interaktive Karte mit Quelle, Commit, Manifest, Frische und klarer Read-only-Grenze.
-            <a href="/ecosystem-map">Karte öffnen</a>.
-          </p>
-        </article>
+    <section aria-labelledby="quellen-heading">
+      <h2 id="quellen-heading" class="section-title">Operative Quellen</h2>
 
-        <article class="info-card" aria-labelledby="execution-heading">
-          <h2 id="execution-heading">Ausführung</h2>
-          <p>
-            Read-only-Projektion von Bureau und Grabowski. Snapshots stammen vom separaten Producer.
-            <a href="/bureau">Tasks</a> · <a href="/checkouts">Checkouts</a>.
-          </p>
-        </article>
-
-        <article class="info-card" aria-labelledby="repobrief-heading">
-          <h2 id="repobrief-heading">RepoBrief / rLens</h2>
-          <p>
-            Bundle-Status, Pflichtartefakte und Export-Safety-Warnungen ohne versteckten Refresh.
-            <a href="/repobriefs">RepoBriefs öffnen</a>.
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <section aria-labelledby="phasen-heading">
-      <h2 id="phasen-heading" class="section-title">Erkenntnisphasen</h2>
-
-      <% if (phaseCards.length === 0) { %>
+      <% if (sourceCards.length === 0) { %>
         <div class="info-card" role="status">
           <h2>Daten konnten nicht geladen werden</h2>
-          <p>Die Phasenübersicht ist aktuell nicht verfügbar. Einzelne Ansichten sind weiterhin über die Navigation erreichbar.</p>
+          <p>Die Quellenübersicht ist aktuell nicht verfügbar. Einzelne Ansichten sind weiterhin über die Navigation erreichbar.</p>
         </div>
       <% } else { %>
-        <div class="phase-grid">
-          <% phaseCards.forEach(function(p) { %>
-            <a class="phase-card"
+        <div class="source-grid">
+          <% sourceCards.forEach(function(p) { %>
+            <a class="source-card"
                href="<%= p.href %>"
-               data-phase-id="<%= p.id %>"
-               aria-label="<%= p.title %> – Phase <%= p.phase %> – <%= p.description %>">
-              <div class="phase-header">
-                <span class="phase-number">Phase <%= p.phase %></span>
+               data-source-id="<%= p.id %>"
+               aria-label="<%= p.title %> – <%= p.description %>">
+              <div class="source-header">
+                <span class="source-title"><%= p.title %></span>
                 <span class="source-pill source-<%= p.source_kind %>">
                   <% if (p.source_kind === 'artifact') { %>Artefakt<% } %>
                   <% if (p.source_kind === 'fixture') { %>Fixture<% } %>
                   <% if (p.source_kind === 'missing') { %>fehlt<% } %>
+                  <% if (p.source_kind === 'corrupt') { %>korrupt<% } %>
                   <% if (p.source_kind === 'error') { %>Fehler<% } %>
                 </span>
               </div>
-              <h2><%= p.title %></h2>
               <p class="description"><%= p.description %></p>
               <div class="metric"><%= p.metric %></div>
               <div class="meta-row">

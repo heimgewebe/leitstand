@@ -58,7 +58,7 @@ export interface BureauViewData {
 
 const CONTRACT_KIND = 'leitstand_bureau_task_snapshot';
 /** Bureau tasks are operational; a snapshot older than this reads as stale. */
-const STALE_AFTER_MS = 6 * 60 * 60 * 1000; // 6h
+const STALE_AFTER_MS = 20 * 60 * 1000; // 20m
 
 const DEFAULT_NON_CLAIMS = [
   'task_ownership',

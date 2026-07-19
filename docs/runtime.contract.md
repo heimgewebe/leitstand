@@ -5,62 +5,56 @@ doc_type: reference
 status: active
 canonicality: canonical
 summary: >
-  Runtime Contract
+  Canonical network, route, release, and health contract for Leitstand.
 ---
 
 # Runtime Contract
 
-Dieses Dokument beschreibt die unveränderlichen Bedingungen für den Betrieb des Leitstands.
+## Scope
 
-## 1. Scope / Phase
+This contract applies to the canonical internal runtime. The static preview has a separate, narrower boundary.
 
-Dieses Dokument definiert ausschließlich **Mode A (Canonical Runtime)**.
+## Canonical endpoint
 
-Aktuell läuft das Deployment auf dem Heimserver nur während der Entwicklungs-/Integrationsphase. Der hier definierte Contract (FQDN, intern-only, Proxy/Host-Match) bleibt davon unberührt und gilt normativ.
+- FQDN: `leitstand.heimgewebe.home.arpa`
+- transport: HTTPS through the internal reverse proxy
+- application listener: explicit internal address, safe default `127.0.0.1:3000`
+- release source: exact versioned Git head
 
-## 2. Kanonischer Host
+Direct public exposure and unacknowledged wildcard binding are outside the contract.
 
-Der Leitstand ist ausschließlich unter folgendem FQDN erreichbar:
+## Route set
 
-**`leitstand.heimgewebe.home.arpa`**
+Current read-only runtime routes:
 
-## 3. Erwartete Erreichbarkeit
+- `/`
+- `/health`
+- `/bureau`
+- `/checkouts`
+- `/storage-health`
+- `/ecosystem-map`
+- `/repoground`
 
-- **Protokoll:** HTTPS only (kein HTTP, außer Redirect)
-- **TLS:** Internal CA (Caddy)
-- **Proxy:** Reverse Proxy via Caddy (kein direkter Container-Zugriff)
-- **Upstream:** `leitstand:3000` (Docker DNS)
+`/repobriefs` is a permanent compatibility redirect to `/repoground`. No state-changing HTTP route is permitted. Removed legacy routes must return 404.
 
-## 4. Health-Kriterien
+## Health contract
 
-Der Dienst gilt als gesund ("grün"), wenn:
+A healthy release requires:
 
-- **HTTP Status:** 200 OK auf `/` und `/health`
-- **Health Receipt:** `/health` liefert `kind=leitstand_runtime_health_receipt` und `status=ok`
-- **Snapshots:** Bureau- und Checkout-Snapshots sind vorhanden und nach Runtime-Schwelle frisch
-- **Host:** Kein Mixed Content (HTTPS-Only Policy)
-- **Zugriff:** Direkter IP-Zugriff ist nicht Teil des Contracts; Zugriff erfolgt per FQDN Host-Match via Reverse Proxy.
+- `/health` returns `kind=leitstand_runtime_health_receipt`;
+- the reported Git head matches the intended release;
+- required snapshot kinds validate;
+- Bureau and checkout snapshots are no older than 20 minutes;
+- storage health is no older than 90 minutes;
+- the Systemkarte manifest is no older than 168 hours;
+- the overall receipt status is `ok`.
 
-`/health` ist eine read-only In-Process-Fläche. Sie belegt, dass der aktuelle Node-Prozess antwortet und seine lokalen Snapshots/Git-Daten lesen kann. Sie belegt nicht DNS-Korrektheit, Caddyfile-Persistenz, Task-Wahrheit oder externe Erreichbarkeit; diese Punkte müssen durch Gateway-/DNS-Smokes belegt werden.
+A `warn` receipt is available but degraded. A `fail` receipt returns HTTP 503 and blocks rollout completion.
 
-## 5. Deployment-Status
+## Non-claims
 
-Leitstand ist korrekt deployed, wenn:
-- DNS A-Record auf den Entry-Proxy zeigt.
-- TLS CN exakt dem FQDN entspricht.
-- Reverse Proxy Host-Match korrekt ist.
+The in-process receipt does not establish DNS correctness, TLS trust, reverse-proxy persistence, external reachability, source-system truth, task authority, cleanup authority, or successful deployment by itself. Those require separate infrastructure and source readbacks.
 
-## 6. Dokumentationskonvention (non-normative)
+## Deployment completion
 
-Da dieses Repository öffentlich ist, werden für interne Infrastruktur-Details generische Platzhalter verwendet. Dieser Abschnitt ist nicht Teil des Runtime Contracts.
-
-| Platzhalter | Bedeutung | Beispielwert (Generisch) |
-| :--- | :--- | :--- |
-| `<IP>` | Eine konkrete IPv4 Adresse im LAN | `192.168.0.10` |
-| `<GATEWAY_IP>` | Die IP des Entry-Gateways / Reverse Proxy | `192.168.0.5` |
-| `<DNS_SERVER_IP>` | Der lokale DNS-Resolver (z.B. Pi-hole) | `192.168.0.2` |
-| `<LAN_SUBNET>` | Das vertrauenswürdige Heimnetz-Segment | `192.168.0.0/24` |
-| `<WG_SUBNET>` | Das WireGuard VPN-Segment | `10.8.0.0/24` |
-| `<UPSTREAM>` | Der Upstream-Service (Container) | `leitstand` |
-
-**Hinweis:** Die realen Werte sind im privaten Heimserver-Runbook hinterlegt.
+Deployment is complete only when release identity, listener ownership, HTTPS ingress, current route behavior, removed-route 404s, and `/health` evidence agree on the same release.

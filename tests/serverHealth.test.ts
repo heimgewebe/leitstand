@@ -9,12 +9,16 @@ describe('GET /health', () => {
   let testDir: string;
   let bureauSnapshotPath: string;
   let checkoutSnapshotPath: string;
+  let storageHealthSnapshotPath: string;
+  let ecosystemMapSnapshotPath: string;
 
   beforeEach(async () => {
     testDir = await mkdtemp(join(tmpdir(), 'leitstand-server-health-'));
     await mkdir(testDir, { recursive: true });
     bureauSnapshotPath = join(testDir, 'bureau-tasks.json');
     checkoutSnapshotPath = join(testDir, 'checkout-inventory.json');
+    storageHealthSnapshotPath = join(testDir, 'storage-health.json');
+    ecosystemMapSnapshotPath = join(testDir, 'ecosystem-map.json');
     const generatedAt = new Date().toISOString();
     await writeFile(
       bureauSnapshotPath,
@@ -36,8 +40,28 @@ describe('GET /health', () => {
       }),
       'utf-8',
     );
+    await writeFile(
+      storageHealthSnapshotPath,
+      JSON.stringify({
+        kind: 'leitstand_storage_health',
+        generatedAt,
+        current: {}
+      }),
+      'utf-8',
+    );
+    await writeFile(
+      ecosystemMapSnapshotPath,
+      JSON.stringify({
+        kind: 'system_catalog_map_artifact_manifest',
+        generatedAt,
+        artifacts: []
+      }),
+      'utf-8',
+    );
     vi.stubEnv('LEITSTAND_BUREAU_SNAPSHOT_PATH', bureauSnapshotPath);
     vi.stubEnv('LEITSTAND_CHECKOUT_SNAPSHOT_PATH', checkoutSnapshotPath);
+    vi.stubEnv('LEITSTAND_STORAGE_HEALTH_PATH', storageHealthSnapshotPath);
+    vi.stubEnv('LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH', ecosystemMapSnapshotPath);
   });
 
   afterEach(async () => {
@@ -54,6 +78,8 @@ describe('GET /health', () => {
     expect(response.body.checks.server_process.status).toBe('ok');
     expect(response.body.snapshots.bureau_tasks.path).toBe(bureauSnapshotPath);
     expect(response.body.snapshots.checkout_inventory.path).toBe(checkoutSnapshotPath);
+    expect(response.body.snapshots.storage_health.path).toBe(storageHealthSnapshotPath);
+    expect(response.body.snapshots.ecosystem_map.path).toBe(ecosystemMapSnapshotPath);
     expect(response.body.ingress.status).toBe('not_checked');
   });
 });

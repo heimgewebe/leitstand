@@ -112,7 +112,7 @@ async function runViewport(browser, viewport, html) {
     record(checks, 'shell elements exist', state.elementsExist);
     record(checks, 'viewport mode matches', state.mobileMatches === viewport.mobile, `${state.innerWidth}`);
     record(checks, 'one active route', state.activeCount === 1, state.activeCount);
-    record(checks, 'intent maps to observatory', state.activeHref === '/observatory', state.activeHref);
+    record(checks, 'RepoGround route is active', state.activeHref === '/repoground', state.activeHref);
     record(checks, 'shell ready class', state.ready);
     record(checks, 'initial expansion false', state.expanded === 'false', state.expanded);
     record(checks, 'initial link visibility', state.linksHidden === viewport.mobile, state.linksHidden);
@@ -173,7 +173,7 @@ async function runViewport(browser, viewport, html) {
 async function main() {
   const chrome = await findChrome();
   const [navHtml, shellCss, shellScript] = await Promise.all([
-    ejs.renderFile(join(ROOT, 'src', 'views', '_nav.ejs'), { currentPath: '/intent/example' }),
+    ejs.renderFile(join(ROOT, 'src', 'views', '_nav.ejs'), { currentPath: '/repoground' }),
     readFile(join(ROOT, 'src', 'public', 'shell.css'), 'utf-8'),
     readFile(join(ROOT, 'src', 'public', 'shell.mjs'), 'utf-8'),
   ]);

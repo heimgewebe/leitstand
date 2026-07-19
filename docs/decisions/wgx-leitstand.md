@@ -1,35 +1,28 @@
 ---
 id: docs.decisions.wgx-leitstand
-title: Decision: leitstand has a tracked WGX profile
+title: Decision: tracked WGX profile
 doc_type: decision
 status: active
 canonicality: canonical
 summary: >
-  Decision: leitstand has a tracked WGX profile
+  Keeps Leitstand fleet checks explicit through one minimal tracked WGX profile.
 ---
 
-# Decision: leitstand has a tracked WGX profile
+# Decision: tracked WGX profile
 
 ## Context
-`leitstand` is part of the Heimgewebe fleet (`heimgewebe.fleet.enabled: true`).
 
-Historically, it carried a "NO_PROFILE" marker to express "observer by design".
-In practice, missing `.wgx/profile.yml` is a recurring source of noise:
-lenskit (repo health checks, repolens/rLens) surface it as drift and CI tooling
-expects a tracked profile for standardized motorik.
+Leitstand participates in standardized repository health checks. Omitting its WGX profile would make fleet membership and expected verification ambiguous.
 
 ## Decision
-We track `.wgx/profile.yml` in `leitstand` and set:
-- `profile_expected: true`
-- `guard_smoke_expected: true`
 
-The profile is intentionally minimal and uses pnpm scripts if present.
+Track `.wgx/profile.yml` with explicit `up`, `guard`, and `smoke` tasks. The profile delegates to the repository's pinned pnpm scripts and does not define a second test, deployment, or runtime contract.
 
 ## Consequences
-Pros:
-- fleet consistency: "Fleet=yes -> Profile yes"
-- fewer false positives in health tooling
-- standardized entry points: `wgx guard`, `wgx smoke`
 
-Cons:
-- requires Node + pnpm (via Corepack) for meaningful execution
+- repository health entry points remain predictable;
+- the profile is small and reviewable;
+- CI and local checks continue to use the package scripts as their implementation;
+- WGX success does not establish deployed runtime health, source freshness, or gateway correctness.
+
+Any change to required checks must update the package scripts, CI workflow, WGX profile, and agent guidance consistently.

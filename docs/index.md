@@ -5,72 +5,53 @@ doc_type: reference
 status: active
 canonicality: canonical
 summary: >
-  Leitstand Documentation Router
+  Current documentation routes and runtime boundaries for Leitstand.
 ---
 
 # Leitstand Documentation Router
 
-Leitstand is the visual monitoring center of the Heimgewebe organism. In its default, strict viewer-only mode it adheres to the Observer Invariant: it does not orchestrate or mutate external systems (see [Non-Goals](architecture/non-goals.md) and [Feature Classification](architecture/feature-classification.md)). Some deployments may optionally enable an Ops Viewer fallback that can POST to `agent-control-surface` (acs) to trigger audit jobs; this is a controlled, opt-in exception explicitly classified outside the core Observer Invariant. Leitstand is organized into strict normative invariants (contracts) and operative runbooks. This router connects the "What is true?" (Contracts) with the "How does it stay true?" (Checks).
+Leitstand is the read-only observation surface for the Heimgewebe operator ecosystem. It renders exported evidence and does not orchestrate, mutate, dispatch tasks, ingest events, or establish source truth.
 
-## Canonicality & Discovery
-* *Note: Generated files are currently structural placeholders. A full semantic graph generator is not yet active.*
-* Generated Overviews: [doc-index.md](_generated/doc-index.md), [system-map.md](_generated/system-map.md), [orphans.md](_generated/orphans.md)
-* Agent readiness & supersession: [agent-readiness.md](_generated/agent-readiness.md), [supersession-map.md](_generated/supersession-map.md)
-
-## 1. Normative Invariants
-
-Small, stable, hard rules and diagnostic signals.
+## Normative boundaries
 
 - [Runtime Contract](runtime.contract.md)
 - [Drift Signals](drift.signals.md)
 - [Access Matrix](access.matrix.md)
 - [Data Flow](data-flow.md)
+- [Security Policy](../SECURITY.md)
+- [Tracked WGX Profile Decision](decisions/wgx-leitstand.md)
 
-## 2. Operative Runbooks
+## Operative runbooks
 
-Detailed procedures, explicitly separated from the normative core to preserve the UI/Observer boundary.
-
-- [Leitstand Gateway Runbook](runbooks/ops.runbook.leitstand-gateway.md)
-- [Leitstand Gateway Updates](runbooks/ops.runbook.leitstand-gateway.updates.md)
 - [Leitstand Main Runbook](runbooks/leitstand.md)
+- [Leitstand Gateway](runbooks/ops.runbook.leitstand-gateway.md)
+- [Leitstand Gateway Updates](runbooks/ops.runbook.leitstand-gateway.updates.md)
 - [Operator Snapshot Producer Runbook](runbooks/operator-snapshots.md)
 - [Bounded Storage Health Projection](operations/storage-health.md)
 - [Local Test Runner Compatibility](runbooks/local-test-runner.md)
 
-## 3. Tooling & Checks
+## Current runtime surfaces
 
-Tools that enforce the rules automatically.
+| Route | Purpose | Source truth |
+| --- | --- | --- |
+| `/` | compact source and attention overview | derived only |
+| `/health` | in-process runtime and artifact-freshness receipt | current process and local files |
+| `/bureau` | Bureau task and claim projection | Bureau snapshot |
+| `/checkouts` | checkout and worktree projection | Grabowski snapshot |
+| `/storage-health` | bounded storage-health projection | storage-health artifact |
+| `/ecosystem-map` | system relationships | Systemkatalog artifact manifest |
+| `/repoground` | repository-grounding bundles | RepoGround bundle index |
 
-- [Vendor Contracts Script](../scripts/vendor-contracts.mjs) (Vendors schemas offline)
-- [Check Artifacts Script](../scripts/check-artifacts.mjs) (Strict-Mode Gate)
+`/repobriefs` is a compatibility redirect to `/repoground`. Removed routes such as `/events`, `/ops`, `/observatory`, `/intent`, `/anatomy`, `/timeline`, `/insights`, and `/reflexion` are not active contracts.
 
-## 4. Architecture Decisions & Blueprints
+## Deployment modes
 
-- [WGX Leitstand Decision](decisions/wgx-leitstand.md)
-- [Static Mirror Boundary Decision](decisions/static-mirror-boundary.md)
-- [Leitstand Manifest Blueprint](blueprints/leitstand_manifest.md)
-- [Leitstand Visualization Blueprint](blueprints/leitstand_visualization.md)
-- [Ecosystem Map View Blueprint](blueprints/ecosystem-map-view.md)
-- [Operator Execution Observability Blueprint](blueprints/operator-execution-observability.md)
+**Canonical runtime:** Internal read-only service with the current runtime surfaces above.
 
-## 5. Reports
+**Static mirror:** Optional preview containing only `/`. Its `_static-boundary.json` records supported, runtime-only, and removed routes. It does not prove runtime availability or source freshness.
 
-- [Visualization Pilot Evidence 2026-07-05](reports/visualization-pilot-2026-07-05.md)
+See [Deployment](DEPLOYMENT.md), [Static Mirror Boundary](decisions/static-mirror-boundary.md), and [Cloudflare Deployment](deploy-cloudflare.md).
 
-## 6. Deployment Modes
+## Historical material
 
-Each Leitstand deployment instance operates in exactly one of two explicit modes. A project may run a canonical runtime and an optional static mirror as separate instances in parallel.
-
-**Mode A — Canonical Runtime (Internal Gateway)**
-- Scope: canonical operative environment.
-- Topology: internal-only, Reverse Proxy required, FQDN `leitstand.heimgewebe.home.arpa`.
-- Features: fully dynamic, `/events` ingestion active, `/ops` viewer configurable.
-- Documentation: [Runtime Contract](runtime.contract.md), [Deployment Overview](DEPLOYMENT.md)
-
-**Mode B — Public Static Mirror / Preview**
-- Scope: optional, read-only public mirror or PR preview.
-- Topology: static host. Cloudflare Pages is the primary preview path; GitHub Pages is manual-only.
-- Supported routes: `/`, `/observatory`, `/intent`; the build emits `dist/site/_static-boundary.json` with the exact route contract.
-- Dynamic-only routes: `/events`, `/ops`, `/bureau`, `/checkouts`, `/storage-health`, `/ecosystem-map`, `/repobriefs`, `/anatomy`, `/insights`, `/timeline`, `/reflexion`.
-- Nature: derived projection of Mode A; may be stale and is not an operational source of truth.
-- Documentation: [Static Mirror Boundary Decision](decisions/static-mirror-boundary.md), [Cloudflare Deployment](deploy-cloudflare.md), [../.github/workflows/pages.yml](../.github/workflows/pages.yml)
+Files under `docs/reports/` and explicitly informational blueprints preserve historical evidence. They do not override the current route and authority boundaries above.

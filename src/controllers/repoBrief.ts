@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
-export type RepoBriefSourceKind = 'artifact' | 'missing' | 'corrupt';
+export type RepoBriefSourceKind = 'artifact' | 'fixture' | 'missing' | 'corrupt';
 export type RepoBriefStatus = 'ok' | 'warn' | 'fail' | 'unknown';
+export type RepoBriefFreshness = 'fresh' | 'stale' | 'unknown';
 
 export interface RepoBriefBundleView {
   repo: string;
@@ -24,6 +25,7 @@ export interface RepoBriefBundleView {
 export interface RepoBriefViewData {
   bundles: RepoBriefBundleView[];
   view_meta: {
+    freshness_state: RepoBriefFreshness;
     source_kind: RepoBriefSourceKind;
     source_path: string;
     missing_reason: string;
@@ -44,9 +46,16 @@ const DEFAULT_NON_CLAIMS = [
   'test_sufficiency',
 ];
 
-function configuredBundleIndexPath(): string {
-  return process.env.LEITSTAND_REPOBRIEF_BUNDLES_PATH
-    || join(process.cwd(), 'src', 'fixtures', 'repobrief-bundles.json');
+function configuredBundleIndex(): { path: string; sourceKind: 'artifact' | 'fixture' } {
+  const configuredPath = process.env.LEITSTAND_REPOGROUND_BUNDLES_PATH
+    || process.env.LEITSTAND_REPOBRIEF_BUNDLES_PATH;
+  if (configuredPath) {
+    return { path: configuredPath, sourceKind: 'artifact' };
+  }
+  return {
+    path: join(process.cwd(), 'src', 'fixtures', 'repobrief-bundles.json'),
+    sourceKind: 'fixture',
+  };
 }
 
 function normalizeStatus(value: unknown): RepoBriefStatus {
@@ -71,6 +80,7 @@ function emptyData(kind: RepoBriefSourceKind, reason: string, sourcePath: string
   return {
     bundles: [],
     view_meta: {
+      freshness_state: 'unknown',
       source_kind: kind,
       source_path: sourcePath,
       missing_reason: reason,
@@ -151,16 +161,20 @@ function parseIndex(raw: unknown): {
 }
 
 export async function getRepoBriefData(): Promise<RepoBriefViewData> {
-  const sourcePath = resolve(configuredBundleIndexPath());
+  const configured = configuredBundleIndex();
+  const sourcePath = resolve(configured.path);
   try {
     const parsed = parseIndex(JSON.parse(await readFile(sourcePath, 'utf-8')) as unknown);
     const warningCount = parsed.bundles.reduce((total, bundle) => total + bundle.warnings.length, 0);
     return {
       bundles: parsed.bundles,
       view_meta: {
-        source_kind: 'artifact',
+        // A timestamp alone does not define freshness. RepoGround must publish an
+        // explicit threshold or verdict before Leitstand may claim fresh/stale.
+        freshness_state: 'unknown',
+        source_kind: configured.sourceKind,
         source_path: sourcePath,
-        missing_reason: 'ok',
+        missing_reason: configured.sourceKind === 'fixture' ? 'fixture_fallback' : 'ok',
         generated_at: parsed.generatedAt,
         bundle_count: parsed.bundles.length,
         public_export_ready_count: parsed.bundles.filter((bundle) => bundle.public_export_ready).length,

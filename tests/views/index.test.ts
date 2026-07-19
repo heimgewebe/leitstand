@@ -15,7 +15,7 @@ describe('index.ejs', () => {
     expect(html).toContain('Leitstand');
     expect(html).toContain('class="leitstand-nav"');
     expect(html).not.toContain('[object Promise]');
-    expect(html).toContain('Die Phasenübersicht ist aktuell nicht verfügbar.');
+    expect(html).toContain('Die Quellenübersicht ist aktuell nicht verfügbar.');
   });
 
   it('renders the derived situation summary and prioritized attention links', async () => {
@@ -23,16 +23,15 @@ describe('index.ejs', () => {
       viewPath,
       {
         currentPath: '/',
-        phases: [
+        sources: [
           {
-            id: 'zeitachse',
-            phase: 3,
-            title: 'Zeitachse',
-            description: 'Chronologische Events',
-            href: '/timeline',
+            id: 'bureau',
+            title: 'Bureau',
+            description: 'Tasks',
+            href: '/bureau',
             source_kind: 'artifact',
             freshness_state: 'unknown',
-            metric: '3 Events',
+            metric: '3 Tasks',
             error_reason: null,
           },
         ],
@@ -46,9 +45,9 @@ describe('index.ejs', () => {
           unavailable_count: 0,
           attention: [
             {
-              phase_id: 'zeitachse',
-              title: 'Zeitachse',
-              href: '/timeline',
+              source_id: 'bureau',
+              title: 'Bureau',
+              href: '/bureau',
               severity: 'info',
               reason: 'Datenfrische ist nicht belegt',
             },
@@ -60,7 +59,7 @@ describe('index.ejs', () => {
 
     expect(html).toContain('data-dashboard-state="attention"');
     expect(html).toContain('1 Bereich benötigt Prüfung');
-    expect(html).toContain('data-attention-phase="zeitachse"');
+    expect(html).toContain('data-attention-source="bureau"');
     expect(html).toContain('Datenfrische ist nicht belegt');
     expect(html).toContain('Es erzeugt keine eigene Zustandswahrheit.');
   });
