@@ -24,6 +24,12 @@ Current inputs:
 | Systemkarte | `ecosystem-map-artifact-manifest.json` and verified map artifacts |
 | RepoGround | RepoGround bundle index |
 
+## Canonical deployment
+
+Use `./scripts/leitstand-up` from a clean, versioned checkout. The default mode binds to loopback. Proxy mode uses `./scripts/leitstand-up --proxy`. LAN mode uses `./scripts/leitstand-up --lan` and requires an explicit `LEITSTAND_BIND_IP`; an unacknowledged wildcard bind is not an acceptable release state.
+
+The script is the canonical Compose entry point, but its successful exit does not replace Git-head, route, health, listener, DNS, TLS, or proxy readbacks.
+
 ## Freshness expectations
 
 `/health` applies source-specific limits:

@@ -25,6 +25,19 @@ The gateway exposes one internal, read-only Leitstand service. It does not expos
 - Leitstand routes remain read-only;
 - source artifacts remain authoritative outside Leitstand.
 
+## Canonical deployment entry point
+
+Use `./scripts/leitstand-up` from a clean, versioned Leitstand checkout. The script validates Docker, Compose, checkout cleanliness when pulling, required compose overlays, and listener expectations.
+
+Supported modes:
+
+- default loopback mode: host bind `127.0.0.1:3000`;
+- proxy mode: `./scripts/leitstand-up --proxy`, with no intended host-port publication;
+- LAN mode: `./scripts/leitstand-up --lan`, requiring an explicit `LEITSTAND_BIND_IP`;
+- unsafe wildcard LAN mode exists only as an explicit emergency choice and is not the canonical gateway deployment.
+
+Do not replace the script with ad hoc Compose commands. A successful script exit still requires the postflight below.
+
 ## Routing
 
 The proxy forwards the canonical host to the single Leitstand upstream. It must not publish removed legacy paths through another backend or rewrite them into successful responses.
