@@ -97,6 +97,8 @@ Success requires agreement between release manifest, user-systemd, process state
 
 Redirect verification uses parsed status and location fields. Raw CRLF-sensitive header matching is not part of the contract.
 
+Canonical HTTPS verification never disables certificate validation. The adapter first uses Python's configured CA file. When the Python/OpenSSL build has no usable compiled CA file, it may use the first existing operating-system CA bundle from its fixed platform list. A fallback bundle is accepted only when it is a regular file owned by root and is not writable by group or others. If no trusted bundle is available or certificate verification fails, postflight fails and the coupled transaction restores the prior runtime.
+
 ## Receipts and idempotency
 
 Build, switch, rollback, failure and deployment effects write create-only JSON receipts plus SHA-256 sidecars below:

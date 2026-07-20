@@ -57,6 +57,12 @@ DEFAULT_POSTFLIGHT_TIMEOUT_SECONDS = 35.0
 DEFAULT_STABILITY_SECONDS = 2.0
 DEFAULT_POLL_SECONDS = 1.0
 BROWSER_BINARIES = ("chromium", "chromium-browser", "google-chrome-stable", "google-chrome")
+SYSTEM_CA_BUNDLE_CANDIDATES = (
+    Path("/etc/ssl/certs/ca-certificates.crt"),
+    Path("/etc/pki/tls/certs/ca-bundle.crt"),
+    Path("/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"),
+    Path("/etc/ssl/ca-bundle.pem"),
+)
 
 WEB_SERVICE = "leitstand.service"
 STORAGE_SERVICE = "leitstand-storage-health.service"
@@ -1663,6 +1669,31 @@ def units_match(paths: Paths, target: Path, config: RuntimeConfig) -> bool:
         return False
 
 
+def _system_ca_bundle() -> Path | None:
+    """Return a trusted OS CA bundle when Python's compiled default is absent."""
+    for candidate in SYSTEM_CA_BUNDLE_CANDIDATES:
+        try:
+            metadata = candidate.stat()
+        except OSError:
+            continue
+        if not stat.S_ISREG(metadata.st_mode):
+            continue
+        if metadata.st_uid != 0 or metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+            continue
+        return candidate
+    return None
+
+
+def _tls_context() -> ssl.SSLContext:
+    defaults = ssl.get_default_verify_paths()
+    if defaults.cafile is not None:
+        return ssl.create_default_context()
+    bundle = _system_ca_bundle()
+    if bundle is not None:
+        return ssl.create_default_context(cafile=str(bundle))
+    return ssl.create_default_context()
+
+
 def _http_request(
     host: str,
     port: int,
@@ -1678,7 +1709,7 @@ def _http_request(
             host,
             port,
             timeout=timeout,
-            context=ssl.create_default_context(),
+            context=_tls_context(),
         )
     else:
         connection = http.client.HTTPConnection(host, port, timeout=timeout)
