@@ -2,6 +2,7 @@
 id: runbook.browser-view-regression
 title: Browser view regression
 status: active
+doc_type: runbook
 canonicality: supporting
 summary: >
   Build-bound Playwright regression contract for the primary read-only Leitstand views.
