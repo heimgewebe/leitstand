@@ -59,7 +59,20 @@ fi
 
 log_success "Doc Link Integrity Passed."
 
-# Identify modified files depending on context
+# Identify modified files depending on context.
+# `git show --name-only` emits no paths for a merge commit unless a parent is
+# selected. Release builds run on reviewed merge commits, so always compare the
+# current tree with its first parent when one exists. Root commits retain an
+# explicit `--root` fallback.
+latest_commit_modified_files() {
+    local revision="${1:-HEAD}"
+    if git rev-parse --verify "${revision}^1" >/dev/null 2>&1; then
+        git diff --name-only "${revision}^1" "$revision"
+    else
+        git show --root --name-only --pretty='' "$revision"
+    fi
+}
+
 # Default to empty, populated conditionally
 MODIFIED_FILES=""
 
@@ -89,7 +102,7 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" || "${CI:-}" == "true" ]]; then
         BEFORE_SHA=$(grep -o '"before": *"[^"]*"' "$GITHUB_EVENT_PATH" 2>/dev/null | awk -F'"' '{print $4}' || echo "0000000000000000000000000000000000000000")
         if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" == "0000000000000000000000000000000000000000" || "$BEFORE_SHA" == "null" ]]; then
             log_info "New branch or missing before SHA. Diffing latest commit only."
-            MODIFIED_FILES=$(git show --name-only --pretty='' "${GITHUB_SHA:-HEAD}" || true)
+            MODIFIED_FILES=$(latest_commit_modified_files "${GITHUB_SHA:-HEAD}" || true)
         else
             log_info "Diffing range: $BEFORE_SHA..${GITHUB_SHA:-HEAD}"
             MODIFIED_FILES=$(git diff --name-only "$BEFORE_SHA..${GITHUB_SHA:-HEAD}" || true)
@@ -98,8 +111,8 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" || "${CI:-}" == "true" ]]; then
 
     # Global Fallback in CI if still empty
     if [[ -z "$MODIFIED_FILES" ]]; then
-        log_info "Fallback: using git show --name-only against HEAD"
-        MODIFIED_FILES=$(git show --name-only --pretty='' HEAD || true)
+        log_info "Fallback: diffing HEAD against its first parent"
+        MODIFIED_FILES=$(latest_commit_modified_files || true)
     fi
 
     if [[ -z "$MODIFIED_FILES" ]]; then
@@ -115,8 +128,8 @@ else
         } | awk 'NF' | sort -u
     )
     if [[ -z "$MODIFIED_FILES" ]]; then
-        log_info "Clean working tree. Diffing against latest commit..."
-        MODIFIED_FILES=$(git show --name-only --pretty='' HEAD || true)
+        log_info "Clean working tree. Diffing latest commit against its first parent..."
+        MODIFIED_FILES=$(latest_commit_modified_files || true)
     fi
 
     if [[ -z "$MODIFIED_FILES" ]]; then

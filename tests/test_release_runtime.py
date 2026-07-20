@@ -371,6 +371,79 @@ class ReleaseRuntimeTest(unittest.TestCase):
         with self.assertRaisesRegex(release.ReleaseError, "redirect failed"):
             release._route_matrix(request, label="test")
 
+    def test_drift_gate_detects_files_from_clean_merge_commit(self) -> None:
+        repo = self.root / "drift-merge-repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=repo, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+
+        (repo / "scripts/ci").mkdir(parents=True)
+        (repo / "docs").mkdir()
+        (repo / "scripts/ci/check-drift-gates.sh").write_bytes(
+            (REPO_ROOT / "scripts/ci/check-drift-gates.sh").read_bytes()
+        )
+        os.chmod(repo / "scripts/ci/check-drift-gates.sh", 0o755)
+        (repo / "docs/index.md").write_text(
+            "[Runtime](runtime.contract.md)\n", encoding="utf-8"
+        )
+        (repo / "docs/runtime.contract.md").write_text("# Runtime\n", encoding="utf-8")
+        (repo / "docs/drift.signals.md").write_text(
+            "[Runtime](runtime.contract.md)\n", encoding="utf-8"
+        )
+        (repo / "docs/drift.map.yaml").write_text(
+            "rules:\n"
+            "  - trigger: \"^never-match$\"\n"
+            "    require: \"docs/runtime.contract.md\"\n"
+            "    message: \"fixture rule\"\n",
+            encoding="utf-8",
+        )
+        (repo / "README.md").write_text("base\n", encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=repo, check=True)
+
+        subprocess.run(["git", "checkout", "-q", "-b", "feature"], cwd=repo, check=True)
+        (repo / "README.md").write_text("feature\n", encoding="utf-8")
+        subprocess.run(["git", "add", "README.md"], cwd=repo, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "feature"], cwd=repo, check=True)
+        subprocess.run(["git", "checkout", "-q", "main"], cwd=repo, check=True)
+        subprocess.run(
+            ["git", "merge", "-q", "--no-ff", "feature", "-m", "merge feature"],
+            cwd=repo,
+            check=True,
+        )
+
+        parent_line = subprocess.check_output(
+            ["git", "rev-list", "--parents", "-n", "1", "HEAD"], cwd=repo, text=True
+        ).split()
+        self.assertEqual(len(parent_line), 3)
+        self.assertEqual(
+            subprocess.check_output(
+                ["git", "show", "--name-only", "--pretty=", "HEAD"], cwd=repo, text=True
+            ).strip(),
+            "",
+        )
+
+        env = os.environ.copy()
+        env["CI"] = "true"
+        env.pop("GITHUB_ACTIONS", None)
+        env.pop("GITHUB_EVENT_NAME", None)
+        env.pop("GITHUB_EVENT_PATH", None)
+        env.pop("GITHUB_BASE_REF", None)
+        env.pop("GITHUB_SHA", None)
+        result = subprocess.run(
+            ["bash", "scripts/ci/check-drift-gates.sh"],
+            cwd=repo,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Fallback: diffing HEAD against its first parent", result.stdout)
+        self.assertIn("README.md", result.stdout)
+        self.assertIn("All Drift Gates Passed", result.stdout)
+
     def test_health_validation_requires_exact_thresholds_and_fresh_sources(self) -> None:
         head = "6" * 40
         health = {
