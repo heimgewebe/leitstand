@@ -19,37 +19,19 @@ const statusClass = (status) => ['critical', 'hard_limit'].includes(status) ? 'b
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; color: #f1f5f9; margin: 0; }
-    main { max-width: 1180px; margin: 0 auto; padding: 42px 24px 80px; }
-    h1, h2 { letter-spacing: -.02em; }
-    .subtitle, .muted { color: #94a3b8; line-height: 1.55; }
-    .notice, .card, .metric { background: rgba(17,24,39,.88); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; }
-    .notice, .card { padding: 20px 22px; margin-bottom: 18px; }
-    .notice strong { color: #60a5fa; }
-    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 22px 0; }
-    .metric { padding: 18px 20px; }
-    .label { color: #64748b; font-size: .72em; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; }
-    .value { font-size: 1.35em; font-weight: 650; overflow-wrap: anywhere; }
-    .detail { color: #94a3b8; font-size: .82em; margin-top: 7px; }
-    .truth { display: inline-block; margin-top: 8px; padding: 2px 8px; border-radius: 999px; font-size: .72em; border: 1px solid rgba(255,255,255,.14); }
-    .truth-observed { color: #22c55e; } .truth-estimated { color: #f59e0b; } .truth-unavailable { color: #ef4444; }
-    .ok { color: #22c55e; } .warn { color: #f59e0b; } .bad { color: #ef4444; }
+    .metric .value { font-size: 1.35em; font-weight: 650; }
+    .detail { color: var(--ui-text-secondary); font-size: .82em; margin-top: 7px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: .84em; }
-    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.07); vertical-align: top; }
-    th { color: #64748b; font-size: .78em; text-transform: uppercase; letter-spacing: .06em; }
-    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
-    ul { margin: 10px 0 0 20px; padding: 0; }
-    li { margin: 8px 0; color: #cbd5e1; }
-    .empty { color: #64748b; font-style: italic; }
-    .source-fixture { color: #f59e0b; } .source-missing, .source-corrupt { color: #ef4444; }
-    .pill { display: inline-block; padding: 2px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; font-size: .78em; }
+    .empty { color: var(--ui-text-muted); font-style: italic; }
+    .storage-view li { margin: 8px 0; color: #cbd5e1; }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
   </style>
-  <link rel="stylesheet" href="/assets/shell.css">
+  <%- include('_ui-head') %>
   <script type="module" src="/assets/shell.mjs"></script>
 </head>
-<body>
+<body class="storage-view">
   <%- include('_nav') %>
   <main>
     <h1>Speicherzustand</h1>

@@ -4,25 +4,10 @@
   <title>RepoGround – Leitstand</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; color: #f1f5f9; margin: 0; }
-    main { max-width: 1180px; margin: 0 auto; padding: 42px 24px 80px; }
-    .subtitle, .muted, li { color: #94a3b8; line-height: 1.55; }
-    .notice, .card, .meta-item { background: rgba(17,24,39,.88); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; }
-    .notice strong { color: #3b82f6; }
-    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 22px 0; }
-    .label { color: #64748b; font-size: .72em; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
-    .value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82em; overflow-wrap: anywhere; }
-    .status-ok { color: #22c55e; }
-    .status-warn, .status-unknown { color: #f59e0b; }
-    .status-fail { color: #ef4444; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #dbeafe; overflow-wrap: anywhere; word-break: break-word; }
-    ul { margin-left: 20px; }
-  </style>
-  <link rel="stylesheet" href="/assets/shell.css">
+  <%- include('_ui-head') %>
   <script type="module" src="/assets/shell.mjs"></script>
 </head>
-<body>
+<body class="repoground-view">
   <%- include('_nav') %>
 
   <main>
@@ -33,14 +18,6 @@
       <strong>View only.</strong> Local bundle paths are operator pointers. Export-safety failures must remain visible and block public-share framing.
     </section>
 
-    <section class="meta-grid" aria-label="RepoGround source metadata">
-      <div class="meta-item"><div class="label">Source state</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
-      <div class="meta-item"><div class="label">Source path</div><div class="value"><%= view_meta.source_path %></div></div>
-      <div class="meta-item"><div class="label">Generated</div><div class="value"><%= view_meta.generated_at || '—' %></div></div>
-      <div class="meta-item"><div class="label">Bundles</div><div class="value"><%= view_meta.bundle_count %></div></div>
-      <div class="meta-item"><div class="label">Public export ready</div><div class="value"><%= view_meta.public_export_ready_count %></div></div>
-      <div class="meta-item"><div class="label">Warnings</div><div class="value"><%= view_meta.warning_count %></div></div>
-    </section>
 
     <% if (bundles.length === 0) { %>
       <section class="card"><p class="muted">No RepoGround bundle index is available. This is a degraded read-only state, not a green status.</p></section>
@@ -76,6 +53,20 @@
         <% } %>
       </section>
     <% } %>
+
+    <details class="card ui-provenance">
+      <summary>Quelle und Bundle-Zählwerte</summary>
+      <div class="ui-provenance__content">
+        <section class="meta-grid" aria-label="RepoGround source metadata">
+          <div class="meta-item"><div class="label">Source state</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
+          <div class="meta-item"><div class="label">Source path</div><div class="value"><%= view_meta.source_path %></div></div>
+          <div class="meta-item"><div class="label">Generated</div><div class="value"><%= view_meta.generated_at || '—' %></div></div>
+          <div class="meta-item"><div class="label">Bundles</div><div class="value"><%= view_meta.bundle_count %></div></div>
+          <div class="meta-item"><div class="label">Public export ready</div><div class="value"><%= view_meta.public_export_ready_count %></div></div>
+          <div class="meta-item"><div class="label">Warnings</div><div class="value"><%= view_meta.warning_count %></div></div>
+        </section>
+      </div>
+    </details>
 
     <section class="card">
       <h2>Does not establish</h2>
