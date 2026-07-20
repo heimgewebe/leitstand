@@ -444,6 +444,39 @@ class ReleaseRuntimeTest(unittest.TestCase):
         self.assertIn("README.md", result.stdout)
         self.assertIn("All Drift Gates Passed", result.stdout)
 
+    def test_tls_context_uses_secure_system_bundle_when_python_default_is_missing(self) -> None:
+        bundle = Path("/trusted/system/ca-certificates.crt")
+        context = Mock()
+        with (
+            patch.object(release.ssl, "get_default_verify_paths", return_value=Mock(cafile=None)),
+            patch.object(release, "_system_ca_bundle", return_value=bundle),
+            patch.object(release.ssl, "create_default_context", return_value=context) as create,
+        ):
+            self.assertIs(release._tls_context(), context)
+        create.assert_called_once_with(cafile=str(bundle))
+
+    def test_tls_context_preserves_existing_python_default(self) -> None:
+        context = Mock()
+        with (
+            patch.object(
+                release.ssl,
+                "get_default_verify_paths",
+                return_value=Mock(cafile="/configured/ca.pem"),
+            ),
+            patch.object(release.ssl, "create_default_context", return_value=context) as create,
+        ):
+            self.assertIs(release._tls_context(), context)
+        create.assert_called_once_with()
+
+    def test_system_ca_bundle_rejects_group_writable_candidate(self) -> None:
+        bundle = Path("/unsafe/system/ca-certificates.crt")
+        metadata = Mock(st_uid=0, st_mode=stat.S_IFREG | 0o664)
+        with (
+            patch.object(release, "SYSTEM_CA_BUNDLE_CANDIDATES", (bundle,)),
+            patch.object(Path, "stat", return_value=metadata),
+        ):
+            self.assertIsNone(release._system_ca_bundle())
+
     def test_health_validation_requires_exact_thresholds_and_fresh_sources(self) -> None:
         head = "6" * 40
         health = {
