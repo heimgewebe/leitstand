@@ -103,6 +103,9 @@ function installExplorerStyles() {
     .map-canvas [data-edge="true"].is-outgoing { stroke:#60a5fa !important; stroke-width:3px !important; opacity:1; }
     .map-canvas [data-edge="true"].is-incoming { stroke:#fbbf24 !important; stroke-width:3px !important; stroke-dasharray:7 4; opacity:1; }
     .map-canvas g.edgeLabel.is-outgoing, .map-canvas g.edgeLabel.is-incoming { opacity:1; font-weight:700; }
+    @media (prefers-reduced-motion:reduce) {
+      .map-canvas g.node, .map-canvas [data-edge="true"], .map-canvas g.edgeLabel { transition:none !important; }
+    }
     @media (max-width:1100px) {
       .map-explorer { max-height:none; }
     }

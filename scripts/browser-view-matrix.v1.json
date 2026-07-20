@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "kind": "leitstand_browser_view_matrix",
+  "taskId": "LSV-V1-T009",
+  "contract": {
+    "server": "built Express application on loopback",
+    "productCssOnly": true,
+    "failClosedOn": [
+      "pageerror",
+      "console-error",
+      "requestfailed",
+      "same-origin-http-4xx-5xx",
+      "document-overflow",
+      "missing-product-asset"
+    ],
+    "doesNotEstablish": [
+      "visual-perfection",
+      "source-truth",
+      "all-browser-parity",
+      "runtime-correctness",
+      "write-authority"
+    ]
+  },
+  "viewports": [
+    {
+      "id": "mobile",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "desktop",
+      "width": 1440,
+      "height": 900
+    }
+  ],
+  "views": [
+    {
+      "id": "dashboard",
+      "path": "/",
+      "activeHref": "/",
+      "heading": "Leitstand"
+    },
+    {
+      "id": "repoground",
+      "path": "/repoground",
+      "activeHref": "/repoground",
+      "heading": "RepoGround Observability"
+    },
+    {
+      "id": "bureau",
+      "path": "/bureau",
+      "activeHref": "/bureau",
+      "heading": "Bureau Task Board"
+    },
+    {
+      "id": "checkouts",
+      "path": "/checkouts",
+      "activeHref": "/checkouts",
+      "heading": "Checkout / Worktree Health"
+    },
+    {
+      "id": "storage-health",
+      "path": "/storage-health",
+      "activeHref": "/storage-health",
+      "heading": "Speicherzustand"
+    },
+    {
+      "id": "ecosystem-map",
+      "path": "/ecosystem-map",
+      "activeHref": "/ecosystem-map",
+      "heading": "Ökosystemkarte",
+      "modal": true
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "valid",
+      "path": "/ecosystem-map",
+      "source": "generated digest-bound Git fixture",
+      "expectedText": "Exakt gebunden"
+    },
+    {
+      "id": "missing",
+      "path": "/bureau",
+      "source": "missing explicit Bureau snapshot",
+      "expectedText": "Degradierter Read-only-Zustand, kein grüner Status"
+    },
+    {
+      "id": "corrupt",
+      "path": "/checkouts",
+      "source": "malformed explicit checkout snapshot",
+      "expectedText": "Degradierter Read-only-Zustand, kein grüner Status"
+    },
+    {
+      "id": "stale",
+      "path": "/bureau",
+      "source": "valid Bureau fixture with old generatedAt",
+      "expectedText": "stale"
+    },
+    {
+      "id": "empty",
+      "path": "/bureau",
+      "source": "valid Bureau fixture with an empty task list",
+      "expectedText": "Bureau Task Board"
+    },
+    {
+      "id": "reduced-motion",
+      "path": "/ecosystem-map",
+      "source": "valid fixture and prefers-reduced-motion: reduce",
+      "expectedText": "Ökosystemkarte"
+    }
+  ]
+}

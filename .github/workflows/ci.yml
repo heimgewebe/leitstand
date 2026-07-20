@@ -60,6 +60,10 @@ jobs:
       if: success()
       run: pnpm run build
 
+    - name: Browser view regression
+      if: success()
+      run: pnpm run test:browser-views
+
     - name: Repo Structure Guard
       if: success()
       run: bash scripts/ci/repo-structure-guard.sh
