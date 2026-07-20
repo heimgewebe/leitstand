@@ -5,7 +5,7 @@ import ejs from 'ejs';
 const ROOT = process.cwd();
 const VIEWS = join(ROOT, 'src', 'views');
 const OUT = join(ROOT, 'dist', 'site');
-const STATIC_ASSETS = ['shell.css', 'shell.mjs'];
+const STATIC_ASSETS = ['shell.css', 'ui-system.css', 'shell.mjs'];
 
 const STATIC_MIRROR_SUPPORTED_ROUTES = [
   { route: '/', output: 'index.html', view: 'index', reason: 'static landing page' },

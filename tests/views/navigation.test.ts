@@ -23,6 +23,7 @@ const navViews = [
 
 const viewsRoot = join(process.cwd(), 'src', 'views');
 const navPartial = join(viewsRoot, '_nav.ejs');
+const uiHeadPartial = join(viewsRoot, '_ui-head.ejs');
 
 function readView(file: string): string {
   return readFileSync(join(viewsRoot, file), 'utf-8');
@@ -36,10 +37,18 @@ describe('canonical navigation parity', () => {
   it.each(navViews)('%s consumes only the shared shell navigation', (file) => {
     const view = readView(file);
     expect(view).toContain("<%- include('_nav') %>");
-    expect(view).toContain('href="/assets/shell.css"');
+    expect(view).toContain("<%- include('_ui-head') %>");
+    expect(view).not.toContain('href="/assets/shell.css"');
     expect(view).toContain('src="/assets/shell.mjs"');
     expect(view).not.toContain('<nav aria-label="Hauptnavigation">');
     expect(inlineStyles(view)).not.toMatch(/(^|\n)\s*nav(?:\s|[.#:[>+~])/m);
+  });
+
+  it('the shared UI head owns the ordered product stylesheet contract', () => {
+    const partial = readFileSync(uiHeadPartial, 'utf-8');
+    expect(partial).toContain('href="/assets/shell.css"');
+    expect(partial).toContain('href="/assets/ui-system.css"');
+    expect(partial.indexOf('/assets/shell.css')).toBeLessThan(partial.indexOf('/assets/ui-system.css'));
   });
 
   it('the shared partial exposes the canonical read-only route set', () => {
@@ -96,7 +105,7 @@ describe('canonical navigation parity', () => {
   it('copies the shared shell and emits the bounded static route manifest', () => {
     const buildScript = readFileSync(join(process.cwd(), 'scripts', 'build-static.mjs'), 'utf-8');
 
-    expect(buildScript).toMatch(/const STATIC_ASSETS = \[['"]shell\.css['"], ['"]shell\.mjs['"]\]/);
+    expect(buildScript).toContain("const STATIC_ASSETS = ['shell.css', 'ui-system.css', 'shell.mjs'];");
     expect(buildScript).toMatch(/copyFile\(join\(ROOT, ['"]src['"], ['"]public['"], name\), join\(assetsOut, name\)\)/);
     expect(buildScript).toContain('await copyStaticAssets()');
     expect(buildScript).toMatch(/currentPath:\s*['"]\/['"]/);
