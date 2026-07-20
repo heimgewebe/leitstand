@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "kind": "leitstand_visualization_pilot_evidence",
+  "taskId": "LSV-V1-T007",
+  "observedAt": "2026-07-20T12:10:00Z",
+  "observedLeitstand": {
+    "repository": "heimgewebe/leitstand",
+    "commit": "4218e10ab4ea9dc029c98009f4f142c7bbcc81eb",
+    "release": "/home/alex/.local/lib/leitstand/releases/4218e10ab4ea9dc029c98009f4f142c7bbcc81eb-runtime-v1",
+    "service": {
+      "unit": "leitstand.service",
+      "activeState": "active",
+      "subState": "running",
+      "restartCount": 0
+    }
+  },
+  "sourceContract": {
+    "mode": "identity_only",
+    "contentCopied": false,
+    "description": "The pilot records source identities, digests, timestamps and bounded verdicts. It does not copy private source contents or reinterpret source-system truth."
+  },
+  "sources": [
+    {
+      "id": "systemkatalog",
+      "displayName": "Systemkatalog ecosystem map",
+      "authority": "canonical_map_semantics",
+      "evidenceMode": "live_artifact",
+      "observedState": "valid",
+      "artifact": {
+        "kind": "system_catalog_map_artifact_manifest",
+        "path": "/home/alex/.local/share/systemkatalog/releases/d8230e73bd6c56b2930ec801694af84e19ed3d26/rendered/ecosystem-map-artifact-manifest.json",
+        "sha256": "9454a0df40ff06887a36bed3503afbcbe06efaa2566ccf73930d6c2c669949d1",
+        "bytes": 1861,
+        "generatedAt": "2026-07-15T20:38:43Z",
+        "sourceRepository": "heimgewebe/systemkatalog",
+        "sourceCommit": "a765da7e1222b435c35b4797adb01dfba5a8b1b8"
+      },
+      "surfacedBy": [
+        "/ecosystem-map"
+      ],
+      "doesNotEstablish": [
+        "claim_truth",
+        "runtime_correctness",
+        "map_semantic_correctness"
+      ]
+    },
+    {
+      "id": "repoground",
+      "displayName": "RepoGround canonical publication",
+      "authority": "repository_bundle_identity",
+      "evidenceMode": "live_artifact",
+      "observedState": "valid",
+      "artifact": {
+        "kind": "repoground.bundle.manifest",
+        "path": "/home/alex/repos/manifest-publications/bundles/heimgewebe__repoground/main/20260720T021738Z-b1ea71cdce4b/heimgewebe__repoground__main-max-260720-0217_merge.bundle.manifest.json",
+        "sha256": "d60cd4491ccf1a634b59f0aaa84b71bf6c8fca1a67536025a26b214af6603f19",
+        "bytes": 18397,
+        "generatedAt": "2026-07-20T02:18:05Z",
+        "sourceRepository": "heimgewebe/repoground",
+        "sourceCommit": "9b4b643c448e018049d03ab1ec945af99018e2b1"
+      },
+      "surfacedBy": [
+        "/repobriefs"
+      ],
+      "doesNotEstablish": [
+        "repo_understood",
+        "public_export_safety",
+        "runtime_correctness"
+      ]
+    },
+    {
+      "id": "chronik",
+      "displayName": "Chronik RepoGround publication",
+      "authority": "repository_bundle_identity",
+      "evidenceMode": "live_artifact",
+      "observedState": "valid",
+      "artifact": {
+        "kind": "repoground.bundle.manifest",
+        "path": "/home/alex/repos/manifest-publications/bundles/heimgewebe__chronik/main/20260720T030937Z-4448b417af44/heimgewebe__chronik__main-max-260720-0309_merge.bundle.manifest.json",
+        "sha256": "b7ec7d730dbc367733e60a170c04b3b7ffb6c729fb135a19e767fab1c773793d",
+        "bytes": 17750,
+        "generatedAt": "2026-07-20T03:09:38Z",
+        "sourceRepository": "heimgewebe/chronik",
+        "sourceCommit": "63154c36fcd806bd2ac140f1ef287ea0c5fc914e"
+      },
+      "surfacedBy": [
+        "/repobriefs"
+      ],
+      "doesNotEstablish": [
+        "chronik_ledger_integrity",
+        "chronik_runtime_health",
+        "event_truth"
+      ]
+    },
+    {
+      "id": "wgx",
+      "displayName": "WGX RepoGround publication",
+      "authority": "repository_bundle_identity",
+      "evidenceMode": "live_artifact",
+      "observedState": "valid",
+      "artifact": {
+        "kind": "repoground.bundle.manifest",
+        "path": "/home/alex/repos/manifest-publications/bundles/heimgewebe__wgx/main/20260720T031329Z-08d0dbb8a7f5/heimgewebe__wgx__main-max-260720-0313_merge.bundle.manifest.json",
+        "sha256": "41b51a95cfd890ec774a48d9369ee7ad7b0d54bad01ab07613dd48bb564bc331",
+        "bytes": 17636,
+        "generatedAt": "2026-07-20T03:13:29Z",
+        "sourceRepository": "heimgewebe/wgx",
+        "sourceCommit": "01efb27f424466c951a196f095c549d1afdd10da"
+      },
+      "surfacedBy": [
+        "/repobriefs"
+      ],
+      "doesNotEstablish": [
+        "wgx_runtime_health",
+        "metric_truth",
+        "deployment_correctness"
+      ]
+    },
+    {
+      "id": "semantah",
+      "displayName": "semantAH RepoGround publication",
+      "authority": "repository_bundle_identity",
+      "evidenceMode": "live_artifact",
+      "observedState": "valid",
+      "artifact": {
+        "kind": "repoground.bundle.manifest",
+        "path": "/home/alex/repos/manifest-publications/bundles/heimgewebe__semantAH/main/20260720T010824Z-9fad49f38602/heimgewebe__semantAH__main-max-260720-0108_merge.bundle.manifest.json",
+        "sha256": "38228717f34b10178e9932381be3a5dd795a603ce9c0982d924729e195cb3e76",
+        "bytes": 17778,
+        "generatedAt": "2026-07-20T01:08:25Z",
+        "sourceRepository": "heimgewebe/semantAH",
+        "sourceCommit": "d53000a909946a0381a8b365c4af7abd2456e8f6"
+      },
+      "surfacedBy": [
+        "/repobriefs"
+      ],
+      "doesNotEstablish": [
+        "semantic_quality",
+        "index_freshness",
+        "runtime_correctness"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "valid-system-map",
+      "state": "valid",
+      "evidenceMode": "live_artifact",
+      "sourceIds": [
+        "systemkatalog"
+      ],
+      "liveIncidentObserved": false,
+      "verifier": {
+        "testFile": "tests/controllers/ecosystemMap.test.ts",
+        "assertion": "A digest-bound manifest and its declared artifacts load into typed valid view data."
+      }
+    },
+    {
+      "id": "missing-system-map-manifest",
+      "state": "missing",
+      "evidenceMode": "synthetic_fault_injection",
+      "sourceIds": [
+        "systemkatalog"
+      ],
+      "liveIncidentObserved": false,
+      "verifier": {
+        "testFile": "tests/controllers/ecosystemMap.test.ts",
+        "assertion": "A configured missing manifest produces an explicit missing/degraded state rather than green output."
+      }
+    },
+    {
+      "id": "corrupt-system-map-manifest",
+      "state": "corrupt",
+      "evidenceMode": "synthetic_fault_injection",
+      "sourceIds": [
+        "systemkatalog"
+      ],
+      "liveIncidentObserved": false,
+      "verifier": {
+        "testFile": "tests/controllers/ecosystemMap.test.ts",
+        "assertion": "Malformed JSON or a digest mismatch produces an explicit corrupt state and no trusted rendering input."
+      }
+    },
+    {
+      "id": "stale-system-map-manifest",
+      "state": "stale",
+      "evidenceMode": "synthetic_fault_injection",
+      "sourceIds": [
+        "systemkatalog"
+      ],
+      "liveIncidentObserved": false,
+      "verifier": {
+        "testFile": "tests/controllers/ecosystemMap.test.ts",
+        "assertion": "An artifact outside the configured freshness window remains readable but is visibly classified stale."
+      }
+    },
+    {
+      "id": "stale-leitstand-repoground-publication",
+      "state": "stale",
+      "evidenceMode": "live_artifact",
+      "sourceIds": [
+        "repoground"
+      ],
+      "liveIncidentObserved": true,
+      "artifact": {
+        "kind": "repoground.bundle.manifest",
+        "path": "/home/alex/repos/manifest-publications/bundles/heimgewebe__leitstand/main/20260720T001041Z-cd227fe58773/heimgewebe__leitstand__main-max-260720-0010_merge.bundle.manifest.json",
+        "sha256": "31b7c51bcd9fb4f17a39187f506c03388e9134aed2de11071783da038970554a",
+        "generatedAt": "2026-07-20T00:10:42Z",
+        "sourceCommit": "c9de5b077e431b3087920cea159ce19ba1319b7b",
+        "comparedWithCommit": "4218e10ab4ea9dc029c98009f4f142c7bbcc81eb"
+      },
+      "verifier": {
+        "testFile": "tests/controllers/repoBrief.test.ts",
+        "assertion": "Leitstand does not infer freshness merely from a timestamp and therefore cannot relabel this older publication green."
+      }
+    },
+    {
+      "id": "missing-repoground-index",
+      "state": "missing",
+      "evidenceMode": "synthetic_fault_injection",
+      "sourceIds": [
+        "repoground"
+      ],
+      "liveIncidentObserved": false,
+      "verifier": {
+        "testFile": "tests/controllers/repoBrief.test.ts",
+        "assertion": "A missing configured bundle index yields an empty degraded read-only state."
+      }
+    },
+    {
+      "id": "export-safety-fail",
+      "state": "export-safety-fail",
+      "evidenceMode": "live_artifact",
+      "sourceIds": [
+        "repoground"
+      ],
+      "liveIncidentObserved": true,
+      "artifact": {
+        "kind": "lenskit.export_safety_report",
+        "path": "/home/alex/repos/merges/leitstand-max-260705-0643/leitstand-max-260705-0443_merge.export_safety_report.json",
+        "sha256": "b0cf4ffb2ee6bbbb7277cb5fe70dd48080d212a033d5c156a42dc1e03290af39",
+        "status": "fail",
+        "reason": "agent_export_gate_required_but_missing_or_not_pass"
+      },
+      "verifier": {
+        "testFile": "tests/controllers/repoBrief.test.ts",
+        "assertion": "Export-safety failure and public-export readiness remain independent visible fields and are never converted into a green bundle verdict."
+      }
+    }
+  ],
+  "validation": {
+    "focusedVitest": {
+      "files": 5,
+      "tests": 37,
+      "status": "pass",
+      "receiptSha256": "bd7671e0a828fac9832573865cf95a829e0d9ad6ddcaff081e534cf88ff22864"
+    },
+    "browserShell": {
+      "mobile": "21/21 pass",
+      "desktop": "13/13 pass",
+      "receiptSha256": "aea066b3fd584d1d2e289fdd23da1a6ae3468c3a6ee87def237ba050e65ebcd0"
+    }
+  },
+  "boundary": {
+    "viewOnly": true,
+    "mutationsAllowed": false,
+    "writeCapabilities": [],
+    "forbiddenActions": [
+      "task_dispatch",
+      "source_repair",
+      "repository_mutation",
+      "merge",
+      "deployment",
+      "external_refresh"
+    ]
+  },
+  "doesNotEstablish": [
+    "source_truth",
+    "runtime_correctness",
+    "comprehensive_source_coverage",
+    "public_export_safety",
+    "visual_perfection",
+    "future_freshness",
+    "task_readiness"
+  ]
+}
