@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .leitstand-skip-link {
   position: fixed;
   top: 8px;
