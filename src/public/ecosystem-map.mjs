@@ -61,7 +61,7 @@ function installExplorerStyles() {
   const style = document.createElement('style');
   style.dataset.ecosystemExplorerStyles = '';
   style.textContent = `
-    .map-explorer { display:grid; gap:14px; margin:0 0 16px; padding:16px; border:1px solid rgba(255,255,255,.09); border-radius:12px; background:rgba(2,6,23,.55); }
+    .map-explorer { display:grid; align-content:start; gap:14px; margin:0; padding:16px; max-height:620px; overflow:auto; border:1px solid rgba(255,255,255,.09); border-radius:12px; background:rgba(2,6,23,.55); }
     .map-explorer-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
     .map-search { flex:1 1 280px; min-width:0; padding:10px 12px; border-radius:9px; border:1px solid rgba(255,255,255,.16); background:#0f172a; color:#f8fafc; font:inherit; }
     .map-search:focus, .map-filter:focus, .map-control:focus, .map-result-button:focus, .map-relation-button:focus, .map-detail button:focus, .map-detail a:focus { outline:2px solid #60a5fa; outline-offset:2px; }
@@ -89,7 +89,9 @@ function installExplorerStyles() {
     .map-detail-actions a, .map-detail-actions button { border:1px solid rgba(255,255,255,.16); border-radius:8px; padding:8px 12px; font:inherit; text-decoration:none; cursor:pointer; }
     .map-detail-actions a { color:#dbeafe; background:rgba(59,130,246,.2); }
     .map-detail-actions button { color:#cbd5e1; background:#111827; }
-    .map-canvas { touch-action:none; cursor:grab; }
+    .map-workspace.is-map-fullscreen .map-explorer { max-height:none; height:100%; min-height:0; }
+    .map-workspace.is-map-fullscreen .map-results { max-height:min(32vh, 320px); }
+    .map-canvas { touch-action:none; cursor:grab; min-width:0; }
     .map-canvas.is-panning { cursor:grabbing; user-select:none; }
     .map-canvas svg { min-width:100%; }
     .map-canvas g.node { transition:opacity .15s ease, filter .15s ease; }
@@ -101,8 +103,12 @@ function installExplorerStyles() {
     .map-canvas [data-edge="true"].is-outgoing { stroke:#60a5fa !important; stroke-width:3px !important; opacity:1; }
     .map-canvas [data-edge="true"].is-incoming { stroke:#fbbf24 !important; stroke-width:3px !important; stroke-dasharray:7 4; opacity:1; }
     .map-canvas g.edgeLabel.is-outgoing, .map-canvas g.edgeLabel.is-incoming { opacity:1; font-weight:700; }
+    @media (max-width:1100px) {
+      .map-explorer { max-height:none; }
+    }
     @media (max-width:720px) {
       .map-explorer { padding:12px; }
+      .map-workspace.is-map-fullscreen .map-explorer { height:auto; max-height:44vh; }
       .map-filter, .map-control { padding:10px 13px; }
       .map-relations { grid-template-columns:1fr; }
       .map-results { max-height:220px; }
@@ -145,7 +151,8 @@ function createExplorer(canvas, navigation) {
       </div>
     </aside>
   `;
-  canvas.before(explorer);
+  const workspaceContent = canvas.closest('[data-map-workspace-content]');
+  (workspaceContent || canvas.parentElement).prepend(explorer);
 
   const types = [...new Set(navigation.map((item) => nodeType(item.node_id)))].filter((type) => TYPE_LABELS[type]);
   const filters = explorer.querySelector('[data-map-filters]');
@@ -159,6 +166,137 @@ function createExplorer(canvas, navigation) {
     filters.append(button);
   }
   return explorer;
+}
+
+function createFullscreenController(workspace, toggleButton, closeButton) {
+  if (!workspace || !toggleButton || !closeButton) return null;
+
+  let fallbackActive = false;
+  let previousFocus = null;
+
+  function nativeActive() {
+    return document.fullscreenElement === workspace;
+  }
+
+  function active() {
+    return fallbackActive || nativeActive();
+  }
+
+  function focusableElements() {
+    return [...workspace.querySelectorAll(
+      'button:not([disabled]):not([hidden]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )].filter((element) => element.getClientRects().length > 0);
+  }
+
+  function applyState(nextActive, { restoreFocus = false } = {}) {
+    workspace.classList.toggle('is-map-fullscreen', nextActive);
+    document.body.classList.toggle('map-fullscreen-open', nextActive);
+    toggleButton.setAttribute('aria-pressed', nextActive ? 'true' : 'false');
+    toggleButton.textContent = nextActive ? 'Vollbild schließen' : 'Vollbild öffnen';
+    closeButton.hidden = !nextActive;
+
+    if (nextActive) {
+      workspace.setAttribute('role', 'dialog');
+      workspace.setAttribute('aria-modal', 'true');
+      workspace.setAttribute('aria-label', 'Ökosystemkarte im Vollbild');
+      window.requestAnimationFrame(() => {
+        if (active()) closeButton.focus({ preventScroll: true });
+      });
+    } else {
+      workspace.removeAttribute('role');
+      workspace.removeAttribute('aria-modal');
+      workspace.removeAttribute('aria-label');
+      if (restoreFocus && previousFocus?.focus) {
+        window.requestAnimationFrame(() => previousFocus.focus({ preventScroll: true }));
+      }
+    }
+    window.dispatchEvent(new Event('resize'));
+  }
+
+  async function enter() {
+    if (active()) return;
+    previousFocus = document.activeElement;
+    if (typeof workspace.requestFullscreen === 'function') {
+      try {
+        await workspace.requestFullscreen();
+        return;
+      } catch {
+        // iPadOS and restricted browsers may reject element fullscreen. Use the viewport overlay.
+      }
+    }
+    fallbackActive = true;
+    applyState(true);
+  }
+
+  async function exit() {
+    if (!active()) return;
+    if (nativeActive() && typeof document.exitFullscreen === 'function') {
+      await document.exitFullscreen();
+      return;
+    }
+    fallbackActive = false;
+    applyState(false, { restoreFocus: true });
+  }
+
+  async function toggle() {
+    if (active()) await exit();
+    else await enter();
+  }
+
+  toggleButton.addEventListener('click', () => void toggle());
+  closeButton.addEventListener('click', () => void exit());
+  document.addEventListener('fullscreenchange', () => {
+    if (nativeActive()) {
+      fallbackActive = false;
+      applyState(true);
+    } else if (!fallbackActive) {
+      applyState(false, { restoreFocus: true });
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && active()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void exit();
+      return;
+    }
+
+    const target = event.target;
+    let currentTarget = target instanceof Element ? target : null;
+    let isTyping = false;
+    while (currentTarget) {
+      if (currentTarget.matches('input, textarea, select') || currentTarget.isContentEditable) {
+        isTyping = true;
+        break;
+      }
+      currentTarget = currentTarget.parentElement;
+    }
+    if (event.key.toLocaleLowerCase('de') === 'f' && !event.ctrlKey && !event.metaKey && !event.altKey && !isTyping) {
+      event.preventDefault();
+      void toggle();
+      return;
+    }
+
+    if (event.key !== 'Tab' || !active()) return;
+    const focusable = focusableElements();
+    if (focusable.length === 0) {
+      event.preventDefault();
+      workspace.focus({ preventScroll: true });
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    }
+  }, true);
+
+  return { active, enter, exit, toggle };
 }
 
 function edgeIdentity(element) {
@@ -730,8 +868,12 @@ async function renderEcosystemMap() {
   const navigationData = document.querySelector('[data-ecosystem-map-navigation]');
   const status = document.querySelector('[data-ecosystem-map-render-status]');
   const sourceDetails = document.querySelector('[data-ecosystem-map-source-details]');
+  const workspace = document.querySelector('[data-ecosystem-map-workspace]');
+  const fullscreenToggle = document.querySelector('[data-map-fullscreen-toggle]');
+  const fullscreenClose = document.querySelector('[data-map-fullscreen-close]');
   if (!canvas || !source || !navigationData || !status) return;
 
+  createFullscreenController(workspace, fullscreenToggle, fullscreenClose);
   const navigation = JSON.parse(navigationData.textContent || '[]');
   const definition = source.textContent || '';
   if (!definition.trim()) {

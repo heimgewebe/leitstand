@@ -41,7 +41,6 @@ function createHarness(navHtml, shellCss, shellScript) {
   <title>Leitstand shell regression</title>
   <style>${shellCss}</style>
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; background: #0a0e1a; color: #f1f5f9; font-family: sans-serif; }
     main { min-width: 0; padding: 24px; }
   </style>
@@ -87,6 +86,7 @@ async function readState(page) {
       navLeft: navRect?.left ?? null,
       navRight: navRect?.right ?? null,
       navPosition: nav ? getComputedStyle(nav).position : null,
+      navBoxSizing: nav ? getComputedStyle(nav).boxSizing : null,
     };
   });
 }
@@ -120,6 +120,7 @@ async function runViewport(browser, viewport, html) {
     record(checks, 'no document overflow', state.scrollWidth <= state.innerWidth + 1, `${state.scrollWidth}/${state.innerWidth}`);
     record(checks, 'nav inside viewport', state.navLeft !== null && state.navRight !== null && state.navLeft >= -1 && state.navRight <= state.innerWidth + 1, `${state.navLeft}/${state.navRight}`);
     record(checks, 'sticky shell', state.navPosition === 'sticky', state.navPosition);
+    record(checks, 'shell owns border-box sizing', state.navBoxSizing === 'border-box', state.navBoxSizing);
 
     if (viewport.mobile) {
       await page.locator('[data-leitstand-nav-toggle]').click();

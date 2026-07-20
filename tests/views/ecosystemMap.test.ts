@@ -51,6 +51,13 @@ describe('ecosystem-map view', () => {
     expect(html).toContain('data-ecosystem-map-canvas');
     expect(html).toContain('data-ecosystem-map-source');
     expect(html).toContain('data-ecosystem-map-navigation');
+    expect(html).toContain('data-ecosystem-map-workspace');
+    expect(html).toContain('data-map-workspace-content');
+    expect(html).toContain('data-map-fullscreen-toggle');
+    expect(html).toContain('data-map-fullscreen-close');
+    expect(html).toContain('aria-keyshortcuts="F"');
+    expect(html).toContain('Quellen-, Prüf- und Zuständigkeitsdetails');
+    expect(html.indexOf('data-ecosystem-map-panel')).toBeLessThan(html.indexOf('Quellen-, Prüf- und Zuständigkeitsdetails'));
     expect(html).toContain('/assets/ecosystem-map.mjs');
     expect(html).toContain(commit);
     expect(html).toContain(head);
@@ -104,6 +111,7 @@ describe('ecosystem-map view', () => {
     expect(html).toContain('Drift erkannt');
     expect(html).toContain('current_artifact_mismatch:rendered/ecosystem-registry-map.mmd');
     expect(html).toContain('stale · current_artifact_mismatch:rendered/ecosystem-registry-map.mmd');
+    expect(html).not.toContain('data-map-fullscreen-toggle');
   });
 
   it('uses the lockfile-local Mermaid module with strict rendering and no remote fetch', async () => {
@@ -115,6 +123,13 @@ describe('ecosystem-map view', () => {
     expect(browserModule).toContain("from '/vendor/mermaid/mermaid.esm.min.mjs'");
     expect(browserModule).toContain("securityLevel: 'strict'");
     expect(browserModule).toContain("setAttribute('role', 'button')");
+    expect(browserModule).toContain('function createFullscreenController');
+    expect(browserModule).toContain('workspace.requestFullscreen');
+    expect(browserModule).toContain("workspace.classList.toggle('is-map-fullscreen'");
+    expect(browserModule).toContain("workspace.setAttribute('aria-modal', 'true')");
+    expect(browserModule).toContain("event.stopImmediatePropagation()");
+    expect(browserModule).toContain("event.key.toLocaleLowerCase('de') === 'f'");
+    expect(browserModule).toContain("canvas.closest('[data-map-workspace-content]')");
     expect(browserModule).not.toContain('fetch(');
     expect(browserModule).not.toContain('contenteditable');
   });
