@@ -321,6 +321,7 @@ async function runView(browser, origin, viewport, view, baseline) {
     assert(layout.mainLeft !== null && layout.mainRight !== null && layout.mainLeft >= -1 && layout.mainRight <= layout.innerWidth + 1, `main outside viewport for ${view.id}`, `${layout.mainLeft}/${layout.mainRight}`);
     assert(layout.navBoxSizing === 'border-box', `product shell does not own border-box sizing for ${view.id}`, layout.navBoxSizing);
     assert(layout.stylesheets.includes('/assets/shell.css'), `product shell stylesheet missing for ${view.id}`, layout.stylesheets.join(','));
+    assert(layout.stylesheets.includes('/assets/ui-system.css'), `shared UI stylesheet missing for ${view.id}`, layout.stylesheets.join(','));
     assert(layout.injectedHarnessStyles === 0, `test harness style detected for ${view.id}`);
     assert(await checkSkipLink(page), `skip link did not focus main for ${view.id}`);
     if (viewport.id === 'mobile' && view.id === 'dashboard') await checkMobileNavigation(page);
@@ -330,7 +331,7 @@ async function runView(browser, origin, viewport, view, baseline) {
       view: view.id,
       path: view.path,
       assetPaths: [...diagnostics.assets.keys()].sort(),
-      checks: 10 + (viewport.id === 'mobile' && view.id === 'dashboard' ? 3 : 0),
+      checks: 11 + (viewport.id === 'mobile' && view.id === 'dashboard' ? 3 : 0),
     };
   } finally {
     await context.close();
