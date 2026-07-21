@@ -29,6 +29,8 @@ describe('index.ejs', () => {
             title: 'Bureau',
             description: 'Tasks',
             href: '/bureau',
+            primary_source: 'Bureau',
+            authority_boundary: 'Nur Projektion; Aufgaben- und Claim-Wahrheit bleibt bei Bureau.',
             source_kind: 'artifact',
             freshness_state: 'unknown',
             metric: '3 Tasks',
@@ -62,5 +64,7 @@ describe('index.ejs', () => {
     expect(html).toContain('data-attention-source="bureau"');
     expect(html).toContain('Datenfrische ist nicht belegt');
     expect(html).toContain('Es erzeugt keine eigene Zustandswahrheit.');
+    expect(html).toContain('Primärquelle: Bureau');
+    expect(html).toContain('Nur Projektion; Aufgaben- und Claim-Wahrheit bleibt bei Bureau.');
   });
 });

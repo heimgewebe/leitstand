@@ -28,7 +28,7 @@ No arrow returns from Leitstand to a source system. Leitstand does not ingest ev
 | `system_catalog_map_artifact_manifest` | `artifacts/ecosystem-map-artifact-manifest.json` | `/ecosystem-map`, `/health` | Systemkatalog publication |
 | RepoGround bundle index | configured RepoGround bundle path | `/repoground` | RepoGround publication |
 
-The dashboard at `/` summarizes these projections. It does not combine them into a new source of truth.
+The dashboard at `/` summarizes these projections. Every general panel must name its primary source, expose freshness, and state that the display is a non-authoritative projection. It does not combine the inputs into a new source of truth.
 
 ## Producer boundary
 
