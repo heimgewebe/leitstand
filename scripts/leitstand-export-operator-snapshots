@@ -1,0 +1,384 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+GRABOWSKI_PYTHON="${GRABOWSKI_PYTHON:-/home/alex/.local/share/grabowski-mcp/.venv/bin/python}"
+exec "$GRABOWSKI_PYTHON" - "$@" <<'PY'
+from __future__ import annotations
+
+import datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import tempfile
+
+
+def require_text(value: object, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise RuntimeError(f"{field} is missing or invalid")
+    return value.strip()
+
+
+def env_path(name: str, default: str) -> Path:
+    value = os.environ.get(name, default)
+    if not value or "\x00" in value or "\n" in value or "\r" in value:
+        raise RuntimeError(f"environment path {name} is invalid")
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        raise RuntimeError(f"environment path {name} must be absolute")
+    return path
+
+
+def require_regular(path: Path, label: str) -> os.stat_result:
+    try:
+        metadata = os.lstat(path)
+    except OSError as error:
+        raise RuntimeError(f"cannot inspect {label} {path}: {error}") from error
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+        raise RuntimeError(f"{label} must be one regular file: {path}")
+    return metadata
+
+
+def sha256_bytes(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
+
+
+def require_declared_file(root: Path, relative: Path) -> Path:
+    candidate = root
+    for index, part in enumerate(relative.parts):
+        candidate = candidate / part
+        try:
+            metadata = os.lstat(candidate)
+        except OSError as error:
+            raise RuntimeError(
+                f"cannot inspect Bureau canonical registry path {relative}: {error}"
+            ) from error
+        if stat.S_ISLNK(metadata.st_mode):
+            raise RuntimeError(
+                f"Bureau canonical registry path contains a symlink component: {relative}"
+            )
+        if index < len(relative.parts) - 1 and not stat.S_ISDIR(metadata.st_mode):
+            raise RuntimeError(
+                f"Bureau canonical registry path has a non-directory parent: {relative}"
+            )
+    require_regular(candidate, f"Bureau canonical registry path {relative}")
+    return candidate
+
+
+def read_snapshot_tree(
+    root: Path, paths: list[Path]
+) -> tuple[str, dict[str, bytes]]:
+    digest = hashlib.sha256()
+    contents: dict[str, bytes] = {}
+    for relative in paths:
+        path = require_declared_file(root, relative)
+        key = relative.as_posix()
+        encoded = key.encode()
+        content = path.read_bytes()
+        contents[key] = content
+        digest.update(len(encoded).to_bytes(4, "big"))
+        digest.update(encoded)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest(), contents
+
+
+def load_json_file(path: Path, label: str) -> tuple[bytes, dict[str, object]]:
+    require_regular(path, label)
+    try:
+        raw = path.read_bytes()
+        value = json.loads(raw)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"cannot read {label} {path}: {error}") from error
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{label} must contain one JSON object")
+    return raw, value
+
+
+release_selector = env_path(
+    "LEITSTAND_RELEASE_ROOT", "/home/alex/.local/lib/leitstand/current"
+)
+allowed_releases_root = env_path(
+    "LEITSTAND_RELEASES_ROOT", "/home/alex/.local/lib/leitstand/releases"
+).resolve()
+runtime_config_path = env_path(
+    "LEITSTAND_RUNTIME_CONFIG", "/home/alex/.config/leitstand/runtime.json"
+)
+bureau_manifest_path = env_path(
+    "BUREAU_DEPLOYMENT_MANIFEST", "/home/alex/.local/share/bureau/deployment-manifest.json"
+)
+allowed_snapshot_root = env_path(
+    "BUREAU_REGISTRY_SNAPSHOT_ROOT", "/home/alex/.local/share/bureau/registry-snapshots"
+).resolve()
+grabowski_repo = env_path("GRABOWSKI_REPO", "/home/alex/repos/grabowski")
+verify_only = os.environ.get("LEITSTAND_SNAPSHOT_VERIFY_ONLY", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
+try:
+    release_root = release_selector.resolve(strict=True)
+except OSError as error:
+    raise RuntimeError(f"Leitstand release selector is unavailable: {release_selector}: {error}") from error
+if release_root.parent != allowed_releases_root:
+    raise RuntimeError(
+        f"Leitstand release escapes the allowed release directory: {release_root}"
+    )
+
+_release_manifest_bytes, release_manifest = load_json_file(
+    release_root / "release-manifest.json", "Leitstand release manifest"
+)
+if (
+    release_manifest.get("schema_version") != 2
+    or release_manifest.get("kind") != "leitstand_local_release_manifest"
+):
+    raise RuntimeError("Leitstand release manifest contract is unsupported")
+release_commit = require_text(release_manifest.get("source_commit"), "Leitstand release source_commit")
+if release_root.name != f"{release_commit}-runtime-v1":
+    raise RuntimeError("Leitstand release path and source commit disagree")
+bridge_path = release_root / "scripts" / "export-operator-snapshots.mjs"
+require_regular(bridge_path, "versioned Leitstand snapshot bridge")
+
+_runtime_bytes, runtime_config = load_json_file(runtime_config_path, "Leitstand runtime config")
+if (
+    runtime_config.get("schema_version") != 1
+    or runtime_config.get("kind") != "leitstand_local_runtime_config"
+):
+    raise RuntimeError("Leitstand runtime config contract is unsupported")
+artifact_root = Path(
+    require_text(runtime_config.get("artifact_root"), "Leitstand runtime artifact_root")
+).expanduser()
+if not artifact_root.is_absolute():
+    raise RuntimeError("Leitstand runtime artifact_root must be absolute")
+
+manifest_bytes, manifest = load_json_file(bureau_manifest_path, "Bureau deployment manifest")
+if manifest.get("schema_version") != 1 or manifest.get("kind") != "bureau_runtime_deployment":
+    raise RuntimeError("Bureau deployment manifest contract is unsupported")
+
+source_commit = require_text(manifest.get("source_commit"), "Bureau deployment source_commit")
+expected_tree = require_text(
+    manifest.get("canonical_registry_tree_sha256"),
+    "Bureau deployment canonical_registry_tree_sha256",
+)
+expected_inventory_sha = require_text(
+    manifest.get("canonical_registry_inventory_sha256"),
+    "Bureau deployment canonical_registry_inventory_sha256",
+)
+declared_root = Path(
+    require_text(manifest.get("canonical_registry_root"), "Bureau deployment canonical_registry_root")
+).expanduser()
+declared_inventory = Path(
+    require_text(
+        manifest.get("canonical_registry_inventory_path"),
+        "Bureau deployment canonical_registry_inventory_path",
+    )
+).expanduser()
+if declared_root.is_symlink() or declared_inventory.is_symlink():
+    raise RuntimeError("Bureau canonical registry paths must not be symlinks")
+root = declared_root.resolve()
+inventory_path = declared_inventory.resolve()
+if root.parent != allowed_snapshot_root:
+    raise RuntimeError(
+        f"Bureau canonical registry root escapes the allowed snapshot directory: {root}"
+    )
+if inventory_path.parent != root or inventory_path.name != ".bureau-runtime-snapshot.json":
+    raise RuntimeError("Bureau canonical registry inventory is not rooted in the selected snapshot")
+if not (root / "registry" / "tasks").is_dir():
+    raise RuntimeError(f"Bureau canonical registry task directory is unavailable: {root}")
+
+inventory_bytes, inventory = load_json_file(
+    inventory_path, "Bureau canonical registry inventory"
+)
+observed_inventory_sha = sha256_bytes(inventory_bytes)
+if observed_inventory_sha != expected_inventory_sha:
+    raise RuntimeError(
+        "Bureau canonical registry inventory digest mismatch: "
+        f"expected {expected_inventory_sha}, observed {observed_inventory_sha}"
+    )
+if inventory.get("schema_version") != 1 or inventory.get("kind") != "bureau_registry_snapshot":
+    raise RuntimeError("Bureau canonical registry inventory contract is unsupported")
+if inventory.get("source_commit") != source_commit:
+    raise RuntimeError("Bureau canonical registry source commit disagrees with deployment manifest")
+if inventory.get("tree_sha256") != expected_tree:
+    raise RuntimeError("Bureau canonical registry tree digest disagrees with deployment manifest")
+
+inventory_paths = inventory.get("paths")
+if not isinstance(inventory_paths, list) or not inventory_paths:
+    raise RuntimeError("Bureau canonical registry inventory has no file paths")
+paths: list[Path] = []
+seen: set[str] = set()
+for item in inventory_paths:
+    if not isinstance(item, str):
+        raise RuntimeError("Bureau canonical registry inventory path is not a string")
+    relative = Path(item)
+    key = relative.as_posix()
+    if relative.is_absolute() or ".." in relative.parts or key in seen:
+        raise RuntimeError(f"Bureau canonical registry inventory contains an unsafe path: {item}")
+    seen.add(key)
+    paths.append(relative)
+observed_tree, snapshot_contents = read_snapshot_tree(root, paths)
+if observed_tree != expected_tree:
+    raise RuntimeError(
+        "Bureau canonical registry tree digest mismatch: "
+        f"expected {expected_tree}, observed {observed_tree}"
+    )
+queue_relative = Path("registry/queue.json")
+if queue_relative not in paths:
+    raise RuntimeError("Bureau canonical registry inventory does not declare registry/queue.json")
+declared_task_paths = sorted(
+    relative
+    for relative in paths
+    if len(relative.parts) == 3
+    and relative.parts[:2] == ("registry", "tasks")
+    and relative.suffix == ".json"
+)
+actual_task_paths = sorted(
+    path.relative_to(root) for path in (root / "registry" / "tasks").glob("*.json")
+)
+if actual_task_paths != declared_task_paths:
+    raise RuntimeError(
+        "Bureau canonical registry task set disagrees with the declared inventory"
+    )
+
+evidence = {
+    "schema_version": 1,
+    "kind": "leitstand_operator_snapshot_source_verification",
+    "leitstand_release_commit": release_commit,
+    "leitstand_release_root": str(release_root),
+    "bureau_source_commit": source_commit,
+    "bureau_source_tree_sha256": observed_tree,
+    "bureau_inventory_sha256": observed_inventory_sha,
+    "bureau_source_root": str(root),
+    "artifact_root": str(artifact_root),
+    "bureau_deployment_manifest_sha256": sha256_bytes(manifest_bytes),
+}
+if verify_only:
+    print(json.dumps(evidence, sort_keys=True))
+    raise SystemExit(0)
+
+from grabowski_checkouts import grabowski_checkout_inventory
+
+artifact_root.mkdir(parents=True, exist_ok=True)
+queue = json.loads(snapshot_contents[queue_relative.as_posix()]).get("lanes", {})
+lane_by_id = {
+    task_id: (lane, rank)
+    for lane, ids in queue.items()
+    if isinstance(ids, list)
+    for rank, task_id in enumerate(ids, 1)
+}
+state_map = {
+    "planned": "queued",
+    "todo": "queued",
+    "ready": "queued",
+    "open": "queued",
+    "queued": "queued",
+    "verified": "done",
+    "accepted": "done",
+    "done": "done",
+    "completed": "done",
+    "in_progress": "running",
+    "running": "running",
+    "active": "running",
+    "blocked": "blocked",
+    "failed": "failed",
+}
+tasks = []
+for relative in declared_task_paths:
+    raw = json.loads(snapshot_contents[relative.as_posix()])
+    task_id = str(raw.get("id") or relative.stem)
+    lane, rank = lane_by_id.get(
+        task_id,
+        (raw.get("priority", {}).get("lane"), raw.get("priority", {}).get("rank")),
+    )
+    execution = raw.get("execution") if isinstance(raw.get("execution"), dict) else {}
+    working = execution.get("working_repository")
+    repository = raw.get("repo") or raw.get("repository") or (
+        Path(working).name if isinstance(working, str) else None
+    )
+    source_state = str(raw.get("state") or raw.get("status") or "").lower()
+    note = []
+    if lane:
+        note.append(f"lane={lane}")
+    if rank:
+        note.append(f"rank={rank}")
+    if raw.get("goal"):
+        note.append(str(raw.get("goal"))[:180])
+    tasks.append(
+        {
+            "id": task_id,
+            "title": raw.get("title") or raw.get("name") or task_id,
+            "state": state_map.get(source_state, source_state or "unknown"),
+            "claimant": raw.get("claimant") or raw.get("owner") or raw.get("assignee"),
+            "repo": repository,
+            "created_at": raw.get("created_at")
+            or raw.get("createdAt")
+            or raw.get("metadata", {}).get("created_at"),
+            "updated_at": raw.get("updated_at")
+            or raw.get("updatedAt")
+            or raw.get("metadata", {}).get("updated_at"),
+            "receipt_ref": raw.get("receipt_ref") or raw.get("receiptRef"),
+            "note": " | ".join(note),
+        }
+    )
+
+inventory_result = grabowski_checkout_inventory(
+    str(grabowski_repo),
+    include_processes=True,
+    include_tasks=True,
+    include_resources=True,
+)
+for worktree in inventory_result.get("worktrees", []):
+    worktree.setdefault("repo", "grabowski")
+
+with tempfile.TemporaryDirectory(prefix="leitstand-snapshot-raw-") as temporary:
+    raw_dir = Path(temporary)
+    checkout_raw = raw_dir / "checkout-raw.json"
+    bureau_raw = raw_dir / "bureau-raw.json"
+    checkout_raw.write_text(json.dumps(inventory_result, indent=2, sort_keys=True) + "\n")
+    bureau_raw.write_text(
+        json.dumps(
+            {
+                "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "source": {
+                    "kind": "bureau_canonical_runtime_snapshot",
+                    "commit": source_commit,
+                    "tree_sha256": observed_tree,
+                    "inventory_sha256": observed_inventory_sha,
+                    "root": str(root),
+                },
+                "tasks": tasks,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    runtime_head = subprocess.run(
+        ["git", "-C", str(grabowski_repo), "rev-parse", "HEAD"],
+        check=False,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    subprocess.run(
+        [
+            "node",
+            str(bridge_path),
+            "--checkout-raw",
+            str(checkout_raw),
+            "--bureau-raw",
+            str(bureau_raw),
+            "--runtime-head",
+            runtime_head,
+            "--out-dir",
+            str(artifact_root),
+        ],
+        check=True,
+        cwd=str(release_root),
+        env={**os.environ, "NODE_OPTIONS": os.environ.get("NODE_OPTIONS", "--jitless")},
+    )
+
+print(json.dumps({**evidence, "checkout_raw_count": len(inventory_result.get("worktrees", [])), "bureau_raw_count": len(tasks)}, sort_keys=True))
+PY

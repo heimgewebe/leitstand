@@ -36,6 +36,7 @@ Release directory:
 ```
 
 Every release manifest binds source commit, source tree, origin URL, validation commands, release-tree digest and critical artifact digests.
+The critical-artifact set includes the versioned operator-snapshot launcher `scripts/leitstand-export-operator-snapshots`; its exact bytes are therefore sealed and digest-bound with the release before the host-local installed copy may be updated. The launcher resolves the format bridge from that same immutable release rather than from a mutable checkout.
 
 ## Runtime configuration
 

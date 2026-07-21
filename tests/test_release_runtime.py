@@ -76,6 +76,9 @@ class ReleaseRuntimeTest(unittest.TestCase):
         collector = target / "scripts/collect-storage-health-runtime"
         collector.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         os.chmod(collector, 0o755)
+        snapshot_wrapper = target / "scripts/leitstand-export-operator-snapshots"
+        snapshot_wrapper.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        os.chmod(snapshot_wrapper, 0o755)
         (target / ".git/HEAD").write_text(f"{head}\n", encoding="ascii")
 
     def create_verified_release(self, head: str, *, seal: bool = True) -> Path:

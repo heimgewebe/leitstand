@@ -109,6 +109,7 @@ CRITICAL_ARTIFACTS: tuple[str, ...] = (
     WEB_UNIT_RELATIVE_PATH.as_posix(),
     STORAGE_UNIT_RELATIVE_PATH.as_posix(),
     "scripts/collect-storage-health-runtime",
+    "scripts/leitstand-export-operator-snapshots",
     "scripts/leitstand-release.py",
 )
 
