@@ -9,6 +9,8 @@ export interface DashboardSource {
   title: string;
   description: string;
   href: string;
+  primary_source: string;
+  authority_boundary: string;
   source_kind: 'artifact' | 'fixture' | 'missing' | 'error' | 'corrupt';
   freshness_state: 'fresh' | 'stale' | 'unknown';
   metric: string;
@@ -167,6 +169,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       title: 'Bureau',
       description: 'Task- und Claim-Projektion.',
       href: '/bureau',
+      primary_source: 'Bureau',
+      authority_boundary: 'Nur Projektion; Aufgaben- und Claim-Wahrheit bleibt bei Bureau.',
       source_kind: bureau.error ? 'error' : (bureau.data?.view_meta.source_kind ?? 'missing'),
       freshness_state: bureau.data?.view_meta.freshness_state ?? 'unknown',
       metric: bureau.data ? `${bureau.data.view_meta.task_count} Tasks` : 'keine Tasks',
@@ -177,6 +181,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       title: 'Checkouts',
       description: 'Grabowski-Inventar.',
       href: '/checkouts',
+      primary_source: 'Grabowski',
+      authority_boundary: 'Nur Projektion; Checkout-, Worktree- und Ausführungswahrheit bleibt bei Grabowski.',
       source_kind: checkouts.error ? 'error' : (checkouts.data?.view_meta.source_kind ?? 'missing'),
       freshness_state: checkouts.data?.view_meta.freshness_state ?? 'unknown',
       metric: checkouts.data ? `${checkouts.data.view_meta.checkout_count} Checkouts` : 'keine Checkouts',
@@ -187,6 +193,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       title: 'Speicherzustand',
       description: 'Heim-PC Storage Metriken.',
       href: '/storage-health',
+      primary_source: 'Storage-Health-Producer',
+      authority_boundary: 'Nur Projektion; Mess- und Erzeugerwahrheit bleibt beim Storage-Health-Producer.',
       source_kind: storage.error ? 'error' : (storage.data?.view_meta.source_kind ?? 'missing'),
       freshness_state: storage.data?.view_meta.freshness_state ?? 'unknown',
       metric: storage.data?.current ? `${storage.data.current.summary.producerCount} Producer` : 'kein Storage Zustand',
@@ -197,6 +205,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       title: 'Systemkarte',
       description: 'Systemkatalog Map Manifest.',
       href: '/ecosystem-map',
+      primary_source: 'Systemkatalog',
+      authority_boundary: 'Nur Projektion; stabile Rollen- und Beziehungswahrheit bleibt beim Systemkatalog.',
       source_kind: eco.error ? 'error' : (eco.data?.view_meta.source_kind ?? 'missing'),
       freshness_state: eco.data?.view_meta.freshness_state ?? 'unknown',
       metric: eco.data ? `${eco.data.view_meta.verified_artifact_count} Artefakte` : 'keine Systemkarte',
@@ -207,6 +217,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       title: 'RepoGround',
       description: 'Bundle-Ansicht.',
       href: '/repoground',
+      primary_source: 'RepoGround',
+      authority_boundary: 'Nur Projektion; Repository-Kontext und Publikationswahrheit bleibt bei RepoGround.',
       source_kind: repo.error ? 'error' : (repo.data?.view_meta.source_kind ?? 'missing'),
       freshness_state: repo.data?.view_meta.freshness_state ?? 'unknown',
       metric: repo.data ? `${repo.data.bundles.length} Bundles` : 'keine Repos',

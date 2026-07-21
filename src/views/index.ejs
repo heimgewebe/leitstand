@@ -273,8 +273,8 @@
     <header class="page-header">
       <h1>Leitstand</h1>
       <p class="subtitle">
-        Beobachtungs- und Verdichtungsmodul der Heimgewebe-Systeme.
-        Strikter Observer: visualisiert Zustände, ohne externe Systeme zu mutieren.
+        Allgemeiner Operator-Einstieg für das aktuelle Lagebild der Heimgewebe-Systeme.
+        Strikter Observer: visualisiert Zustände, ohne externe Systeme zu mutieren oder Primärquellen zu ersetzen.
       </p>
     </header>
 
@@ -370,7 +370,9 @@
                   <% if (p.freshness_state === 'stale') { %>veraltet<% } %>
                   <% if (p.freshness_state === 'unknown') { %>Frische unbekannt<% } %>
                 </span>
+                <span class="primary-source">Primärquelle: <%= p.primary_source %></span>
               </div>
+              <p class="projection-note authority-boundary"><%= p.authority_boundary %></p>
               <% if (p.error_reason) { %>
                 <div class="error-note" role="alert">Lade-Fehler: <%= p.error_reason %></div>
               <% } %>

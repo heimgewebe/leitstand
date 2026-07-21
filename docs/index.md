@@ -10,7 +10,7 @@ summary: >
 
 # Leitstand Documentation Router
 
-Leitstand is the read-only observation surface for the Heimgewebe operator ecosystem. It renders exported evidence and does not orchestrate, mutate, dispatch tasks, ingest events, or establish source truth.
+Leitstand is the read-only observation surface for the Heimgewebe operator ecosystem. The dashboard at `/` is the single documented general operator status entry. It renders exported evidence and does not orchestrate, mutate, dispatch tasks, ingest events, or establish source truth. Direct source CLIs and specialist Systemkatalog, RepoGround and Schauwerk views remain valid fallbacks when Leitstand is unavailable.
 
 ## Normative boundaries
 

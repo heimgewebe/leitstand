@@ -6,6 +6,10 @@ Leitstand is the read-only observation surface for the Heimgewebe operator ecosy
 
 Leitstand has two deliberately separate surfaces.
 
+The canonical general operator status entry is `/`. It is a convenience display over source-owned evidence, not a control plane or a new source of truth. Systemkatalog remains the status-free role catalog; Schauwerk remains the specialized visual/rendering surface.
+
+If Leitstand is unavailable, operators fall back directly to Bureau, Grabowski, runtime health/logs, the Systemkatalog read-only catalog/query surface, RepoGround publications, and specialized Schauwerk views. The outage removes the general display only; it must not block operation.
+
 ### Web runtime
 
 The internal Express service renders current exported evidence:
