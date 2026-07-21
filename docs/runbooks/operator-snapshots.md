@@ -23,6 +23,10 @@ Leitstand consumes two local, contract-shaped artifacts:
 
 The bridge implementation in this repository is `scripts/export-operator-snapshots.mjs`. It is a format bridge only: it reads already-exported raw JSON and writes Leitstand-local artifacts. It does not claim tasks, dispatch agents, clean checkouts, push branches, merge pull requests, restart services, or mutate Bureau/Grabowski state.
 
+The operator-side launcher is versioned as `scripts/leitstand-export-operator-snapshots`. The installed local wrapper must be copied from an immutable Leitstand release, not from a mutable checkout. It resolves the release-bound format bridge, reads the runtime `artifact_root`, and accepts Bureau task truth only from the canonical runtime registry snapshot named by `/home/alex/.local/share/bureau/deployment-manifest.json`. Before exporting it verifies the deployment manifest, inventory SHA-256, source commit, allowed snapshot root, and the complete declared registry-tree SHA-256. Any mismatch fails closed before artifact generation.
+
+For a source-only validation that performs no Grabowski import and writes no snapshots, run the installed wrapper with `LEITSTAND_SNAPSHOT_VERIFY_ONLY=1`. A successful result is evidence about source binding only; it does not establish current task truth, checkout truth, or successful artifact publication.
+
 ## Producer ownership
 
 Bureau remains the source of truth for:
