@@ -2,6 +2,8 @@
   const sourceCards = Array.isArray(locals.sources) ? locals.sources : [];
   const dashboardSummary = locals.summary && typeof locals.summary === 'object' ? locals.summary : null;
   const attentionItems = Array.isArray(dashboardSummary?.attention) ? dashboardSummary.attention : [];
+  const decisionAxis = locals.decision_axis && typeof locals.decision_axis === 'object' ? locals.decision_axis : null;
+  const decisionSections = Array.isArray(decisionAxis?.sections) ? decisionAxis.sections : [];
 %>
 <!DOCTYPE html>
 <html lang="de">
@@ -128,6 +130,23 @@
       font-size: 0.72em;
       line-height: 1.45;
     }
+
+
+    .decision-axis { margin-bottom: 32px; }
+    .decision-axis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .decision-card { padding: 16px; border: 1px solid var(--border-glass); border-radius: 12px; background: var(--bg-card); }
+    .decision-card h3 { margin: 0 0 8px; font-size: 0.95em; }
+    .decision-source { color: var(--text-muted); font-size: 0.7em; line-height: 1.4; margin-bottom: 10px; }
+    .decision-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0; }
+    .decision-item { padding-top: 8px; border-top: 1px solid var(--border-glass); }
+    .decision-item:first-child { border-top: 0; padding-top: 0; }
+    .decision-title { font-size: 0.82em; font-weight: 650; }
+    .decision-detail { color: var(--text-secondary); font-size: 0.74em; line-height: 1.4; }
+    .decision-meta { color: var(--text-muted); font-size: 0.68em; margin-top: 4px; }
+    .decision-empty { color: var(--text-muted); font-size: 0.78em; }
+    .decision-status-unavailable { border-left: 3px solid var(--fail); }
+    .decision-status-unknown { border-left: 3px solid var(--warn); }
+    .decision-status-available { border-left: 3px solid var(--ok); }
 
     .source-grid {
       display: grid;
@@ -336,6 +355,33 @@
         </p>
       </section>
     <% } %>
+
+
+    <section class="decision-axis" aria-labelledby="decision-axis-heading">
+      <h2 id="decision-axis-heading" class="section-title ui-section-title">Entscheidungsachse</h2>
+      <p class="projection-note">Read-only-Projektion vorhandener Bureau- und Grabowski-Wahrheiten. Keine lokale Prioritäts-, Queue-, Fokus- oder Konvergenzwahrheit.</p>
+      <div class="decision-axis-grid">
+        <% decisionSections.forEach(function(section) { %>
+          <article class="decision-card decision-status-<%= section.status %>" data-decision-section="<%= section.id %>">
+            <h3><%= section.label %></h3>
+            <p class="decision-source">Quelle: <%= section.source %> · <%= section.freshness_state === 'fresh' ? 'frisch' : section.freshness_state === 'stale' ? 'veraltet' : 'Frische unbekannt' %></p>
+            <% if (section.items.length > 0) { %>
+              <ol class="decision-list">
+                <% section.items.forEach(function(item) { %>
+                  <li class="decision-item">
+                    <div class="decision-title"><%= item.title %></div>
+                    <% if (item.detail) { %><div class="decision-detail"><%= item.detail %></div><% } %>
+                    <% if (item.meta) { %><div class="decision-meta"><%= item.meta %></div><% } %>
+                  </li>
+                <% }); %>
+              </ol>
+            <% } else { %>
+              <p class="decision-empty"><%= section.status === 'unavailable' ? 'Quelle nicht verfügbar.' : 'Aktuell kein belegter Eintrag.' %></p>
+            <% } %>
+          </article>
+        <% }); %>
+      </div>
+    </section>
 
     <section aria-labelledby="quellen-heading">
       <h2 id="quellen-heading" class="section-title ui-section-title">Operative Quellen</h2>
