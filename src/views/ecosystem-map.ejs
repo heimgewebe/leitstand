@@ -86,7 +86,7 @@
         <p>Der Kartencommit entspricht dem aktuellen Systemkatalog-HEAD. Alle <%= view_meta.verified_artifact_count %> deklarierten Artefakte stimmen mit Manifest, Arbeitsbaum und gebundenem Git-Commit überein.</p>
       <% } else if (view_meta.alignment_state === 'compatible') { %>
         <strong>Inhalt aktuell, Repository weiterentwickelt</strong>
-        <p>Seit dem Kartencommit gibt es <%= view_meta.commits_ahead === null ? 'weitere' : view_meta.commits_ahead %> spätere Commits. Der aktuelle HEAD und der Arbeitsbaum enthalten weiterhin exakt dieselben fünf Kartenartefakte.</p>
+        <p>Seit dem Kartencommit gibt es <%= view_meta.commits_ahead === null ? 'weitere' : view_meta.commits_ahead %> spätere Commits. Der aktuelle HEAD und der Arbeitsbaum enthalten weiterhin exakt dieselben <%= view_meta.declared_artifact_count %> deklarierten Kartenartefakte.</p>
       <% } else if (view_meta.alignment_state === 'drifted') { %>
         <strong>Drift erkannt</strong>
         <p>Mindestens ein Kartenartefakt oder seine Commitbindung stimmt nicht mehr. Technischer Grund: <code><%= view_meta.alignment_reason %></code>.</p>
@@ -143,7 +143,7 @@
 
         <section class="meta-grid" aria-label="Quellenmetadaten">
           <div class="meta-item"><div class="label">Gesamtstatus</div><div class="value" data-state="<%= view_meta.freshness_state %>"><%= view_meta.freshness_state %> · <%= view_meta.freshness_reason %></div></div>
-          <div class="meta-item"><div class="label">Inhaltsabgleich</div><div class="value" data-state="<%= view_meta.alignment_state %>"><%= view_meta.alignment_state %> · <%= view_meta.verified_artifact_count %>/5 Artefakte</div></div>
+          <div class="meta-item"><div class="label">Inhaltsabgleich</div><div class="value" data-state="<%= view_meta.alignment_state %>"><%= view_meta.alignment_state %> · <%= view_meta.verified_artifact_count %>/<%= view_meta.declared_artifact_count %> Artefakte</div></div>
           <div class="meta-item"><div class="label">Quellzustand</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
           <div class="meta-item"><div class="label">Alter</div><div class="value"><% if (view_meta.data_age_minutes !== null) { %><%= view_meta.data_age_minutes %> min · Grenze <%= view_meta.stale_after_hours %> h<% } else { %>—<% } %></div></div>
           <div class="meta-item">

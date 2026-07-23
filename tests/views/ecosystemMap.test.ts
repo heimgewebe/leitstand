@@ -35,7 +35,8 @@ describe('ecosystem-map view', () => {
           commits_ahead: 4,
           alignment_state: 'compatible',
           alignment_reason: 'current_head_preserves_declared_artifact_bytes',
-          verified_artifact_count: 5,
+          verified_artifact_count: 6,
+          declared_artifact_count: 6,
           generated_at: '2026-07-14T00:00:00Z',
           data_age_minutes: 12,
           freshness_state: 'fresh',
@@ -63,8 +64,8 @@ describe('ecosystem-map view', () => {
     expect(html).toContain(head);
     expect(html).toContain('Inhalt aktuell, Repository weiterentwickelt');
     expect(html).toContain('4 spätere Commits');
-    expect(html).toContain('aktuelle HEAD und der Arbeitsbaum enthalten weiterhin exakt dieselben fünf Kartenartefakte');
-    expect(html).toContain('compatible · 5/5 Artefakte');
+    expect(html).toContain('aktuelle HEAD und der Arbeitsbaum enthalten weiterhin exakt dieselben 6 deklarierten Kartenartefakte');
+    expect(html).toContain('compatible · 6/6 Artefakte');
     expect(html).toContain('fresh · artifact_alignment_verified');
     expect(html).toContain('12 min · Grenze 168 h');
     expect(html).not.toContain('cdn.jsdelivr');
@@ -95,7 +96,8 @@ describe('ecosystem-map view', () => {
           commits_ahead: null,
           alignment_state: 'drifted',
           alignment_reason: 'current_artifact_mismatch:rendered/ecosystem-registry-map.mmd',
-          verified_artifact_count: 4,
+          verified_artifact_count: 5,
+          declared_artifact_count: 6,
           generated_at: '2026-07-14T00:00:00Z',
           data_age_minutes: 12,
           freshness_state: 'stale',

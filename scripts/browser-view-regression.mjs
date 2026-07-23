@@ -27,6 +27,7 @@ const ARTIFACT_CONTRACT = [
   ['registry_nodes', 'registry/ecosystem/nodes.json', 'application/json'],
   ['registry_edges', 'registry/ecosystem/edges.json', 'application/json'],
   ['authority_matrix', 'registry/ecosystem/authority-matrix.v1.json', 'application/json'],
+  ['resilience_semantics', 'registry/ecosystem/resilience.v1.json', 'application/json'],
 ];
 const DOES_NOT_ESTABLISH = [
   'claim_truth',
@@ -106,6 +107,7 @@ async function createEcosystemFixture(root) {
     ['registry/ecosystem/nodes.json', '{"schemaVersion":1,"nodes":[]}\n'],
     ['registry/ecosystem/edges.json', '{"schemaVersion":1,"edges":[]}\n'],
     ['registry/ecosystem/authority-matrix.v1.json', '{"schemaVersion":1,"authorities":[]}\n'],
+    ['registry/ecosystem/resilience.v1.json', '{"schema_version":1,"components":[]}\n'],
   ]);
 
   for (const [rel, content] of contents) {
