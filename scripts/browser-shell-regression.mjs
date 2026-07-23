@@ -87,6 +87,9 @@ async function readState(page) {
       navRight: navRect?.right ?? null,
       navPosition: nav ? getComputedStyle(nav).position : null,
       navBoxSizing: nav ? getComputedStyle(nav).boxSizing : null,
+      linksPosition: links ? getComputedStyle(links).position : null,
+      linksBottom: links?.getBoundingClientRect().bottom ?? null,
+      innerHeight: window.innerHeight,
     };
   });
 }
@@ -129,6 +132,8 @@ async function runViewport(browser, viewport, html) {
       record(checks, 'mobile opens', state.expanded === 'true' && state.linksHidden === false && state.navExpanded === 'true');
       record(checks, 'open label is explicit', state.toggleLabel === 'Navigation schließen', state.toggleLabel);
       record(checks, 'open menu has no overflow', state.scrollWidth <= state.innerWidth + 1, `${state.scrollWidth}/${state.innerWidth}`);
+      record(checks, 'mobile menu overlays content', state.linksPosition === 'absolute', state.linksPosition);
+      record(checks, 'mobile menu stays inside viewport', state.linksBottom !== null && state.linksBottom <= state.innerHeight + 1, `${state.linksBottom}/${state.innerHeight}`);
 
       await page.keyboard.press('Escape');
       await waitFrames(page);
@@ -138,7 +143,7 @@ async function runViewport(browser, viewport, html) {
 
       await page.locator('[data-leitstand-nav-toggle]').click();
       await waitFrames(page);
-      await page.locator('#outside-target').click();
+      await page.mouse.click(viewport.width - 12, viewport.height - 12);
       await waitFrames(page);
       state = await readState(page);
       record(checks, 'outside click closes', state.expanded === 'false' && state.linksHidden === true);

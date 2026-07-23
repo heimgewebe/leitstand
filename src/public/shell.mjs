@@ -2,10 +2,15 @@ const nav = document.querySelector('[data-leitstand-nav]');
 const toggle = nav?.querySelector('[data-leitstand-nav-toggle]');
 const links = nav?.querySelector('[data-leitstand-nav-links]');
 const toggleIcon = toggle?.querySelector('.leitstand-nav__toggle-icon');
+const activeLink = links?.querySelector('[aria-current="page"]');
 
 if (nav && toggle && links) {
   const mobileQuery = window.matchMedia('(max-width: 960px)');
   document.documentElement.classList.add('leitstand-shell-ready');
+
+  const keepActiveLinkVisible = () => {
+    activeLink?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
 
   const setExpanded = (expanded, { restoreFocus = false } = {}) => {
     const mobile = mobileQuery.matches;
@@ -15,6 +20,7 @@ if (nav && toggle && links) {
     toggle.setAttribute('aria-label', next ? 'Navigation schließen' : 'Navigation öffnen');
     links.hidden = mobile && !next;
     if (toggleIcon) toggleIcon.textContent = next ? '×' : '☰';
+    if (!mobile || next) window.requestAnimationFrame(keepActiveLinkVisible);
     if (restoreFocus) toggle.focus();
   };
 
