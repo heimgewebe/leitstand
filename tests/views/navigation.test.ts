@@ -82,6 +82,10 @@ describe('canonical navigation parity', () => {
     expect(css).toContain('prefers-reduced-motion');
     expect(script).toContain("event.key === 'Escape'");
     expect(script).toContain("window.matchMedia('(max-width: 960px)')");
+    expect(script).toContain("scrollIntoView({ block: 'nearest', inline: 'nearest' })");
+    expect(css).toContain('html.leitstand-shell-ready .leitstand-nav__links');
+    expect(css).toContain('position: absolute');
+    expect(css).toContain('max-height: min(70vh, calc(100dvh - 84px))');
   });
 
   it('binds the real browser shell regression into CI', () => {

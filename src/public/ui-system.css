@@ -49,20 +49,24 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--ui-bg);
+  background:
+    radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.09), transparent 38rem),
+    var(--ui-bg);
   color: var(--ui-text);
   font-family: var(--ui-font-sans);
+  font-synthesis: none;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
 }
 
 main {
   width: min(100%, 1180px);
   margin: 0 auto;
-  padding: 42px 24px 80px;
+  padding: clamp(30px, 4vw, 48px) clamp(14px, 3vw, 28px) 88px;
 }
 
 main.ui-main--compact {
-  max-width: 1080px;
-  padding: 48px 24px 96px;
+  max-width: 1120px;
 }
 
 main.ui-main--wide {
@@ -72,6 +76,7 @@ main.ui-main--wide {
 h1,
 h2 {
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 h1 {
@@ -81,7 +86,11 @@ h1 {
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: clamp(22px, 3vw, 32px);
+}
+
+.page-header .subtitle {
+  max-width: 76ch;
 }
 
 .page-header h1 {
@@ -114,6 +123,7 @@ h1 {
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
   background: var(--ui-bg-surface);
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.12);
 }
 
 .notice,
@@ -167,6 +177,7 @@ code,
 
 .value {
   font-size: 0.82em;
+  font-variant-numeric: tabular-nums;
 }
 
 code {
@@ -179,6 +190,23 @@ ul {
 
 .table-wrap {
   overflow-x: auto;
+  scrollbar-gutter: stable;
+}
+
+.table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #111827;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+tbody tr {
+  transition: background-color 120ms ease;
+}
+
+tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
 }
 
 table {
@@ -214,7 +242,9 @@ th {
   padding: 3px 9px;
   border: 1px solid var(--ui-border-strong);
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
   font-size: 0.78em;
+  font-weight: 600;
 }
 
 .fresh,
@@ -323,7 +353,7 @@ th {
   main,
   main.ui-main--compact,
   main.ui-main--wide {
-    padding: 28px 14px 60px;
+    padding: 26px 12px 58px;
   }
 
   h1 {
