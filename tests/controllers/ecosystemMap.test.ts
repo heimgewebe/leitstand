@@ -43,6 +43,12 @@ const ARTIFACT_CONTENT = [
     contentType: 'application/json',
     content: '{"authorities":[]}\n',
   },
+  {
+    role: 'resilience_semantics',
+    path: 'registry/ecosystem/resilience.v1.json',
+    contentType: 'application/json',
+    content: '{"schema_version":1,"components":[]}\n',
+  },
 ] as const;
 
 let tempRoots: string[] = [];
@@ -158,7 +164,8 @@ describe('getEcosystemMapData', () => {
     expect(data.view_meta.source_head).toBe(fixture.sourceCommit);
     expect(data.view_meta.source_root).toBe(fixture.sourceRoot);
     expect(data.view_meta.alignment_state).toBe('exact');
-    expect(data.view_meta.verified_artifact_count).toBe(5);
+    expect(data.view_meta.verified_artifact_count).toBe(6);
+    expect(data.view_meta.declared_artifact_count).toBe(6);
     expect(data.view_meta.freshness_state).toBe('fresh');
     expect(data.map?.role).toBe('canonical_ecosystem_map_mermaid');
     expect(data.map?.content).toContain('Systemkatalog');
@@ -245,6 +252,30 @@ describe('getEcosystemMapData', () => {
     const fixture = await makeFixture();
     const manifest = JSON.parse(await readFile(fixture.manifestPath, 'utf-8')) as Record<string, unknown>;
     manifest.unexpected = true;
+    await writeFile(fixture.manifestPath, JSON.stringify(manifest), 'utf-8');
+    process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
+
+    const data = await getEcosystemMapData();
+
+    expect(data.view_meta.source_kind).toBe('corrupt');
+    expect(data.view_meta.missing_reason).toBe('manifest_corrupt');
+    expect(data.map).toBeNull();
+  });
+
+  it('rejects unknown additional artifacts instead of weakening the exact contract', async () => {
+    const fixture = await makeFixture();
+    const manifest = JSON.parse(await readFile(fixture.manifestPath, 'utf-8')) as {
+      artifactCount: number;
+      artifacts: Array<Record<string, unknown>>;
+    };
+    manifest.artifacts.push({
+      role: 'future_unknown_semantics',
+      path: 'registry/ecosystem/future.v1.json',
+      contentType: 'application/json',
+      bytes: 2,
+      sha256: 'a'.repeat(64),
+    });
+    manifest.artifactCount = manifest.artifacts.length;
     await writeFile(fixture.manifestPath, JSON.stringify(manifest), 'utf-8');
     process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
 
