@@ -41,6 +41,11 @@ const ARTIFACT_CONTRACT = [
     path: 'registry/ecosystem/authority-matrix.v1.json',
     contentType: 'application/json',
   },
+  {
+    role: 'resilience_semantics',
+    path: 'registry/ecosystem/resilience.v1.json',
+    contentType: 'application/json',
+  },
 ] as const;
 
 const DOES_NOT_ESTABLISH_CONTRACT = [
@@ -133,6 +138,7 @@ export interface EcosystemMapViewData {
     alignment_state: EcosystemMapAlignment;
     alignment_reason: string;
     verified_artifact_count: number;
+    expected_artifact_count: number;
     generated_at: string | null;
     data_age_minutes: number | null;
     freshness_state: EcosystemMapFreshness;
@@ -195,6 +201,7 @@ function emptyData(
       alignment_state: 'unverifiable',
       alignment_reason: reason,
       verified_artifact_count: 0,
+      expected_artifact_count: ARTIFACT_CONTRACT.length,
       generated_at: null,
       data_age_minutes: null,
       freshness_state: 'unknown',
@@ -640,6 +647,7 @@ export async function getEcosystemMapData(): Promise<EcosystemMapViewData> {
         alignment_state: alignment.state,
         alignment_reason: alignment.reason,
         verified_artifact_count: alignment.verifiedArtifactCount,
+        expected_artifact_count: ARTIFACT_CONTRACT.length,
         generated_at: ageState.generated_at,
         data_age_minutes: ageState.data_age_minutes,
         freshness_state: combinedFreshness.state,

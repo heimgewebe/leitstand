@@ -36,6 +36,7 @@ describe('ecosystem-map view', () => {
           alignment_state: 'compatible',
           alignment_reason: 'current_head_preserves_declared_artifact_bytes',
           verified_artifact_count: 5,
+          expected_artifact_count: 5,
           generated_at: '2026-07-14T00:00:00Z',
           data_age_minutes: 12,
           freshness_state: 'fresh',

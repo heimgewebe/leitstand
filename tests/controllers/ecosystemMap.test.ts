@@ -43,6 +43,12 @@ const ARTIFACT_CONTENT = [
     contentType: 'application/json',
     content: '{"authorities":[]}\n',
   },
+  {
+    role: 'resilience_semantics',
+    path: 'registry/ecosystem/resilience.v1.json',
+    contentType: 'application/json',
+    content: '{"resilience":[]}\n',
+  },
 ] as const;
 
 let tempRoots: string[] = [];
@@ -158,7 +164,7 @@ describe('getEcosystemMapData', () => {
     expect(data.view_meta.source_head).toBe(fixture.sourceCommit);
     expect(data.view_meta.source_root).toBe(fixture.sourceRoot);
     expect(data.view_meta.alignment_state).toBe('exact');
-    expect(data.view_meta.verified_artifact_count).toBe(5);
+    expect(data.view_meta.verified_artifact_count).toBe(6);
     expect(data.view_meta.freshness_state).toBe('fresh');
     expect(data.map?.role).toBe('canonical_ecosystem_map_mermaid');
     expect(data.map?.content).toContain('Systemkatalog');
