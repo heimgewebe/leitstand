@@ -157,3 +157,27 @@ implementations:
       - tests/test_release_runtime.py
     supersedes: []
     deprecated_by: []
+
+  - id: impl.controller.decisionAxis
+    path: src/controllers/decisionAxis.ts
+    impl_type: controller
+    status: active
+    documented_by:
+      - docs/blueprints/operator-decision-axis.md
+    verified_by:
+      - tests/controllers/decisionAxis.test.ts
+      - tests/exportDecisionAxis.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.operatorSnapshots.decisionAxisProducer
+    path: scripts/leitstand-export-operator-snapshots
+    impl_type: bridge
+    status: active
+    documented_by:
+      - docs/blueprints/operator-decision-axis.md
+    verified_by:
+      - tests/operatorSnapshotWrapper.test.ts
+      - tests/exportDecisionAxis.test.ts
+    supersedes: []
+    deprecated_by: []

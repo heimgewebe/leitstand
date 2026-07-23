@@ -7,7 +7,8 @@
  * request time. This script is the deliberate seam that keeps that invariant:
  * the operator runs it (or a cron does) to transform *raw* Grabowski/Bureau
  * output into the contract-shaped snapshot artifacts Leitstand's controllers
- * read (`leitstand_bureau_task_snapshot`, `leitstand_checkout_inventory`).
+ * read (`leitstand_bureau_task_snapshot`, `leitstand_checkout_inventory`,
+ * `leitstand_operator_decision_axis_snapshot`).
  *
  * It only reads raw JSON and writes local snapshot files — no external mutation.
  *
@@ -15,11 +16,12 @@
  *   node scripts/export-operator-snapshots.mjs \
  *     --checkout-raw <grabowski_checkout_inventory.json> \
  *     --bureau-raw   <bureau_task_list.json> \
+ *     --decision-raw <operator_decision_axis.json> \
  *     --out-dir      artifacts
  *
  * Any input may be omitted; only the provided snapshots are (re)written. The
- * raw inputs are whatever `grabowski_checkout_inventory` / the Bureau task
- * listing emit — this bridge is where their vocab is pinned to our contract.
+ * raw inputs are whatever the producer-side source collectors emit — this bridge
+ * is where their vocabulary is pinned to Leitstand's read-only contracts.
  */
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join, resolve, dirname } from 'node:path';
@@ -52,6 +54,14 @@ const BUREAU_NON_CLAIMS = [
 const CHECKOUT_NON_CLAIMS = [
   'checkout_ownership', 'cleanup_authority', 'branch_deletion', 'retention_decision', 'process_control',
 ];
+const DECISION_NON_CLAIMS = [
+  'task_or_priority_authority',
+  'queue_truth',
+  'focus_authority',
+  'runtime_or_convergence_authority',
+  'dispatch_or_mutation_authority',
+];
+const DECISION_SECTION_IDS = ['now', 'focus', 'blocked', 'convergence', 'later'];
 
 function normalizeBureauState(value) {
   const v = typeof value === 'string' ? value.toLowerCase() : '';
@@ -129,6 +139,35 @@ function mapCheckout(raw, runtimeHead) {
   };
 }
 
+function mapDecisionItem(raw) {
+  if (!raw || typeof raw !== 'object') throw new Error('decision-axis item must be an object');
+  const id = String(raw.id ?? '');
+  const title = String(raw.title ?? '');
+  if (!id || !title) throw new Error('decision-axis item requires id and title');
+  return {
+    id,
+    title,
+    detail: typeof raw.detail === 'string' ? raw.detail : '',
+    meta: typeof raw.meta === 'string' ? raw.meta : '',
+  };
+}
+
+function mapDecisionSection(raw, id) {
+  if (!raw || typeof raw !== 'object') throw new Error(`decision-axis section ${id} missing`);
+  if (!['available', 'unknown', 'unavailable'].includes(raw.status)) {
+    throw new Error(`decision-axis section ${id} has invalid status`);
+  }
+  if (typeof raw.source !== 'string' || raw.source.length === 0) {
+    throw new Error(`decision-axis section ${id} has no source`);
+  }
+  return {
+    status: raw.status,
+    source: raw.source,
+    observedAt: typeof raw.observedAt === 'string' ? raw.observedAt : null,
+    items: Array.isArray(raw.items) ? raw.items.slice(0, 8).map(mapDecisionItem) : [],
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const outDir = resolve(args['out-dir'] ?? 'artifacts');
@@ -171,8 +210,26 @@ async function main() {
     wrote += 1;
   }
 
+  if (args['decision-raw']) {
+    const raw = await readJson(resolve(args['decision-raw']));
+    const sections = Object.fromEntries(
+      DECISION_SECTION_IDS.map((id) => [id, mapDecisionSection(raw.sections?.[id], id)]),
+    );
+    const out = join(outDir, 'operator-decision-axis.json');
+    await writeJsonAtomic(out, {
+      schemaVersion: 1,
+      kind: 'leitstand_operator_decision_axis_snapshot',
+      generatedAt,
+      source: 'bureau_and_grabowski_read_only_projections',
+      doesNotEstablish: DECISION_NON_CLAIMS,
+      sections,
+    });
+    console.log(`decision-axis snapshot: ${Object.keys(sections).length} sections → ${out}`);
+    wrote += 1;
+  }
+
   if (wrote === 0) {
-    console.error('No inputs given. Provide --bureau-raw and/or --checkout-raw. See header for usage.');
+    console.error('No inputs given. Provide --bureau-raw, --checkout-raw and/or --decision-raw. See header for usage.');
     process.exit(2);
   }
 }

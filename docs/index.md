@@ -20,6 +20,7 @@ Leitstand is the read-only observation surface for the Heimgewebe operator ecosy
 - [Data Flow](data-flow.md)
 - [Security Policy](../SECURITY.md)
 - [Tracked WGX Profile Decision](decisions/wgx-leitstand.md)
+- [Operator Decision Axis Blueprint](blueprints/operator-decision-axis.md)
 
 ## Operative runbooks
 
@@ -35,7 +36,7 @@ Leitstand is the read-only observation surface for the Heimgewebe operator ecosy
 
 | Route | Purpose | Source truth |
 | --- | --- | --- |
-| `/` | compact source and attention overview | derived only |
+| `/` | compact source, attention and read-only decision-axis overview | derived local snapshot artifacts only |
 | `/health` | in-process runtime and artifact-freshness receipt | current process and local files |
 | `/bureau` | Bureau task and claim projection | Bureau snapshot |
 | `/checkouts` | checkout and worktree projection | Grabowski snapshot |

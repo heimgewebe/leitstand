@@ -1,5 +1,6 @@
 import { getBureauData } from './bureau.js';
 import { getCheckoutData } from './checkouts.js';
+import { getDecisionAxisData, type DecisionAxisViewData } from './decisionAxis.js';
 import { getStorageHealthData } from './storageHealth.js';
 import { getEcosystemMapData } from './ecosystemMap.js';
 import { getRepoBriefData } from './repoBrief.js';
@@ -39,6 +40,7 @@ export interface DashboardSummary {
 export interface DashboardData {
   sources: DashboardSource[];
   summary: DashboardSummary;
+  decision_axis: DecisionAxisViewData;
 }
 
 function publicErrorReason(msg: string): string {
@@ -155,9 +157,10 @@ export function summarizeDashboard(sources: DashboardSource[]): DashboardSummary
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [bureau, checkouts, storage, eco, repo] = await Promise.all([
+  const [bureau, checkouts, decisionAxis, storage, eco, repo] = await Promise.all([
     safeLoad('Bureau', getBureauData),
     safeLoad('Checkouts', getCheckoutData),
+    safeLoad('DecisionAxis', getDecisionAxisData),
     safeLoad('Storage', getStorageHealthData),
     safeLoad('Ecosystem', getEcosystemMapData),
     safeLoad('RepoGround', getRepoBriefData),
@@ -226,5 +229,20 @@ export async function getDashboardData(): Promise<DashboardData> {
     }
   ];
 
-  return { sources, summary: summarizeDashboard(sources) };
+  return {
+    sources,
+    summary: summarizeDashboard(sources),
+    decision_axis: decisionAxis.data ?? {
+      sections: [],
+      view_meta: {
+        source_kind: 'missing',
+        source_path: '',
+        source_path_display: '<unavailable>',
+        missing_reason: decisionAxis.error ?? 'decision_axis_load_failed',
+        generated_at: null,
+        freshness_state: 'unknown',
+        does_not_establish: ['dispatch_or_mutation_authority'],
+      },
+    },
+  };
 }
