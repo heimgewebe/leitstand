@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import dataclasses
+import errno
 import datetime as dt
 import fcntl
 import hashlib
@@ -74,6 +75,11 @@ DEFAULT_STORAGE_UNIT_TARGET = (
 DEFAULT_RUNTIME_CONFIG = Path.home() / ".config" / "leitstand" / "runtime.json"
 RUNTIME_CONFIG_KIND = "leitstand_local_runtime_config"
 RUNTIME_CONFIG_SCHEMA_VERSION = 1
+SYSTEMKATALOG_ORIGIN = "git@github.com:heimgewebe/systemkatalog.git"
+SYSTEMKATALOG_REMOTE_REF = "refs/heads/main"
+SYSTEMKATALOG_TRACKING_REF = "refs/remotes/origin/main"
+SYSTEMKATALOG_MANIFEST_RELATIVE_PATH = Path("rendered/ecosystem-map-artifact-manifest.json")
+SYSTEMKATALOG_MANIFEST_CHECKER_RELATIVE_PATH = Path("scripts/write_ecosystem_map_artifact_manifest.py")
 COMPLETION_KIND = "leitstand_local_deployment_completion"
 ACTIVE_ROUTES = (
     "/",
@@ -1356,6 +1362,307 @@ def load_runtime_config(path: Path) -> RuntimeConfig:
     )
 
 
+def _runtime_config_with_ecosystem_map(
+    config: RuntimeConfig, source_root: Path
+) -> RuntimeConfig:
+    root = Path(os.path.abspath(source_root))
+    manifest = root / SYSTEMKATALOG_MANIFEST_RELATIVE_PATH
+    payload = {
+        "schema_version": RUNTIME_CONFIG_SCHEMA_VERSION,
+        "kind": RUNTIME_CONFIG_KIND,
+        "canonical_origin": config.canonical_origin,
+        "ecosystem_map_manifest_path": str(manifest),
+        "ecosystem_map_source_root": str(root),
+        "artifact_root": str(config.artifact_root),
+        "heim_pc_root": str(config.heim_pc_root),
+        "storage_state_root": str(config.storage_state_root),
+    }
+    return RuntimeConfig(
+        canonical_origin=config.canonical_origin,
+        ecosystem_map_manifest_path=manifest,
+        ecosystem_map_source_root=root,
+        artifact_root=config.artifact_root,
+        heim_pc_root=config.heim_pc_root,
+        storage_state_root=config.storage_state_root,
+        source_path=config.source_path,
+        sha256=sha256_bytes(canonical_json_bytes(payload)),
+    )
+
+
+def _systemkatalog_release_base(config: RuntimeConfig) -> Path:
+    source_root = config.ecosystem_map_source_root
+    expected_manifest = source_root / SYSTEMKATALOG_MANIFEST_RELATIVE_PATH
+    if config.ecosystem_map_manifest_path != expected_manifest:
+        raise ReleaseError(
+            "runtime config Systemkatalog manifest must be inside the exact configured release root"
+        )
+    if not HEAD_RE.fullmatch(source_root.name):
+        raise ReleaseError(
+            "runtime config Systemkatalog source root must end in one exact 40-character commit"
+        )
+    release_base = source_root.parent
+    assert_secure_ancestry(release_base)
+    if release_base.exists() and (release_base.is_symlink() or not release_base.is_dir()):
+        raise ReleaseError(f"Systemkatalog release base is not a directory: {release_base}")
+    return release_base
+
+
+def _systemkatalog_git_env(extra: Mapping[str, str] | None = None) -> dict[str, str]:
+    environment = {
+        "GIT_OPTIONAL_LOCKS": "0",
+        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_SSH_COMMAND": "ssh -o BatchMode=yes",
+    }
+    if extra:
+        environment.update(extra)
+    return environment
+
+
+def _systemkatalog_remote_main() -> str:
+    completed = run(
+        ("git", "ls-remote", "--exit-code", SYSTEMKATALOG_ORIGIN, SYSTEMKATALOG_REMOTE_REF),
+        timeout=60,
+        env=_systemkatalog_git_env(),
+    )
+    lines = [line.split() for line in completed.stdout.splitlines() if line.strip()]
+    if (
+        len(lines) != 1
+        or len(lines[0]) != 2
+        or lines[0][1] != SYSTEMKATALOG_REMOTE_REF
+        or not HEAD_RE.fullmatch(lines[0][0])
+    ):
+        raise ReleaseError("Systemkatalog live remote main readback is invalid")
+    return lines[0][0]
+
+
+def _verify_systemkatalog_release(target: Path, expected_head: str) -> dict[str, Any]:
+    head = validate_head(expected_head)
+    target = Path(os.path.abspath(target))
+    assert_secure_ancestry(target)
+    if target.is_symlink() or not target.is_dir():
+        raise ReleaseError(f"Systemkatalog release root is not a directory: {target}")
+    git_env = _systemkatalog_git_env()
+    actual_head = run(
+        ("git", "rev-parse", "--verify", "HEAD"), cwd=target, env=git_env
+    ).stdout.strip()
+    tracking_head = run(
+        ("git", "rev-parse", "--verify", SYSTEMKATALOG_TRACKING_REF),
+        cwd=target,
+        env=git_env,
+    ).stdout.strip()
+    origin = run(("git", "remote", "get-url", "origin"), cwd=target, env=git_env).stdout.strip()
+    if actual_head != head or tracking_head != head:
+        raise ReleaseError(
+            "Systemkatalog release HEAD or durable origin/main ref does not match expected live remote main"
+        )
+    if origin != SYSTEMKATALOG_ORIGIN:
+        raise ReleaseError(
+            f"Systemkatalog release origin mismatch; expected={SYSTEMKATALOG_ORIGIN}; actual={origin}"
+        )
+    for label, arguments in (
+        ("worktree", ("git", "diff", "--quiet", "HEAD", "--")),
+        ("index", ("git", "diff", "--cached", "--quiet", "HEAD", "--")),
+    ):
+        completed = run(arguments, cwd=target, check=False, env=git_env)
+        if completed.returncode == 1:
+            raise ReleaseError(f"Systemkatalog release tracked {label} content differs from commit")
+        if completed.returncode != 0:
+            detail = (completed.stderr or completed.stdout or "git diff failed").strip()
+            raise ReleaseError(f"could not verify Systemkatalog release {label}: {detail[-1000:]}")
+    untracked_raw = run(
+        ("git", "ls-files", "--others", "--exclude-standard", "-z"),
+        cwd=target,
+        env=git_env,
+    ).stdout
+    untracked = [entry for entry in untracked_raw.split("\0") if entry]
+    unexpected_untracked = [
+        entry
+        for entry in untracked
+        if not ("__pycache__" in Path(entry).parts and entry.endswith(".pyc"))
+    ]
+    if unexpected_untracked:
+        raise ReleaseError(
+            "Systemkatalog release contains unexpected untracked files: "
+            + ", ".join(unexpected_untracked[:10])
+        )
+    manifest_path = target / SYSTEMKATALOG_MANIFEST_RELATIVE_PATH
+    checker = target / SYSTEMKATALOG_MANIFEST_CHECKER_RELATIVE_PATH
+    _require_regular_file(manifest_path, owner_uid=os.getuid(), label="Systemkatalog map manifest")
+    _require_regular_file(checker, owner_uid=os.getuid(), label="Systemkatalog map manifest checker")
+    completed = run(
+        (
+            sys.executable,
+            "-I",
+            str(checker),
+            "--repo-root",
+            str(target),
+            "--check",
+            "--durable-source-ref",
+            SYSTEMKATALOG_TRACKING_REF,
+            "--json",
+        ),
+        cwd=target,
+        timeout=120,
+        env=_systemkatalog_git_env({"PYTHONDONTWRITEBYTECODE": "1"}),
+    )
+    try:
+        result = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise ReleaseError("Systemkatalog manifest checker returned invalid JSON") from error
+    manifest_source = result.get("sourceCommit") if isinstance(result, dict) else None
+    artifact_count = result.get("artifactCount") if isinstance(result, dict) else None
+    if (
+        not isinstance(result, dict)
+        or result.get("ok") is not True
+        or not isinstance(manifest_source, str)
+        or not HEAD_RE.fullmatch(manifest_source)
+        or not isinstance(artifact_count, int)
+        or artifact_count < 1
+    ):
+        raise ReleaseError("Systemkatalog manifest checker result violates the published contract")
+    return {
+        "source_repository": "heimgewebe/systemkatalog",
+        "remote_origin": SYSTEMKATALOG_ORIGIN,
+        "release_commit": head,
+        "manifest_source_commit": manifest_source,
+        "artifact_count": artifact_count,
+        "release_path": str(target),
+        "manifest_path": str(manifest_path),
+        "manifest_sha256": sha256_file(manifest_path),
+        "ignored_untracked_cache_file_count": len(untracked),
+    }
+
+
+def _remove_systemkatalog_temporary_release(path: Path) -> None:
+    if not path.exists():
+        return
+    with contextlib.suppress(BaseException):
+        private_release_permissions(path)
+    shutil.rmtree(path, ignore_errors=True)
+
+
+def prepare_systemkatalog_runtime_config(
+    config: RuntimeConfig, *, attempt_id: str | None = None
+) -> tuple[RuntimeConfig, dict[str, Any]]:
+    attempt = attempt_id or new_attempt_id()
+    release_base = _systemkatalog_release_base(config)
+    ensure_directory(release_base, private=False)
+    remote_head = _systemkatalog_remote_main()
+    target = release_base / remote_head
+    created = False
+    if target.exists():
+        _verify_systemkatalog_release(target, remote_head)
+        seal_release(target)
+        evidence = _verify_systemkatalog_release(target, remote_head)
+    else:
+        temporary = release_base / f".{remote_head}.{attempt}.tmp"
+        if temporary.exists() or temporary.is_symlink():
+            raise ReleaseError(f"Systemkatalog temporary release already exists: {temporary}")
+        try:
+            run(
+                (
+                    "git",
+                    "clone",
+                    "--quiet",
+                    "--no-tags",
+                    "--branch",
+                    "main",
+                    "--single-branch",
+                    SYSTEMKATALOG_ORIGIN,
+                    str(temporary),
+                ),
+                cwd=release_base,
+                timeout=180,
+                env=_systemkatalog_git_env(),
+            )
+            _verify_systemkatalog_release(temporary, remote_head)
+            seal_release(temporary)
+            try:
+                os.rename(temporary, target)
+                fsync_directory(release_base)
+                created = True
+            except OSError as error:
+                if error.errno not in (errno.EEXIST, errno.ENOTEMPTY):
+                    raise
+                _remove_systemkatalog_temporary_release(temporary)
+            try:
+                evidence = _verify_systemkatalog_release(target, remote_head)
+            except BaseException:
+                if created:
+                    _remove_systemkatalog_temporary_release(target)
+                raise
+        except BaseException:
+            _remove_systemkatalog_temporary_release(temporary)
+            raise
+    resolved = _runtime_config_with_ecosystem_map(config, target)
+    return resolved, {
+        **evidence,
+        "created": created,
+        "input_runtime_config_sha256": config.sha256,
+        "resolved_runtime_config_sha256": resolved.sha256,
+        "observed_remote_main": remote_head,
+    }
+
+
+def confirm_systemkatalog_runtime_config(
+    config: RuntimeConfig, evidence: Mapping[str, Any]
+) -> dict[str, Any]:
+    expected_head = validate_head(str(evidence.get("release_commit", "")))
+    observed_head = _systemkatalog_remote_main()
+    if observed_head != expected_head:
+        raise ReleaseError(
+            "Systemkatalog live remote main changed after preparation and before Leitstand cutover"
+        )
+    target = Path(str(evidence.get("release_path", "")))
+    verified = _verify_systemkatalog_release(target, expected_head)
+    if (
+        verified["manifest_sha256"] != evidence.get("manifest_sha256")
+        or verified["manifest_source_commit"] != evidence.get("manifest_source_commit")
+        or config.ecosystem_map_source_root != target
+        or config.ecosystem_map_manifest_path != target / SYSTEMKATALOG_MANIFEST_RELATIVE_PATH
+    ):
+        raise ReleaseError("Systemkatalog prepared release identity changed before Leitstand cutover")
+    return {
+        **dict(evidence),
+        "confirmed_remote_main": observed_head,
+        "confirmed_at": utc_now(),
+    }
+
+
+def _write_systemkatalog_preflight_failure(
+    paths: Paths,
+    *,
+    attempt_id: str,
+    phase: str,
+    config: RuntimeConfig,
+    error: BaseException,
+) -> None:
+    write_receipt(
+        paths,
+        "deploy-systemkatalog-preflight-failed",
+        {
+            "success": False,
+            "cutover_started": False,
+            "phase": phase,
+            "runtime_config": config.evidence(),
+            "systemkatalog_release_state_may_have_changed": True,
+            "leitstand_release_materialization_may_have_occurred": (
+                phase == "pre-cutover-confirmation"
+            ),
+            "error_type": type(error).__name__,
+            "error": str(error),
+            "does_not_establish": [
+                "unit_write",
+                "selector_write",
+                "daemon_reload",
+                "service_restart",
+                "leitstand_cutover",
+            ],
+        },
+        attempt_id=attempt_id,
+    )
+
+
 def _template_replacements(target: Path, config: RuntimeConfig) -> dict[str, str]:
     artifact_root = config.artifact_root
     return {
@@ -2393,6 +2700,20 @@ def deploy_release(
     attempt_id: str | None = None,
 ) -> dict[str, Any]:
     attempt = attempt_id or new_attempt_id()
+    input_config = config
+    try:
+        config, systemkatalog_release = prepare_systemkatalog_runtime_config(
+            config, attempt_id=attempt
+        )
+    except (ReleaseError, OSError, subprocess.SubprocessError, ValueError) as error:
+        _write_systemkatalog_preflight_failure(
+            paths,
+            attempt_id=attempt,
+            phase="prepare",
+            config=input_config,
+            error=error,
+        )
+        raise
     target, manifest, created = build_release(
         paths,
         source_repo,
@@ -2415,6 +2736,19 @@ def deploy_release(
     }
     if confirmed_identity != manifest_identity:
         raise ReleaseError("source or remote-main identity changed after release build")
+    try:
+        systemkatalog_release = confirm_systemkatalog_runtime_config(
+            config, systemkatalog_release
+        )
+    except (ReleaseError, OSError, subprocess.SubprocessError, ValueError) as error:
+        _write_systemkatalog_preflight_failure(
+            paths,
+            attempt_id=attempt,
+            phase="pre-cutover-confirmation",
+            config=config,
+            error=error,
+        )
+        raise
     key = _deployment_key(expected_head, config)
     completion = _read_completion(paths, key)
     current = _resolve_link_target(paths.current)
@@ -2439,6 +2773,7 @@ def deploy_release(
             "release_created": False,
             "release_tree_sha256": manifest["release_tree_sha256"],
             "runtime_config": config.evidence(),
+            "systemkatalog_release": systemkatalog_release,
             "completion": completion,
             "postflight": evidence,
         }
@@ -2461,6 +2796,7 @@ def deploy_release(
         "release_created": created,
         "release_tree_sha256": manifest["release_tree_sha256"],
         "runtime_config": config.evidence(),
+        "systemkatalog_release": systemkatalog_release,
         "switch": switch,
     }
     receipt_path, receipt_sha = write_receipt(

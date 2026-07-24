@@ -41,12 +41,20 @@ class ReleaseRuntimeTest(unittest.TestCase):
         )
         self.config_path = self.root / "config" / "leitstand" / "runtime.json"
         self.config_path.parent.mkdir(parents=True)
+        self.systemkatalog_bootstrap_head = "0" * 40
+        self.systemkatalog_release_base = self.root / "systemkatalog" / "releases"
+        self.systemkatalog_bootstrap_root = (
+            self.systemkatalog_release_base / self.systemkatalog_bootstrap_head
+        )
         self.config_payload = {
             "schema_version": 1,
             "kind": "leitstand_local_runtime_config",
             "canonical_origin": "https://leitstand.example.test",
-            "ecosystem_map_manifest_path": str(self.root / "systemkatalog/rendered/manifest.json"),
-            "ecosystem_map_source_root": str(self.root / "systemkatalog"),
+            "ecosystem_map_manifest_path": str(
+                self.systemkatalog_bootstrap_root
+                / release.SYSTEMKATALOG_MANIFEST_RELATIVE_PATH
+            ),
+            "ecosystem_map_source_root": str(self.systemkatalog_bootstrap_root),
             "artifact_root": str(self.root / "artifacts"),
             "heim_pc_root": str(self.root / "heim-pc"),
             "storage_state_root": str(self.root / "state/storage-health"),
@@ -57,6 +65,80 @@ class ReleaseRuntimeTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temp.cleanup()
+
+    def _create_systemkatalog_remote(self) -> tuple[Path, str, str]:
+        source = self.root / "systemkatalog-source"
+        remote = self.root / "systemkatalog-origin.git"
+        subprocess.run(
+            ["git", "init", "-b", "main", str(source)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(["git", "-C", str(source), "config", "user.email", "test@example.invalid"], check=True)
+        subprocess.run(["git", "-C", str(source), "config", "user.name", "Leitstand Test"], check=True)
+        (source / "rendered").mkdir()
+        (source / "scripts").mkdir()
+        checker = source / release.SYSTEMKATALOG_MANIFEST_CHECKER_RELATIVE_PATH
+        checker.write_text(
+            """#!/usr/bin/env python3
+import argparse
+import json
+from pathlib import Path
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--repo-root', required=True)
+parser.add_argument('--check', action='store_true')
+parser.add_argument('--durable-source-ref')
+parser.add_argument('--json', action='store_true')
+args = parser.parse_args()
+manifest = json.loads((Path(args.repo_root) / 'rendered/ecosystem-map-artifact-manifest.json').read_text())
+print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifactCount': manifest['artifactCount']}))
+""",
+            encoding="utf-8",
+        )
+        os.chmod(checker, 0o755)
+        manifest = source / release.SYSTEMKATALOG_MANIFEST_RELATIVE_PATH
+        manifest.write_text(
+            json.dumps({"sourceCommit": "0" * 40, "artifactCount": 6}) + "\n",
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "-C", str(source), "add", "."], check=True)
+        subprocess.run(
+            ["git", "-C", str(source), "commit", "-m", "seed published map contract"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        manifest_source = subprocess.check_output(
+            ["git", "-C", str(source), "rev-parse", "HEAD"], text=True
+        ).strip()
+        manifest.write_text(
+            json.dumps({"sourceCommit": manifest_source, "artifactCount": 6}) + "\n",
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "-C", str(source), "add", str(manifest)], check=True)
+        subprocess.run(
+            ["git", "-C", str(source), "commit", "-m", "bind published map manifest"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        (source / "README.md").write_text("later repository-only change\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(source), "add", "README.md"], check=True)
+        subprocess.run(
+            ["git", "-C", str(source), "commit", "-m", "advance repository head"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        latest = subprocess.check_output(
+            ["git", "-C", str(source), "rev-parse", "HEAD"], text=True
+        ).strip()
+        subprocess.run(
+            ["git", "clone", "--bare", str(source), str(remote)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return remote, latest, manifest_source
 
     def _populate_release(self, target: Path, head: str) -> None:
         (target / "dist").mkdir(parents=True)
@@ -165,6 +247,65 @@ class ReleaseRuntimeTest(unittest.TestCase):
         self.config_path.write_text(json.dumps(changed), encoding="utf-8")
         with self.assertRaisesRegex(release.ReleaseError, "key mismatch"):
             release.load_runtime_config(self.config_path)
+
+    def test_prepare_systemkatalog_runtime_config_materializes_and_reuses_exact_remote_release(self) -> None:
+        remote, latest, manifest_source = self._create_systemkatalog_remote()
+        with patch.object(release, "SYSTEMKATALOG_ORIGIN", str(remote)):
+            resolved, evidence = release.prepare_systemkatalog_runtime_config(
+                self.config, attempt_id=ATTEMPT
+            )
+            self.assertTrue(evidence["created"])
+            self.assertEqual(evidence["release_commit"], latest)
+            self.assertEqual(evidence["observed_remote_main"], latest)
+            self.assertEqual(evidence["manifest_source_commit"], manifest_source)
+            self.assertNotEqual(evidence["manifest_source_commit"], latest)
+            self.assertEqual(evidence["artifact_count"], 6)
+            self.assertEqual(resolved.ecosystem_map_source_root, self.systemkatalog_release_base / latest)
+            self.assertEqual(
+                resolved.ecosystem_map_manifest_path,
+                self.systemkatalog_release_base / latest / release.SYSTEMKATALOG_MANIFEST_RELATIVE_PATH,
+            )
+            self.assertEqual(
+                stat.S_IMODE(os.stat(resolved.ecosystem_map_source_root).st_mode), 0o500
+            )
+
+            release.private_release_permissions(resolved.ecosystem_map_source_root)
+            self.assertEqual(
+                stat.S_IMODE(os.stat(resolved.ecosystem_map_source_root).st_mode), 0o700
+            )
+            resolved_again, evidence_again = release.prepare_systemkatalog_runtime_config(
+                self.config, attempt_id=ATTEMPT
+            )
+            self.assertFalse(evidence_again["created"])
+            self.assertEqual(
+                stat.S_IMODE(os.stat(resolved_again.ecosystem_map_source_root).st_mode), 0o500
+            )
+            self.assertEqual(resolved_again.sha256, resolved.sha256)
+            self.assertEqual(evidence_again["manifest_sha256"], evidence["manifest_sha256"])
+
+    def test_verify_systemkatalog_release_rejects_tracked_drift(self) -> None:
+        remote, latest, _manifest_source = self._create_systemkatalog_remote()
+        with patch.object(release, "SYSTEMKATALOG_ORIGIN", str(remote)):
+            resolved, _evidence = release.prepare_systemkatalog_runtime_config(
+                self.config, attempt_id=ATTEMPT
+            )
+            target = resolved.ecosystem_map_source_root
+            release.private_release_permissions(target)
+            (target / "README.md").write_text("tampered\n", encoding="utf-8")
+            with self.assertRaisesRegex(release.ReleaseError, "tracked worktree content differs"):
+                release._verify_systemkatalog_release(target, latest)
+
+    def test_verify_systemkatalog_release_rejects_unexpected_untracked_files(self) -> None:
+        remote, latest, _manifest_source = self._create_systemkatalog_remote()
+        with patch.object(release, "SYSTEMKATALOG_ORIGIN", str(remote)):
+            resolved, _evidence = release.prepare_systemkatalog_runtime_config(
+                self.config, attempt_id=ATTEMPT
+            )
+            target = resolved.ecosystem_map_source_root
+            release.private_release_permissions(target)
+            (target / "scripts" / "json.py").write_text("raise RuntimeError('shadow')\n", encoding="utf-8")
+            with self.assertRaisesRegex(release.ReleaseError, "unexpected untracked files"):
+                release._verify_systemkatalog_release(target, latest)
 
     def test_runtime_config_rejects_non_https_relative_and_whitespace_paths(self) -> None:
         cases = (
@@ -620,7 +761,18 @@ class ReleaseRuntimeTest(unittest.TestCase):
             receipt_sha256=receipt_sha,
         )
         manifest = release.verify_release_path(self.paths, target)
+        systemkatalog_evidence = {"release_commit": "1" * 40}
         with (
+            patch.object(
+                release,
+                "prepare_systemkatalog_runtime_config",
+                return_value=(self.config, systemkatalog_evidence),
+            ),
+            patch.object(
+                release,
+                "confirm_systemkatalog_runtime_config",
+                return_value=systemkatalog_evidence,
+            ),
             patch.object(release, "build_release", return_value=(target, manifest, False)),
             patch.object(
                 release,
@@ -870,6 +1022,11 @@ class ReleaseRuntimeTest(unittest.TestCase):
         }
         drifted["origin_main"] = "0" * 40
         with (
+            patch.object(
+                release,
+                "prepare_systemkatalog_runtime_config",
+                return_value=(self.config, {"release_commit": "1" * 40}),
+            ),
             patch.object(release, "build_release", return_value=(target, manifest, False)),
             patch.object(release, "source_identity", return_value=drifted),
             patch.object(release, "switch_transaction") as switched,
@@ -877,6 +1034,59 @@ class ReleaseRuntimeTest(unittest.TestCase):
             with self.assertRaisesRegex(release.ReleaseError, "changed after release build"):
                 release.deploy_release(self.paths, self.root, head, self.config, attempt_id=ATTEMPT)
         switched.assert_not_called()
+
+    def test_systemkatalog_remote_drift_before_cutover_fails_without_switch_effect(self) -> None:
+        head = "7" * 40
+        target = self.create_verified_release(head)
+        manifest = release.verify_release_path(self.paths, target)
+        identity = {
+            key: manifest[key]
+            for key in (
+                "source_commit",
+                "source_tree",
+                "source_date_epoch",
+                "origin_main",
+                "required_ref",
+                "required_ref_head",
+                "origin_url",
+            )
+        }
+        prepared = {
+            "release_commit": "1" * 40,
+            "release_path": str(self.systemkatalog_bootstrap_root),
+            "manifest_source_commit": "2" * 40,
+            "manifest_sha256": "3" * 64,
+        }
+        with (
+            patch.object(
+                release,
+                "prepare_systemkatalog_runtime_config",
+                return_value=(self.config, prepared),
+            ),
+            patch.object(release, "build_release", return_value=(target, manifest, False)),
+            patch.object(release, "source_identity", return_value=identity),
+            patch.object(
+                release,
+                "confirm_systemkatalog_runtime_config",
+                side_effect=release.ReleaseError("Systemkatalog live remote main changed"),
+            ),
+            patch.object(release, "switch_transaction") as switched,
+        ):
+            with self.assertRaisesRegex(release.ReleaseError, "live remote main changed"):
+                release.deploy_release(
+                    self.paths, self.root, head, self.config, attempt_id=ATTEMPT
+                )
+        switched.assert_not_called()
+        receipts = sorted(
+            self.paths.receipts.glob("*deploy-systemkatalog-preflight-failed.json")
+        )
+        self.assertEqual(len(receipts), 1)
+        payload = json.loads(receipts[0].read_text("utf-8"))
+        self.assertFalse(payload["success"])
+        self.assertFalse(payload["cutover_started"])
+        self.assertTrue(payload["systemkatalog_release_state_may_have_changed"])
+        self.assertTrue(payload["leitstand_release_materialization_may_have_occurred"])
+        self.assertEqual(payload["phase"], "pre-cutover-confirmation")
 
     def test_cli_exposes_only_managed_lifecycle_commands(self) -> None:
         help_text = release.build_parser().format_help()
