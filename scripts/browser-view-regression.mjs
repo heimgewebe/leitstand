@@ -107,7 +107,7 @@ async function createEcosystemFixture(root) {
     ['registry/ecosystem/nodes.json', '{"schemaVersion":1,"nodes":[]}\n'],
     ['registry/ecosystem/edges.json', '{"schemaVersion":1,"edges":[]}\n'],
     ['registry/ecosystem/authority-matrix.v1.json', '{"schemaVersion":1,"authorities":[]}\n'],
-    ['registry/ecosystem/resilience.v1.json', '{"schemaVersion":1,"resilience":[]}\n'],
+    ['registry/ecosystem/resilience.v1.json', '{"schema_version":1,"components":[]}\n'],
   ]);
 
   for (const [rel, content] of contents) {
