@@ -49,12 +49,28 @@ Host-specific source paths are not embedded in the repository. The effect comman
 Start from `deploy/systemd/runtime-config.example.json`. The configuration binds:
 
 - canonical HTTPS origin;
-- exact Systemkatalog release root and map manifest;
+- one exact Systemkatalog release root and map manifest;
 - Leitstand artifact root for Bureau, checkout, decision-axis and storage snapshots;
 - Heim-PC repository root;
 - storage-health state root.
 
 Only an HTTPS origin and absolute whitespace-free paths are accepted. The canonical JSON digest is written into deployment evidence.
+
+### Systemkatalog release closed loop
+
+For `deploy`, the configured exact Systemkatalog release is a bootstrap and release-base anchor, not permission to keep serving stale map artifacts. Before any Leitstand cutover the adapter:
+
+1. derives the Systemkatalog release base from the configured exact commit path;
+2. reads `main` directly from the canonical `git@github.com:heimgewebe/systemkatalog.git` remote;
+3. reuses `<release-base>/<remote-main-commit>` only when its Git `HEAD`, durable `refs/remotes/origin/main`, origin URL and tracked bytes still match that exact commit; unexpected untracked files are rejected, while inert `__pycache__/*.pyc` remnants are tolerated for compatibility with previously verified local releases; otherwise it clones canonical `main` into a temporary sibling and atomically publishes the verified commit directory;
+4. executes that release's own `scripts/write_ecosystem_map_artifact_manifest.py --check --durable-source-ref refs/remotes/origin/main --json` contract under isolated Python path handling and records the manifest digest, artifact count and manifest source commit;
+5. re-reads live Systemkatalog `main` and re-verifies the release immediately before the Leitstand switch transaction.
+
+The published map manifest may legitimately bind an older artifact-producing commit than the Systemkatalog release `HEAD`. The producer's manifest checker owns the durable-ancestry and byte-binding proof; Leitstand must not replace it with an incorrect equality check between manifest source commit and repository head.
+
+The effective deployment configuration is then rewritten in memory to the exact verified Systemkatalog commit directory, and the installed Leitstand units continue to contain only that immutable exact path. No mutable `current` symlink is introduced. A preparation or pre-cutover confirmation failure writes a `deploy-systemkatalog-preflight-failed` receipt with `cutover_started=false`. The receipt deliberately does not claim that no filesystem effect occurred: an immutable Systemkatalog release may have been created or resealed, and by the confirmation phase the immutable Leitstand release may already have been materialized. Unit files, selectors, daemon state and services have not been changed at that point.
+
+`switch` and `rollback` deliberately do **not** auto-follow the newest Systemkatalog `main`. They keep the exact Systemkatalog path supplied by the runtime configuration so an older Leitstand release is not silently coupled to a newer map contract during recovery. Operators should therefore retain a known-good exact Systemkatalog commit in the runtime configuration; normal `deploy` automatically advances from its release-base parent to freshly verified remote `main`.
 
 ## Coupled unit transaction
 
