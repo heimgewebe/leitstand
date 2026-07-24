@@ -65,12 +65,14 @@ check_runbook "$RUNBOOK_RELEASE"
 check_runbook "$RUNBOOK_GATEWAY"
 check_runbook "$RUNBOOK_MAIN"
 
-if grep -R -F "leitstand-deploy" "$REPO_ROOT" \
-    --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist \
-    --exclude-dir=coverage --exclude-dir=.venv --exclude-dir=tmp \
-    --exclude=check-runbook-invariants.sh >/dev/null 2>&1; then
-    fail "Deprecated 'leitstand-deploy' references remain; use scripts/leitstand-release.py."
-fi
+DEPRECATED_TERM="leitstand-deploy"
+while IFS= read -r -d '' tracked_path; do
+    [[ "$tracked_path" == "scripts/ci/check-runbook-invariants.sh" ]] && continue
+    if [[ -f "$REPO_ROOT/$tracked_path" ]] \
+        && grep -F -q -- "$DEPRECATED_TERM" "$REPO_ROOT/$tracked_path"; then
+        fail "Deprecated '$DEPRECATED_TERM' references remain in repository-controlled content: $tracked_path"
+    fi
+done < <(git -C "$REPO_ROOT" ls-files -z)
 log_success "No deprecated deployment entry point remains."
 
 NAMING_REF="docs/deploy/heimserver.naming.md"

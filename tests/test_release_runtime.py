@@ -1096,5 +1096,86 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
         self.assertNotIn("import-legacy", help_text)
 
 
+class RunbookInvariantGuardTest(unittest.TestCase):
+    def _create_fixture(self, root: Path) -> tuple[Path, Path]:
+        source = root / "source"
+        deprecated_term = "leitstand-" + "deploy"
+        linked = root / f"linked-{deprecated_term}-worktree"
+        source.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=source, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=source, check=True)
+        subprocess.run(["git", "config", "user.name", "Leitstand Test"], cwd=source, check=True)
+
+        required_files = [
+            "deploy/systemd/leitstand.service",
+            "deploy/systemd/leitstand-storage-health.service",
+            "deploy/systemd/runtime-config.example.json",
+            "tests/test_release_runtime.py",
+            "deploy/docker-compose.yml",
+            "deploy/docker-compose.loopback.yml",
+            "deploy/docker-compose.lan.yml",
+            "deploy/docker-compose.proxy.yml",
+        ]
+        for relative in required_files:
+            path = source / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("fixture\n", encoding="utf-8")
+
+        for relative in ["scripts/leitstand-release.py", "scripts/leitstand-up"]:
+            path = source / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("#!/usr/bin/env sh\nexit 0\n", encoding="utf-8")
+            path.chmod(0o755)
+
+        runbook_text = "scripts/leitstand-release.py\nleitstand-storage-health.service\nruntime-config.example.json\n"
+        for relative in [
+            "docs/runbooks/local-release-runtime.md",
+            "docs/runbooks/ops.runbook.leitstand-gateway.md",
+            "docs/runbooks/leitstand.md",
+        ]:
+            path = source / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(runbook_text, encoding="utf-8")
+
+        guard = source / "scripts/ci/check-runbook-invariants.sh"
+        guard.parent.mkdir(parents=True, exist_ok=True)
+        guard.write_bytes((REPO_ROOT / "scripts/ci/check-runbook-invariants.sh").read_bytes())
+        guard.chmod(0o755)
+
+        subprocess.run(["git", "add", "."], cwd=source, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "fixture"], cwd=source, check=True)
+        subprocess.run(["git", "worktree", "add", "-q", "-b", "linked", str(linked), "HEAD"], cwd=source, check=True)
+        return source, linked
+
+    def test_guard_ignores_linked_worktree_git_metadata_and_path_name(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="leitstand-runbook-guard-") as temp:
+            _, linked = self._create_fixture(Path(temp))
+            result = subprocess.run(
+                ["bash", "scripts/ci/check-runbook-invariants.sh"],
+                cwd=linked,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_guard_rejects_real_tracked_deprecated_reference(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="leitstand-runbook-guard-") as temp:
+            _, linked = self._create_fixture(Path(temp))
+            deprecated = linked / "docs/deprecated-entry.md"
+            deprecated_term = "leitstand-" + "deploy"
+            deprecated.write_text(f"Use {deprecated_term} here.\n", encoding="utf-8")
+            subprocess.run(["git", "add", "docs/deprecated-entry.md"], cwd=linked, check=True)
+            result = subprocess.run(
+                ["bash", "scripts/ci/check-runbook-invariants.sh"],
+                cwd=linked,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("repository-controlled content", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
