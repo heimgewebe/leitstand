@@ -50,7 +50,7 @@ Start from `deploy/systemd/runtime-config.example.json`. The configuration binds
 
 - canonical HTTPS origin;
 - exact Systemkatalog release root and map manifest;
-- Leitstand artifact root;
+- Leitstand artifact root for Bureau, checkout, decision-axis and storage snapshots;
 - Heim-PC repository root;
 - storage-health state root.
 

@@ -187,6 +187,11 @@ class ReleaseRuntimeTest(unittest.TestCase):
             text = spec.content.decode()
             self.assertIn(str(target), text)
             self.assertNotIn("@", text)
+        web_text = specs[0].content.decode("utf-8")
+        self.assertIn(
+            f"Environment=LEITSTAND_DECISION_AXIS_SNAPSHOT_PATH={self.config.artifact_root / 'operator-decision-axis.json'}",
+            web_text,
+        )
         release.validate_unit_content(specs[0].content, target=target, config=self.config)
         release.validate_storage_unit_content(specs[1].content, target=target, config=self.config)
 
