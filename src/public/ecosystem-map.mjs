@@ -8,6 +8,14 @@ const TYPE_LABELS = {
   concept: 'Konzepte',
   actor: 'Menschen',
 };
+const LIFECYCLE_LABELS = {
+  active: 'Aktiv',
+  transition: 'Übergang',
+  reference: 'Referenz',
+  archived: 'Archiviert',
+  retired: 'Außer Betrieb',
+  unknown: 'Unbekannt',
+};
 const EDGE_DEFINITION = /^\s*([A-Za-z][A-Za-z0-9_]*)\s*-->\|([^|\n]+)\|\s*([A-Za-z][A-Za-z0-9_]*)\s*$/;
 const VIEWBOX_MIN_SCALE = 0.08;
 const VIEWBOX_MAX_SCALE = 4;
@@ -131,6 +139,7 @@ function createExplorer(canvas, navigation) {
       <input id="ecosystem-map-search" class="map-search" type="search" autocomplete="off" placeholder="Name, ID oder Beschreibung" aria-describedby="ecosystem-map-result-count">
     </div>
     <div class="map-explorer-row" data-map-filters role="group" aria-label="Nach Systemart filtern"></div>
+    <div class="map-explorer-row" data-map-lifecycle-filters role="group" aria-label="Nach Lebenszyklus filtern"></div>
     <div class="map-explorer-row" data-map-controls role="group" aria-label="Kartenausschnitt steuern">
       <button type="button" class="map-control" data-map-view-action="zoom-in" aria-label="Karte vergrößern">Vergrößern</button>
       <button type="button" class="map-control" data-map-view-action="zoom-out" aria-label="Karte verkleinern">Verkleinern</button>
@@ -159,7 +168,7 @@ function createExplorer(canvas, navigation) {
 
   const types = [...new Set(navigation.map((item) => nodeType(item.node_id)))].filter((type) => TYPE_LABELS[type]);
   const filters = explorer.querySelector('[data-map-filters]');
-  for (const [type, label] of [['all', 'Alle'], ...types.map((type) => [type, TYPE_LABELS[type]])]) {
+  for (const [type, label] of [['all', 'Alle Arten'], ...types.map((type) => [type, TYPE_LABELS[type]])]) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'map-filter';
@@ -167,6 +176,18 @@ function createExplorer(canvas, navigation) {
     button.setAttribute('aria-pressed', type === 'all' ? 'true' : 'false');
     button.textContent = label;
     filters.append(button);
+  }
+  const lifecycleStates = [...new Set(navigation.map((item) => item.lifecycle_state || 'unknown'))]
+    .filter((state) => LIFECYCLE_LABELS[state]);
+  const lifecycleFilters = explorer.querySelector('[data-map-lifecycle-filters]');
+  for (const [state, label] of [['all', 'Alle Lebenszyklen'], ...lifecycleStates.map((state) => [state, LIFECYCLE_LABELS[state]])]) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'map-filter';
+    button.dataset.mapLifecycle = state;
+    button.setAttribute('aria-pressed', state === 'all' ? 'true' : 'false');
+    button.textContent = label;
+    lifecycleFilters.append(button);
   }
   return explorer;
 }
@@ -558,11 +579,13 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
   const detailClear = explorer.querySelector('[data-map-detail-clear]');
   const fitFocusButton = explorer.querySelector('[data-map-view-action="fit-focus"]');
   const filters = [...explorer.querySelectorAll('[data-map-type]')];
+  const lifecycleFilters = [...explorer.querySelectorAll('[data-map-lifecycle]')];
   const records = navigation.map((target) => ({
     target,
     type: nodeType(target.node_id),
+    lifecycle: target.lifecycle_state || 'unknown',
     node: findRenderedNode(svgRoot, target.mermaid_id),
-    haystack: normalize(`${target.label} ${target.node_id} ${target.title}`),
+    haystack: normalize(`${target.label} ${target.node_id} ${target.title} ${target.purpose || ''} ${target.lifecycle_state || ''}`),
   })).filter((record) => record.node);
   const recordsByMermaidId = new Map(records.map((record) => [record.target.mermaid_id, record]));
   const relationships = parseRelationships(definition, recordsByMermaidId);
@@ -572,6 +595,9 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
   let activeType = filters.some((filter) => filter.dataset.mapType === initialParameters.get('type'))
     ? initialParameters.get('type')
     : 'all';
+  let activeLifecycle = lifecycleFilters.some((filter) => filter.dataset.mapLifecycle === initialParameters.get('lifecycle'))
+    ? initialParameters.get('lifecycle')
+    : 'all';
   let selected = null;
   let focusDepth = initialParameters.get('depth') === '2' ? 2 : 1;
   let viewport = null;
@@ -579,6 +605,7 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
 
   search.value = initialParameters.get('q') || '';
   for (const filter of filters) filter.setAttribute('aria-pressed', filter.dataset.mapType === activeType ? 'true' : 'false');
+  for (const filter of lifecycleFilters) filter.setAttribute('aria-pressed', filter.dataset.mapLifecycle === activeLifecycle ? 'true' : 'false');
 
   function focusSet(record, depth = focusDepth) {
     if (!record) return new Set();
@@ -614,6 +641,7 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
     const query = search.value.trim();
     if (query) url.searchParams.set('q', query); else url.searchParams['delete']('q');
     if (activeType !== 'all') url.searchParams.set('type', activeType); else url.searchParams['delete']('type');
+    if (activeLifecycle !== 'all') url.searchParams.set('lifecycle', activeLifecycle); else url.searchParams['delete']('lifecycle');
     if (selected) url.searchParams.set('node', selected.target.node_id); else url.searchParams['delete']('node');
     if (selected && focusDepth === 2) url.searchParams.set('depth', '2'); else url.searchParams['delete']('depth');
     const currentView = viewport?.current();
@@ -661,7 +689,7 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
       title.textContent = record.target.label;
       const meta = document.createElement('span');
       meta.className = 'map-result-meta';
-      meta.textContent = `${record.target.node_id} · ${TYPE_LABELS[record.type] || record.type}`;
+      meta.textContent = `${record.target.node_id} · ${TYPE_LABELS[record.type] || record.type} · ${LIFECYCLE_LABELS[record.lifecycle] || record.lifecycle}`;
       const relationMeta = document.createElement('span');
       relationMeta.className = 'map-result-relations';
       relationMeta.textContent = `${relationCount} ${relationCount === 1 ? 'Beziehung' : 'Beziehungen'}`;
@@ -717,8 +745,9 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
     const incoming = entries.filter((entry) => entry.direction === 'incoming');
     const visibleFocus = focusSet(selected);
     detailLabel.textContent = selected.target.label;
-    detailMeta.textContent = `${selected.target.node_id} · ${selected.type} · Ziel: ${selected.target.target_kind} · ${outgoing.length} ausgehend · ${incoming.length} eingehend`;
-    detailDescription.textContent = selected.target.title;
+    const reviewLabel = selected.target.lifecycle_reviewed_at ? ` · geprüft ${selected.target.lifecycle_reviewed_at}` : '';
+    detailMeta.textContent = `${selected.target.node_id} · ${selected.type} · ${LIFECYCLE_LABELS[selected.lifecycle] || selected.lifecycle}${reviewLabel} · Ziel: ${selected.target.target_kind} · ${outgoing.length} ausgehend · ${incoming.length} eingehend`;
+    detailDescription.textContent = selected.target.purpose || selected.target.title;
     detailOpen.href = selected.target.href;
     detailSource.href = selected.target.source_href;
     detailDepth.textContent = focusDepth === 1 ? 'Umfeld erweitern' : 'Nur direkte Beziehungen';
@@ -737,7 +766,9 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
   function applyVisualState() {
     const query = normalize(search.value.trim());
     const baseVisible = new Set(records
-      .filter((record) => (activeType === 'all' || record.type === activeType) && (!query || record.haystack.includes(query)))
+      .filter((record) => (activeType === 'all' || record.type === activeType)
+        && (activeLifecycle === 'all' || record.lifecycle === activeLifecycle)
+        && (!query || record.haystack.includes(query)))
       .map((record) => record.target.mermaid_id));
     if (selected && !baseVisible.has(selected.target.mermaid_id)) selected = null;
     const focused = selected ? focusSet(selected) : baseVisible;
@@ -786,6 +817,10 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
       activeType = 'all';
       for (const filter of filters) filter.setAttribute('aria-pressed', filter.dataset.mapType === 'all' ? 'true' : 'false');
     }
+    if (activeLifecycle !== 'all' && record.lifecycle !== activeLifecycle) {
+      activeLifecycle = 'all';
+      for (const filter of lifecycleFilters) filter.setAttribute('aria-pressed', filter.dataset.mapLifecycle === 'all' ? 'true' : 'false');
+    }
     if (query && !record.haystack.includes(query)) search.value = '';
     selected = record;
     applyVisualState();
@@ -822,6 +857,14 @@ function bindExplorer(svgRoot, navigation, explorer, definition) {
     filter.addEventListener('click', () => {
       activeType = filter.dataset.mapType;
       for (const candidate of filters) candidate.setAttribute('aria-pressed', candidate === filter ? 'true' : 'false');
+      applyVisualState();
+      scheduleUrlUpdate();
+    });
+  }
+  for (const filter of lifecycleFilters) {
+    filter.addEventListener('click', () => {
+      activeLifecycle = filter.dataset.mapLifecycle;
+      for (const candidate of lifecycleFilters) candidate.setAttribute('aria-pressed', candidate === filter ? 'true' : 'false');
       applyVisualState();
       scheduleUrlUpdate();
     });
