@@ -235,20 +235,76 @@ describe('getEcosystemMapData', () => {
     },
   );
 
-  it('rejects duplicate node identities and duplicate lifecycle evidence references', async () => {
-    const duplicateNode = {
-      id: 'repo:heimserver',
-      name: 'Heimserver',
-      type: 'repository',
-      purpose: 'retired historical reference',
-      lifecycle: {
-        state: 'retired',
-        reviewedAt: '2026-07-26',
-        evidenceRefs: ['bureau:T032', 'bureau:T032'],
-      },
-    };
+  it.each([
+    {
+      label: 'duplicate node identities',
+      nodes: [
+        {
+          id: 'repo:heimserver',
+          name: 'Heimserver',
+          type: 'repository',
+          purpose: 'retired historical reference',
+          lifecycle: { state: 'retired', reviewedAt: '2026-07-26', evidenceRefs: ['bureau:T032'] },
+        },
+        {
+          id: 'repo:heimserver',
+          name: 'Heimserver duplicate',
+          type: 'repository',
+          purpose: 'duplicate reference',
+          lifecycle: { state: 'retired', reviewedAt: '2026-07-26', evidenceRefs: ['bureau:T063'] },
+        },
+      ],
+    },
+    {
+      label: 'node identities with surrounding whitespace',
+      nodes: [
+        {
+          id: 'repo:heimserver',
+          name: 'Heimserver',
+          type: 'repository',
+          purpose: 'retired historical reference',
+          lifecycle: { state: 'retired', reviewedAt: '2026-07-26', evidenceRefs: ['bureau:T032'] },
+        },
+        {
+          id: ' repo:heimserver ',
+          name: 'Heimserver spaced',
+          type: 'repository',
+          purpose: 'non-canonical reference',
+          lifecycle: { state: 'retired', reviewedAt: '2026-07-26', evidenceRefs: ['bureau:T063'] },
+        },
+      ],
+    },
+    {
+      label: 'duplicate lifecycle evidence references',
+      nodes: [{
+        id: 'repo:heimserver',
+        name: 'Heimserver',
+        type: 'repository',
+        purpose: 'retired historical reference',
+        lifecycle: {
+          state: 'retired',
+          reviewedAt: '2026-07-26',
+          evidenceRefs: ['bureau:T032', 'bureau:T032'],
+        },
+      }],
+    },
+    {
+      label: 'lifecycle evidence references with surrounding whitespace',
+      nodes: [{
+        id: 'repo:heimserver',
+        name: 'Heimserver',
+        type: 'repository',
+        purpose: 'retired historical reference',
+        lifecycle: {
+          state: 'retired',
+          reviewedAt: '2026-07-26',
+          evidenceRefs: ['bureau:T032', ' bureau:T063 '],
+        },
+      }],
+    },
+  ])('rejects $label', async ({ nodes }) => {
     const fixture = await makeFixture(new Date().toISOString(), {
-      nodesContent: `${JSON.stringify({ nodes: [duplicateNode, duplicateNode] })}\n`,
+      nodesContent: `${JSON.stringify({ nodes })}\n`,
     });
     process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
 
@@ -256,7 +312,7 @@ describe('getEcosystemMapData', () => {
 
     expect(data.view_meta.alignment_state).toBe('exact');
     expect(data.view_meta.semantic_review_state).toBe('unavailable');
-    expect(data.view_meta.semantic_node_count).toBe(2);
+    expect(data.view_meta.semantic_node_count).toBe(nodes.length);
     expect(data.view_meta.semantic_reviewed_node_count).toBe(0);
     expect(data.nodes).toEqual([]);
   });

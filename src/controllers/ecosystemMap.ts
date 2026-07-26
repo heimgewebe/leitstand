@@ -401,6 +401,7 @@ function inspectSemanticNodes(artifact: EcosystemMapArtifactView | undefined): S
       if (!isRecord(item)
         || typeof item.id !== 'string'
         || item.id.trim().length === 0
+        || item.id !== item.id.trim()
         || typeof item.name !== 'string'
         || item.name.trim().length === 0
         || typeof item.type !== 'string'
@@ -420,7 +421,9 @@ function inspectSemanticNodes(artifact: EcosystemMapArtifactView | undefined): S
         || !isExactCalendarDate(reviewedAt)
         || !Array.isArray(evidenceRefs)
         || evidenceRefs.length === 0
-        || evidenceRefs.some((value) => typeof value !== 'string' || value.trim().length === 0)
+        || evidenceRefs.some((value) => typeof value !== 'string'
+          || value.trim().length === 0
+          || value !== value.trim())
         || new Set(evidenceRefs).size !== evidenceRefs.length) {
         throw new Error(`registry node ${index} lifecycle mismatch`);
       }
