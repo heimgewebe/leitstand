@@ -27,6 +27,8 @@ SPEC.loader.exec_module(release)
 ATTEMPT = "20260714T000000000000Z-1-deadbeef"
 WEB_TEMPLATE = (REPO_ROOT / "deploy/systemd/leitstand.service").read_text("utf-8")
 STORAGE_TEMPLATE = (REPO_ROOT / "deploy/systemd/leitstand-storage-health.service").read_text("utf-8")
+SNAPSHOT_TEMPLATE = (REPO_ROOT / "deploy/systemd/leitstand-operator-snapshots.service").read_text("utf-8")
+SNAPSHOT_TIMER_TEMPLATE = (REPO_ROOT / "deploy/systemd/leitstand-operator-snapshots.timer").read_text("utf-8")
 
 
 class ReleaseRuntimeTest(unittest.TestCase):
@@ -151,6 +153,12 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
         (target / "deploy/systemd/leitstand.service").write_text(WEB_TEMPLATE, encoding="utf-8")
         (target / "deploy/systemd/leitstand-storage-health.service").write_text(
             STORAGE_TEMPLATE, encoding="utf-8"
+        )
+        (target / "deploy/systemd/leitstand-operator-snapshots.service").write_text(
+            SNAPSHOT_TEMPLATE, encoding="utf-8"
+        )
+        (target / "deploy/systemd/leitstand-operator-snapshots.timer").write_text(
+            SNAPSHOT_TIMER_TEMPLATE, encoding="utf-8"
         )
         script = target / "scripts/leitstand-release.py"
         script.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
@@ -323,10 +331,14 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
     def test_both_versioned_units_render_exact_release_and_safe_paths(self) -> None:
         target = self.create_verified_release("1" * 40)
         specs = self._rendered_specs(target)
-        self.assertEqual({spec.service for spec in specs}, {release.WEB_SERVICE, release.STORAGE_SERVICE})
+        self.assertEqual(
+            {spec.service for spec in specs},
+            {release.WEB_SERVICE, release.STORAGE_SERVICE, release.SNAPSHOT_SERVICE, release.SNAPSHOT_TIMER},
+        )
         for spec in specs:
             text = spec.content.decode()
-            self.assertIn(str(target), text)
+            if spec.service != release.SNAPSHOT_TIMER:
+                self.assertIn(str(target), text)
             self.assertNotIn("@", text)
         web_text = specs[0].content.decode("utf-8")
         self.assertIn(
@@ -335,10 +347,12 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
         )
         release.validate_unit_content(specs[0].content, target=target, config=self.config)
         release.validate_storage_unit_content(specs[1].content, target=target, config=self.config)
+        release.validate_snapshot_unit_content(specs[2].content, target=target, config=self.config)
+        release.validate_snapshot_timer_content(specs[3].content)
 
     def test_unit_validation_rejects_wide_bind_and_nonversioned_collector(self) -> None:
         target = self.create_verified_release("2" * 40)
-        web, storage = self._rendered_specs(target)
+        web, storage, snapshots, snapshot_timer = self._rendered_specs(target)
         with self.assertRaises(release.ReleaseError):
             release.validate_unit_content(
                 web.content.replace(b"127.0.0.1", b"0.0.0.0"),
@@ -352,6 +366,18 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
                 ),
                 target=target,
                 config=self.config,
+            )
+        with self.assertRaises(release.ReleaseError):
+            release.validate_snapshot_unit_content(
+                snapshots.content.replace(
+                    b"/scripts/leitstand-export-operator-snapshots", b"/bin/true"
+                ),
+                target=target,
+                config=self.config,
+            )
+        with self.assertRaises(release.ReleaseError):
+            release.validate_snapshot_timer_content(
+                snapshot_timer.content.replace(b"OnCalendar=", b"OnUnitActiveSec=")
             )
         other = self.root / "other-release"
         with self.assertRaisesRegex(release.ReleaseError, "exactly one line"):
@@ -481,7 +507,11 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
         self.paths.unit_target.write_bytes(b"changed\n")
         self.paths.storage_unit_target.write_bytes(b"changed\n")
         release.atomic_symlink(self.paths.current, os.path.relpath(second, self.paths.current.parent))
-        with patch.object(release, "run", return_value=subprocess.CompletedProcess([], 0, "", "")):
+        timer_before = {"UnitFileState": "disabled", "ActiveState": "inactive"}
+        with (
+            patch.object(release, "run", return_value=subprocess.CompletedProcess([], 0, "", "")),
+            patch.object(release, "_snapshot_timer_properties", return_value=timer_before),
+        ):
             result = release._restore_transaction(
                 self.paths,
                 current=current,
@@ -489,6 +519,7 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
                 units=states,
                 web_was_active=False,
                 storage_was_loaded=False,
+                snapshot_timer_before=timer_before,
                 prior_target=None,
             )
         self.assertTrue(result["complete"])
@@ -666,7 +697,31 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
             "WorkingDirectory": str(target),
             "ExecMainStatus": "0",
         }
-        return web, storage
+        assert self.paths.snapshot_unit_target is not None
+        snapshots = {
+            "LoadState": "loaded",
+            "ActiveState": "inactive",
+            "SubState": "dead",
+            "Result": "success",
+            "NRestarts": "0",
+            "MainPID": "0",
+            "FragmentPath": str(self.paths.snapshot_unit_target),
+            "WorkingDirectory": str(target),
+            "ExecMainStatus": "0",
+        }
+        assert self.paths.snapshot_timer_target is not None
+        snapshot_timer = {
+            "LoadState": "loaded",
+            "ActiveState": "active",
+            "SubState": "waiting",
+            "UnitFileState": "enabled",
+            "Result": "success",
+            "FragmentPath": str(self.paths.snapshot_timer_target),
+            "NextElapseUSecRealtime": "Mon 2026-07-27 20:00:00 CEST",
+            "NextElapseUSecMonotonic": "infinity",
+            "Triggers": release.SNAPSHOT_SERVICE,
+        }
+        return web, storage, snapshots, snapshot_timer
 
     def _http_fixture(self, head: str):
         health = json.dumps({
@@ -693,13 +748,19 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
         head = "7" * 40
         target = self.create_verified_release(head)
         release.atomic_symlink(self.paths.current, os.path.relpath(target, self.paths.current.parent))
-        web, storage = self._postflight_properties(target)
+        web, storage, snapshots, snapshot_timer = self._postflight_properties(target)
         calls = {release.WEB_SERVICE: 0}
         def properties(service=release.WEB_SERVICE, fields=None):
             if service == release.WEB_SERVICE:
                 calls[service] += 1
                 return dict(web)
-            return dict(storage)
+            if service == release.STORAGE_SERVICE:
+                return dict(storage)
+            if service == release.SNAPSHOT_SERVICE:
+                return dict(snapshots)
+            if service == release.SNAPSHOT_TIMER:
+                return dict(snapshot_timer)
+            raise AssertionError(service)
         fixture = self._http_fixture(head)
         original_resolve = Path.resolve
         def resolved(value, strict=False):
@@ -730,6 +791,8 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
             patch.object(release, "_systemctl_properties", return_value=before),
             patch.object(release, "_running_target", return_value=self.root / "legacy"),
             patch.object(release, "install_units", return_value={}),
+            patch.object(release, "_activate_snapshot_timer", return_value={}),
+            patch.object(release, "_run_operator_snapshot_producer", return_value={}),
             patch.object(release, "_run_storage_producer", return_value={}),
             patch.object(release, "_restart_service"),
             patch.object(release, "postflight", side_effect=release.ReleaseError("route failed")),
@@ -826,6 +889,8 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
             patch.object(release, "_systemctl_properties", return_value=before),
             patch.object(release, "_running_target", return_value=self.root / "legacy"),
             patch.object(release, "install_units", return_value={"units": "ok"}),
+            patch.object(release, "_activate_snapshot_timer", return_value={"ActiveState": "active"}),
+            patch.object(release, "_run_operator_snapshot_producer", return_value={"Result": "success"}),
             patch.object(release, "_run_storage_producer", return_value={"Result": "success"}),
             patch.object(release, "_restart_service"),
             patch.object(release, "postflight", return_value={"source_commit": head}),
@@ -844,7 +909,10 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
         self.assertEqual(payload["kind"], "switch-started")
         self.assertFalse(payload["effect_started"])
         self.assertEqual(payload["source_commit"], head)
-        self.assertEqual(set(payload["prior_units"]), {release.WEB_SERVICE, release.STORAGE_SERVICE})
+        self.assertEqual(
+            set(payload["prior_units"]),
+            {release.WEB_SERVICE, release.STORAGE_SERVICE, release.SNAPSHOT_SERVICE, release.SNAPSHOT_TIMER},
+        )
         backup = result["prior_state_backup"]
         backup_manifest = Path(backup["manifest_path"])
         self.assertTrue(backup_manifest.is_file())
@@ -870,6 +938,8 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
             patch.object(release, "_systemctl_properties", return_value=before),
             patch.object(release, "_running_target", return_value=self.root / "legacy"),
             patch.object(release, "install_units", return_value={}),
+            patch.object(release, "_activate_snapshot_timer", return_value={}),
+            patch.object(release, "_run_operator_snapshot_producer", return_value={}),
             patch.object(release, "_run_storage_producer", side_effect=release.ReleaseError("producer failed")),
             patch.object(release, "run", return_value=subprocess.CompletedProcess([], 0, "", "")),
         ):

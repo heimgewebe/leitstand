@@ -12,6 +12,8 @@ const MANIFEST_KIND = 'system_catalog_map_artifact_manifest';
 const MANIFEST_SCHEMA_PATH = 'catalog/ecosystem-map-artifact-manifest.schema.v1.json';
 const MANIFEST_MODE = 'read_only_projection_source';
 const DEFAULT_STALE_AFTER_HOURS = 168;
+const CURRENT_HEAD_CONTRACT_KIND = 'leitstand_source_head_snapshot';
+const CURRENT_HEAD_STALE_AFTER_MS = 20 * 60 * 1000;
 const GIT_TIMEOUT_MS = 2_500;
 const MAX_GIT_OUTPUT_BYTES = 1_000_000;
 
@@ -117,6 +119,13 @@ interface AlignmentInspection {
   verifiedArtifactCount: number;
 }
 
+interface CanonicalHeadInspection {
+  status: 'available' | 'unavailable';
+  reason: string;
+  head: string | null;
+  generatedAt: string | null;
+}
+
 export interface EcosystemMapNodeSemantics {
   node_id: string;
   name: string;
@@ -164,6 +173,9 @@ export interface EcosystemMapViewData {
     source_repository: string | null;
     source_commit: string | null;
     source_head: string | null;
+    canonical_head_status: 'available' | 'unavailable';
+    canonical_head_reason: string;
+    canonical_head_generated_at: string | null;
     commits_ahead: number | null;
     alignment_state: EcosystemMapAlignment;
     alignment_reason: string;
@@ -187,6 +199,11 @@ export interface EcosystemMapViewData {
 function configuredManifestPath(): string {
   return process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH
     || join(process.cwd(), 'artifacts', 'ecosystem-map-artifact-manifest.json');
+}
+
+function configuredCurrentHeadPath(): string {
+  return process.env.LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH
+    || join(process.cwd(), 'artifacts', 'ecosystem-map-current-head.json');
 }
 
 function configuredStaleAfterHours(): number {
@@ -234,6 +251,9 @@ function emptyData(
       source_repository: null,
       source_commit: null,
       source_head: null,
+      canonical_head_status: 'unavailable',
+      canonical_head_reason: reason,
+      canonical_head_generated_at: null,
       commits_ahead: null,
       alignment_state: 'unverifiable',
       alignment_reason: reason,
@@ -542,6 +562,32 @@ async function inspectCurrentArtifact(sourceRoot: string, artifact: MapManifestA
   }
 }
 
+async function readCanonicalHeadInspection(): Promise<CanonicalHeadInspection> {
+  const sourcePath = resolve(configuredCurrentHeadPath());
+  try {
+    const raw = JSON.parse(await readFile(sourcePath, 'utf-8')) as unknown;
+    if (!isRecord(raw)
+      || raw.schemaVersion !== 1
+      || raw.kind !== CURRENT_HEAD_CONTRACT_KIND
+      || raw.repository !== 'heimgewebe/systemkatalog'
+      || raw.ref !== 'refs/heads/main'
+      || typeof raw.generatedAt !== 'string') {
+      return { status: 'unavailable', reason: 'canonical_head_contract_mismatch', head: null, generatedAt: null };
+    }
+    const generatedMs = Date.parse(raw.generatedAt);
+    if (!Number.isFinite(generatedMs) || Date.now() - generatedMs > CURRENT_HEAD_STALE_AFTER_MS) {
+      return { status: 'unavailable', reason: 'canonical_head_snapshot_stale', head: null, generatedAt: raw.generatedAt };
+    }
+    if (raw.status !== 'available' || typeof raw.head !== 'string' || !/^[0-9a-f]{40}$/.test(raw.head)) {
+      return { status: 'unavailable', reason: 'canonical_head_unavailable', head: null, generatedAt: raw.generatedAt };
+    }
+    return { status: 'available', reason: 'canonical_head_fresh', head: raw.head, generatedAt: raw.generatedAt };
+  } catch {
+    return { status: 'unavailable', reason: 'canonical_head_snapshot_unreadable', head: null, generatedAt: null };
+  }
+}
+
+
 function runGit(sourceRoot: string, args: string[]): Promise<GitCommandResult> {
   return new Promise((resolveResult) => {
     const stdout: Buffer[] = [];
@@ -593,6 +639,7 @@ async function inspectAlignment(
   sourceRoot: string,
   manifest: MapManifest,
   currentArtifacts: ArtifactInspection[],
+  canonicalHead: CanonicalHeadInspection,
 ): Promise<AlignmentInspection> {
   const currentMismatch = currentArtifacts.find((item) => !item.matches);
   const headResult = await runGit(sourceRoot, ['rev-parse', '--verify', 'HEAD^{commit}']);
@@ -620,6 +667,24 @@ async function inspectAlignment(
     };
   }
   const verifiedSourceHead = sourceHead;
+  if (canonicalHead.status !== 'available' || canonicalHead.head === null) {
+    return {
+      state: 'unverifiable',
+      reason: canonicalHead.reason,
+      sourceHead: null,
+      commitsAhead: null,
+      verifiedArtifactCount: currentArtifacts.length,
+    };
+  }
+  if (canonicalHead.head !== verifiedSourceHead) {
+    return {
+      state: 'drifted',
+      reason: 'canonical_source_head_differs_from_release',
+      sourceHead: canonicalHead.head,
+      commitsAhead: null,
+      verifiedArtifactCount: currentArtifacts.length,
+    };
+  }
 
   const commitArtifacts = await Promise.all(manifest.artifacts.map(async (artifact) => {
     const result = await runGit(sourceRoot, [
@@ -769,7 +834,8 @@ export async function getEcosystemMapData(): Promise<EcosystemMapViewData> {
     );
     const semantics = inspectSemanticNodes(nodeInspection?.view);
     const missingReason = map?.missing_reason || (map ? 'ok' : 'artifact_role_missing');
-    const alignment = await inspectAlignment(sourceRoot, manifest, currentArtifacts);
+    const canonicalHead = await readCanonicalHeadInspection();
+    const alignment = await inspectAlignment(sourceRoot, manifest, currentArtifacts, canonicalHead);
     const combinedFreshness = combineFreshness(ageState.freshness_state, alignment);
 
     return {
@@ -785,6 +851,9 @@ export async function getEcosystemMapData(): Promise<EcosystemMapViewData> {
         source_repository: manifest.source.repository,
         source_commit: manifest.source.commit,
         source_head: alignment.sourceHead,
+        canonical_head_status: canonicalHead.status,
+        canonical_head_reason: canonicalHead.reason,
+        canonical_head_generated_at: canonicalHead.generatedAt,
         commits_ahead: alignment.commitsAhead,
         alignment_state: alignment.state,
         alignment_reason: alignment.reason,

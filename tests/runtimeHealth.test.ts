@@ -55,6 +55,41 @@ describe('runtime health receipt', () => {
       'utf-8',
     );
     await writeFile(
+      join(artifactsDir, 'operator-decision-axis.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'leitstand_operator_decision_axis_snapshot',
+        generatedAt: times.bureau,
+        sections: { now: {}, focus: {}, blocked: {}, convergence: {}, later: {} },
+      }),
+      'utf-8',
+    );
+    await writeFile(
+      join(artifactsDir, 'repoground-bundles.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'leitstand_repobrief_bundle_index',
+        generatedAt: times.bureau,
+        staleAfterSeconds: 1200,
+        sourceStatus: 'available',
+        bundles: [{ repo: 'leitstand' }],
+      }),
+      'utf-8',
+    );
+    await writeFile(
+      join(artifactsDir, 'ecosystem-map-current-head.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'leitstand_source_head_snapshot',
+        generatedAt: times.bureau,
+        repository: 'heimgewebe/systemkatalog',
+        ref: 'refs/heads/main',
+        status: 'available',
+        head: 'a'.repeat(40),
+      }),
+      'utf-8',
+    );
+    await writeFile(
       join(artifactsDir, 'storage-health.json'),
       JSON.stringify({
         kind: 'leitstand_storage_health',
@@ -77,7 +112,7 @@ describe('runtime health receipt', () => {
   it('reports ok when git and operator snapshots are fresh', async () => {
     await writeSnapshots('2026-07-08T17:55:00.000Z');
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)) });
 
     expect(receipt.status).toBe('ok');
     expect(receipt.kind).toBe('leitstand_runtime_health_receipt');
@@ -85,6 +120,12 @@ describe('runtime health receipt', () => {
     expect(receipt.git.branch).toBe('main');
     expect(receipt.snapshots.bureau_tasks.record_count).toBe(1);
     expect(receipt.snapshots.checkout_inventory.status).toBe('ok');
+    expect(receipt.snapshots.decision_axis.status).toBe('ok');
+    expect(receipt.snapshots.repoground.status).toBe('ok');
+    expect(receipt.snapshots.ecosystem_map_head.status).toBe('ok');
+    expect(receipt.checks.ecosystem_map_head_consistency).toMatchObject({
+      status: 'ok', reason: 'ecosystem_map_release_matches_canonical_head',
+    });
     expect(receipt.snapshots.storage_health.status).toBe('ok');
     expect(receipt.snapshots.ecosystem_map.status).toBe('ok');
     expect(receipt.ingress.status).toBe('not_checked');
@@ -99,7 +140,7 @@ describe('runtime health receipt', () => {
       ecosystem: '2026-07-01T19:00:00.000Z',
     });
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)) });
 
     expect(receipt.snapshots.bureau_tasks.stale_after_seconds).toBe(20 * 60);
     expect(receipt.snapshots.checkout_inventory.stale_after_seconds).toBe(20 * 60);
@@ -121,7 +162,7 @@ describe('runtime health receipt', () => {
       ecosystem: '2026-07-01T17:59:59.000Z',
     });
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)) });
 
     expect(receipt.snapshots.ecosystem_map).toMatchObject({
       status: 'warn',
@@ -136,6 +177,7 @@ describe('runtime health receipt', () => {
     const receipt = await getRuntimeHealthData({
       cwd: testDir,
       now,
+      ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)),
       staleAfterMsOverrides: {
         bureau_tasks: 20 * 60 * 1000,
         checkout_inventory: 20 * 60 * 1000,
@@ -163,7 +205,7 @@ describe('runtime health receipt', () => {
     await writeFile(join(worktreeGitDir, 'commondir'), '../..\n', 'utf-8');
     await writeFile(join(commonGitDir, 'refs', 'heads', 'feature'), `${'b'.repeat(40)}\n`, 'utf-8');
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)) });
 
     expect(receipt.status).toBe('ok');
     expect(receipt.git.status).toBe('ok');
@@ -186,7 +228,7 @@ describe('runtime health receipt', () => {
       'utf-8',
     );
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)) });
 
     expect(receipt.status).toBe('ok');
     expect(receipt.git.status).toBe('ok');
@@ -207,7 +249,7 @@ describe('runtime health receipt', () => {
       'utf-8',
     );
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)) });
 
     expect(receipt.status).toBe('fail');
     expect(receipt.snapshots.bureau_tasks.status).toBe('fail');
@@ -219,7 +261,7 @@ describe('runtime health receipt', () => {
     await writeSnapshots('2026-07-08T17:55:00.000Z');
     await rm(join(artifactsDir, 'bureau-tasks.json'));
 
-    const receipt = await getRuntimeHealthData({ cwd: testDir, now });
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)) });
 
     expect(receipt.status).toBe('fail');
     expect(receipt.snapshots.bureau_tasks.status).toBe('fail');

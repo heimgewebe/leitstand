@@ -44,7 +44,8 @@ A healthy release requires:
 - `/health` returns `kind=leitstand_runtime_health_receipt`;
 - the reported Git head matches the intended release;
 - required snapshot kinds validate;
-- Bureau and checkout snapshots are no older than 20 minutes;
+- Bureau, checkout, decision-axis, RepoGround-index, and Systemkatalog-head snapshots are no older than 20 minutes;
+- the Systemkatalog-head snapshot equals the immutable release used by the Systemkarte;
 - storage health is no older than 90 minutes;
 - the Systemkarte manifest is no older than 168 hours;
 - the overall receipt status is `ok`.
@@ -57,4 +58,4 @@ The in-process receipt does not establish DNS correctness, TLS trust, reverse-pr
 
 ## Deployment completion
 
-Deployment is complete only when release identity, listener ownership, HTTPS ingress, current route behavior, removed-route 404s, and `/health` evidence agree on the same release.
+Deployment is complete only when release identity, all four versioned user units, the recurring snapshot timer, producer outcomes, listener ownership, HTTPS ingress, current route behavior, removed-route 404s, and `/health` evidence agree on the same release.

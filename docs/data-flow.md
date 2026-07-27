@@ -24,9 +24,11 @@ No arrow returns from Leitstand to a source system. Leitstand does not ingest ev
 | --- | --- | --- | --- |
 | `leitstand_bureau_task_snapshot` | `artifacts/bureau-tasks.json` | `/bureau`, `/health` | Bureau |
 | `leitstand_checkout_inventory` | `artifacts/checkout-inventory.json` | `/checkouts`, `/health` | Grabowski |
+| `leitstand_operator_decision_axis_snapshot` | `artifacts/operator-decision-axis.json` | `/`, `/health` | Bureau and Grabowski producer evidence |
+| `leitstand_repobrief_bundle_index` | `artifacts/repoground-bundles.json` | `/repoground`, `/health` | canonical RepoGround publications |
+| `leitstand_source_head_snapshot` | `artifacts/ecosystem-map-current-head.json` | `/ecosystem-map`, `/health` | Systemkatalog remote `main` observation |
 | `leitstand_storage_health` | `artifacts/storage-health.json` | `/storage-health`, `/health` | storage-health producer |
-| `system_catalog_map_artifact_manifest` | `artifacts/ecosystem-map-artifact-manifest.json` | `/ecosystem-map`, `/health` | Systemkatalog publication |
-| RepoGround bundle index | configured RepoGround bundle path | `/repoground` | RepoGround publication |
+| `system_catalog_map_artifact_manifest` | configured immutable Systemkatalog release | `/ecosystem-map`, `/health` | Systemkatalog publication |
 
 The dashboard at `/` summarizes these projections. Every general panel must name its primary source, expose freshness, and state that the display is a non-authoritative projection. It does not combine the inputs into a new source of truth.
 
@@ -42,10 +44,13 @@ Development fixtures are allowed only as visibly marked non-operative examples. 
 | --- | ---: | --- | --- |
 | Bureau | 20 minutes | `warn` | `fail` |
 | Checkouts | 20 minutes | `warn` | `fail` |
+| Decision axis | 20 minutes | no priority items rendered | `fail` |
+| RepoGround publication index | 20 minutes | no bundles rendered | `fail` |
+| Systemkatalog canonical head | 20 minutes | `warn` | `fail` |
 | Storage health | 90 minutes | `warn` | `fail` |
-| Systemkarte | 168 hours | `warn` | `fail` |
+| Systemkarte manifest | 168 hours | `warn` | `fail` |
 
-Every snapshot entry in `/health` reports `age_seconds` and `stale_after_seconds`. RepoGround exposes its own source and freshness metadata in its view contract.
+Every snapshot entry in `/health` reports `age_seconds` and `stale_after_seconds`. The selected Systemkatalog release must equal the fresh canonical-head snapshot. RepoGround exposes bundles only when the canonical publication catalog is explicitly available and fresh.
 
 ## Authority boundary
 

@@ -107,15 +107,16 @@ function parseSnapshot(raw: unknown): Omit<DecisionAxisViewData, 'view_meta'> & 
       throw new Error(`invalid decision-axis section status ${id}`);
     }
     const observedAt = typeof section.observedAt === 'string' ? section.observedAt : null;
+    const freshnessState = freshnessOf(observedAt);
     const items = Array.isArray(section.items) ? section.items.slice(0, 8).map(parseItem) : [];
     return {
       id,
       label,
-      status,
+      status: freshnessState === 'fresh' ? status : 'unavailable',
       source: typeof section.source === 'string' && section.source ? section.source : 'unknown',
       observed_at: observedAt,
-      freshness_state: freshnessOf(observedAt),
-      items,
+      freshness_state: freshnessState,
+      items: freshnessState === 'fresh' ? items : [],
     } satisfies DecisionAxisSection;
   });
   const nonClaims = Array.isArray(snapshot.doesNotEstablish)
@@ -155,15 +156,22 @@ export async function getDecisionAxisData(): Promise<DecisionAxisViewData> {
   const sourcePath = resolve(snapshotPath());
   try {
     const parsed = parseSnapshot(JSON.parse(await readFile(sourcePath, 'utf-8')) as unknown);
+    const snapshotFreshness = freshnessOf(parsed.generatedAt);
     return {
-      sections: parsed.sections,
+      sections: snapshotFreshness === 'fresh'
+        ? parsed.sections
+        : parsed.sections.map((section) => ({
+          ...section,
+          status: 'unavailable' as const,
+          items: [],
+        })),
       view_meta: {
         source_kind: 'artifact',
         source_path: sourcePath,
         source_path_display: displaySourcePath(sourcePath),
-        missing_reason: 'ok',
+        missing_reason: snapshotFreshness === 'fresh' ? 'ok' : 'decision_axis_snapshot_not_fresh',
         generated_at: parsed.generatedAt,
-        freshness_state: freshnessOf(parsed.generatedAt),
+        freshness_state: snapshotFreshness,
         does_not_establish: parsed.doesNotEstablish,
       },
     };

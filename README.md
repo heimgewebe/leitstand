@@ -61,7 +61,7 @@ Expected properties:
 - HTTPS through the internal reverse proxy;
 - no WAN publication;
 - exact immutable Git release with commit and tree identity;
-- `leitstand.service` and `leitstand-storage-health.service` switched as one rollback-capable transaction;
+- `leitstand.service`, `leitstand-storage-health.service`, `leitstand-operator-snapshots.service`, and its recurring timer switched as one rollback-capable transaction;
 - create-only deployment receipts and idempotent same-release replay;
 - safe application bind on `127.0.0.1:3000`;
 - structured local and canonical route readbacks;
@@ -86,10 +86,13 @@ See:
 | --- | ---: |
 | Bureau snapshot | 20 minutes |
 | Checkout snapshot | 20 minutes |
+| Decision-axis snapshot | 20 minutes |
+| RepoGround publication index | 20 minutes |
+| Systemkatalog canonical-head snapshot | 20 minutes |
 | Storage health | 90 minutes |
 | Systemkarte manifest | 168 hours |
 
-A stale source yields `warn`. A missing, unreadable, invalid, or contract-mismatched required source yields `fail` and HTTP 503.
+A stale source yields `warn`. A missing, unreadable, invalid, or contract-mismatched required source yields `fail` and HTTP 503. The Systemkarte is healthy only when its selected immutable Systemkatalog release equals a fresh canonical `main` head snapshot. Stale decision-axis evidence renders no task priorities, and RepoGround bundles render only from a fresh, explicitly available canonical publication index.
 
 The receipt does not by itself prove DNS, TLS trust, reverse-proxy persistence, external reachability, or source-system correctness.
 

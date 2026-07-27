@@ -1,10 +1,10 @@
 import { readFile, stat } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
+import { basename, join, relative, resolve } from 'node:path';
 
 export type RuntimeHealthStatus = 'ok' | 'warn' | 'fail';
 export type RuntimeHealthCheckStatus = RuntimeHealthStatus | 'unknown';
 
-type SnapshotKind = 'bureau_tasks' | 'checkout_inventory' | 'storage_health' | 'ecosystem_map';
+type SnapshotKind = 'bureau_tasks' | 'checkout_inventory' | 'decision_axis' | 'repoground' | 'ecosystem_map_head' | 'storage_health' | 'ecosystem_map';
 
 export interface RuntimeHealthCheck {
   status: RuntimeHealthCheckStatus;
@@ -59,6 +59,10 @@ export interface RuntimeHealthOptions {
   now?: Date;
   bureauSnapshotPath?: string;
   checkoutSnapshotPath?: string;
+  decisionAxisSnapshotPath?: string;
+  repoGroundSnapshotPath?: string;
+  ecosystemMapCurrentHeadPath?: string;
+  ecosystemMapSourceRoot?: string;
   storageHealthSnapshotPath?: string;
   ecosystemMapManifestPath?: string;
   staleAfterMsOverrides?: Partial<Record<SnapshotKind, number>>;
@@ -67,6 +71,9 @@ export interface RuntimeHealthOptions {
 const SNAPSHOT_STALE_LIMITS_MS: Record<SnapshotKind, number> = {
   bureau_tasks: 20 * 60 * 1000,
   checkout_inventory: 20 * 60 * 1000,
+  decision_axis: 20 * 60 * 1000,
+  repoground: 20 * 60 * 1000,
+  ecosystem_map_head: 20 * 60 * 1000,
   storage_health: 90 * 60 * 1000,
   ecosystem_map: 168 * 60 * 60 * 1000,
 };
@@ -92,6 +99,15 @@ function snapshotPathFromEnv(kind: SnapshotKind, cwd: string): string {
   if (kind === 'bureau_tasks') {
     return process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH || join(cwd, 'artifacts', 'bureau-tasks.json');
   }
+  if (kind === 'decision_axis') {
+    return process.env.LEITSTAND_DECISION_AXIS_SNAPSHOT_PATH || join(cwd, 'artifacts', 'operator-decision-axis.json');
+  }
+  if (kind === 'repoground') {
+    return process.env.LEITSTAND_REPOGROUND_BUNDLES_PATH || join(cwd, 'artifacts', 'repoground-bundles.json');
+  }
+  if (kind === 'ecosystem_map_head') {
+    return process.env.LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH || join(cwd, 'artifacts', 'ecosystem-map-current-head.json');
+  }
   if (kind === 'storage_health') {
     return process.env.LEITSTAND_STORAGE_HEALTH_PATH || join(cwd, 'artifacts', 'storage-health.json');
   }
@@ -106,6 +122,25 @@ function snapshotRecordCount(kind: SnapshotKind, raw: unknown): number | null {
   const snapshot = raw as Record<string, unknown>;
   if (kind === 'bureau_tasks') return Array.isArray(snapshot.tasks) ? snapshot.tasks.length : null;
   if (kind === 'checkout_inventory') return Array.isArray(snapshot.checkouts) ? snapshot.checkouts.length : null;
+  if (kind === 'decision_axis') {
+    return typeof snapshot.sections === 'object' && snapshot.sections && !Array.isArray(snapshot.sections)
+      ? Object.keys(snapshot.sections as Record<string, unknown>).length
+      : null;
+  }
+  if (kind === 'repoground') {
+    return snapshot.sourceStatus === 'available'
+      && Number.isInteger(snapshot.staleAfterSeconds)
+      && Number(snapshot.staleAfterSeconds) > 0
+      && Array.isArray(snapshot.bundles)
+      && snapshot.bundles.length > 0
+      ? snapshot.bundles.length
+      : null;
+  }
+  if (kind === 'ecosystem_map_head') {
+    return snapshot.status === 'available' && typeof snapshot.head === 'string' && GIT_HEAD_RE.test(snapshot.head)
+      ? 1
+      : null;
+  }
   if (kind === 'storage_health') return typeof snapshot.current === 'object' && snapshot.current ? 1 : null;
   if (kind === 'ecosystem_map') return Array.isArray(snapshot.artifacts) ? snapshot.artifacts.length : null;
   return null;
@@ -128,6 +163,9 @@ function snapshotKind(raw: unknown): string | null {
 
 function expectedSnapshotKind(kind: SnapshotKind): string {
   if (kind === 'bureau_tasks') return 'leitstand_bureau_task_snapshot';
+  if (kind === 'decision_axis') return 'leitstand_operator_decision_axis_snapshot';
+  if (kind === 'repoground') return 'leitstand_repobrief_bundle_index';
+  if (kind === 'ecosystem_map_head') return 'leitstand_source_head_snapshot';
   if (kind === 'storage_health') return 'leitstand_storage_health';
   if (kind === 'ecosystem_map') return 'system_catalog_map_artifact_manifest';
   return 'leitstand_checkout_inventory';
@@ -338,6 +376,40 @@ async function readGitHealth(cwd: string): Promise<RuntimeHealthReceipt['git']> 
   }
 }
 
+async function readEcosystemMapHeadConsistency(
+  currentHeadPath: string,
+  sourceRoot: string,
+): Promise<RuntimeHealthCheck> {
+  try {
+    const raw = JSON.parse(await readFile(resolve(currentHeadPath), 'utf-8')) as unknown;
+    if (!raw || typeof raw !== 'object') {
+      return { status: 'fail', reason: 'ecosystem_map_current_head_contract_mismatch' };
+    }
+    const snapshot = raw as Record<string, unknown>;
+    const head = typeof snapshot.head === 'string' ? snapshot.head : '';
+    if (
+      snapshot.schemaVersion !== 1
+      || snapshot.kind !== 'leitstand_source_head_snapshot'
+      || snapshot.repository !== 'heimgewebe/systemkatalog'
+      || snapshot.ref !== 'refs/heads/main'
+      || snapshot.status !== 'available'
+      || !GIT_HEAD_RE.test(head)
+    ) {
+      return { status: 'fail', reason: 'ecosystem_map_current_head_unavailable' };
+    }
+    const releaseHead = basename(resolve(sourceRoot));
+    if (!GIT_HEAD_RE.test(releaseHead)) {
+      return { status: 'fail', reason: 'ecosystem_map_release_head_unbound' };
+    }
+    return head === releaseHead
+      ? { status: 'ok', reason: 'ecosystem_map_release_matches_canonical_head' }
+      : { status: 'fail', reason: 'ecosystem_map_release_behind_canonical_head' };
+  } catch {
+    return { status: 'fail', reason: 'ecosystem_map_current_head_read_failed' };
+  }
+}
+
+
 function summarizeStatus(checks: RuntimeHealthCheckStatus[]): RuntimeHealthStatus {
   if (checks.includes('fail')) return 'fail';
   if (checks.includes('warn') || checks.includes('unknown')) return 'warn';
@@ -355,21 +427,44 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
   const staleLimits = {
     bureau_tasks: options.staleAfterMsOverrides?.bureau_tasks ?? SNAPSHOT_STALE_LIMITS_MS.bureau_tasks,
     checkout_inventory: options.staleAfterMsOverrides?.checkout_inventory ?? SNAPSHOT_STALE_LIMITS_MS.checkout_inventory,
+    decision_axis: options.staleAfterMsOverrides?.decision_axis ?? SNAPSHOT_STALE_LIMITS_MS.decision_axis,
+    repoground: options.staleAfterMsOverrides?.repoground ?? SNAPSHOT_STALE_LIMITS_MS.repoground,
+    ecosystem_map_head: options.staleAfterMsOverrides?.ecosystem_map_head ?? SNAPSHOT_STALE_LIMITS_MS.ecosystem_map_head,
     storage_health: options.staleAfterMsOverrides?.storage_health ?? SNAPSHOT_STALE_LIMITS_MS.storage_health,
     ecosystem_map: options.staleAfterMsOverrides?.ecosystem_map ?? SNAPSHOT_STALE_LIMITS_MS.ecosystem_map,
   };
 
   const bureauPath = options.bureauSnapshotPath || snapshotPathFromEnv('bureau_tasks', cwd);
   const checkoutPath = options.checkoutSnapshotPath || snapshotPathFromEnv('checkout_inventory', cwd);
+  const decisionAxisPath = options.decisionAxisSnapshotPath || snapshotPathFromEnv('decision_axis', cwd);
+  const repoGroundPath = options.repoGroundSnapshotPath || snapshotPathFromEnv('repoground', cwd);
+  const ecosystemMapHeadPath = options.ecosystemMapCurrentHeadPath || snapshotPathFromEnv('ecosystem_map_head', cwd);
+  const ecosystemMapSourceRoot = options.ecosystemMapSourceRoot
+    || process.env.LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT
+    || join(cwd, 'artifacts', 'systemkatalog-release-unbound');
   const storageHealthPath = options.storageHealthSnapshotPath || snapshotPathFromEnv('storage_health', cwd);
   const ecosystemMapPath = options.ecosystemMapManifestPath || snapshotPathFromEnv('ecosystem_map', cwd);
 
-  const [git, bureauSnapshot, checkoutSnapshot, storageHealthSnapshot, ecosystemMapSnapshot] = await Promise.all([
+  const [
+    git,
+    bureauSnapshot,
+    checkoutSnapshot,
+    decisionAxisSnapshot,
+    repoGroundSnapshot,
+    ecosystemMapHeadSnapshot,
+    storageHealthSnapshot,
+    ecosystemMapSnapshot,
+    ecosystemMapHeadConsistency,
+  ] = await Promise.all([
     readGitHealth(cwd),
     readSnapshotHealth('bureau_tasks', bureauPath, cwd, now, staleLimits.bureau_tasks),
     readSnapshotHealth('checkout_inventory', checkoutPath, cwd, now, staleLimits.checkout_inventory),
+    readSnapshotHealth('decision_axis', decisionAxisPath, cwd, now, staleLimits.decision_axis),
+    readSnapshotHealth('repoground', repoGroundPath, cwd, now, staleLimits.repoground),
+    readSnapshotHealth('ecosystem_map_head', ecosystemMapHeadPath, cwd, now, staleLimits.ecosystem_map_head),
     readSnapshotHealth('storage_health', storageHealthPath, cwd, now, staleLimits.storage_health),
     readSnapshotHealth('ecosystem_map', ecosystemMapPath, cwd, now, staleLimits.ecosystem_map),
+    readEcosystemMapHeadConsistency(ecosystemMapHeadPath, ecosystemMapSourceRoot),
   ]);
 
   const checks: RuntimeHealthReceipt['checks'] = {
@@ -377,6 +472,10 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
     git_head: { status: git.status, reason: git.reason },
     bureau_snapshot: checkFromSnapshot(bureauSnapshot),
     checkout_snapshot: checkFromSnapshot(checkoutSnapshot),
+    decision_axis_snapshot: checkFromSnapshot(decisionAxisSnapshot),
+    repoground_snapshot: checkFromSnapshot(repoGroundSnapshot),
+    ecosystem_map_head_snapshot: checkFromSnapshot(ecosystemMapHeadSnapshot),
+    ecosystem_map_head_consistency: ecosystemMapHeadConsistency,
     storage_health_snapshot: checkFromSnapshot(storageHealthSnapshot),
     ecosystem_map_snapshot: checkFromSnapshot(ecosystemMapSnapshot),
   };
@@ -396,6 +495,9 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
     snapshots: {
       bureau_tasks: bureauSnapshot,
       checkout_inventory: checkoutSnapshot,
+      decision_axis: decisionAxisSnapshot,
+      repoground: repoGroundSnapshot,
+      ecosystem_map_head: ecosystemMapHeadSnapshot,
       storage_health: storageHealthSnapshot,
       ecosystem_map: ecosystemMapSnapshot,
     },

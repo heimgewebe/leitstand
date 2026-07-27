@@ -60,8 +60,9 @@ describe('decision axis controller', () => {
     });
 
     const data = await getDecisionAxisData();
-    expect(data.sections.find((section) => section.id === 'now')).toMatchObject({ status: 'unknown', items: [], freshness_state: 'stale' });
-    expect(data.sections.find((section) => section.id === 'later')).toMatchObject({ status: 'unknown', items: [] });
+    expect(data.sections.find((section) => section.id === 'now')).toMatchObject({ status: 'unavailable', items: [], freshness_state: 'stale' });
+    expect(data.sections.find((section) => section.id === 'later')).toMatchObject({ status: 'unavailable', items: [], freshness_state: 'stale' });
+    expect(data.view_meta.missing_reason).toBe('decision_axis_snapshot_not_fresh');
   });
 
   it('degrades every section explicitly when the snapshot is missing', async () => {
