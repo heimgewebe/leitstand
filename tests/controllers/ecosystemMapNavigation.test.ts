@@ -41,6 +41,11 @@ describe('ecosystem map node navigation', () => {
       'heimgewebe/systemkatalog',
       COMMIT,
       'rendered/ecosystem-registry-map.mmd',
+      [
+        { node_id: 'repo:bureau', purpose: 'task truth', lifecycle_state: 'active', lifecycle_reviewed_at: '2026-07-26' },
+        { node_id: 'repo:systemkatalog', purpose: 'catalog truth', lifecycle_state: 'active', lifecycle_reviewed_at: '2026-07-25' },
+        { node_id: 'service:github', purpose: 'repository truth', lifecycle_state: 'active', lifecycle_reviewed_at: '2026-07-24' },
+      ],
     );
 
     expect(navigation).toHaveLength(3);
@@ -48,11 +53,16 @@ describe('ecosystem map node navigation', () => {
       node_id: 'repo:bureau',
       href: '/bureau',
       target_kind: 'leitstand',
+      purpose: 'task truth',
+      lifecycle_state: 'active',
+      lifecycle_reviewed_at: '2026-07-26',
     });
     expect(navigation[1]).toMatchObject({
       node_id: 'repo:systemkatalog',
       target_kind: 'systemkatalog',
       href: `https://github.com/heimgewebe/systemkatalog/blob/${COMMIT}/rendered/ecosystem-registry-map.mmd?plain=1#L3`,
+      purpose: 'catalog truth',
+      lifecycle_state: 'active',
     });
     expect(navigation[2].source_href).toContain(`/${COMMIT}/rendered/ecosystem-registry-map.mmd?plain=1#L4`);
   });

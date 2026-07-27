@@ -1,6 +1,14 @@
 import type { EcosystemCrossViewLink } from './ecosystemMapLinks.js';
 
 export type EcosystemMapNavigationTargetKind = 'leitstand' | 'systemkatalog';
+export type EcosystemMapNavigationLifecycleState = 'active' | 'transition' | 'reference' | 'archived' | 'retired' | 'unknown';
+
+export interface EcosystemMapNodeSemanticInput {
+  node_id: string;
+  purpose: string;
+  lifecycle_state: Exclude<EcosystemMapNavigationLifecycleState, 'unknown'>;
+  lifecycle_reviewed_at: string;
+}
 
 export interface EcosystemMapNodeNavigation {
   mermaid_id: string;
@@ -10,6 +18,9 @@ export interface EcosystemMapNodeNavigation {
   title: string;
   target_kind: EcosystemMapNavigationTargetKind;
   source_href: string;
+  purpose: string;
+  lifecycle_state: EcosystemMapNavigationLifecycleState;
+  lifecycle_reviewed_at: string | null;
 }
 
 interface MermaidNodeIdentity {
@@ -74,8 +85,10 @@ export function buildEcosystemMapNavigation(
   sourceRepository: string,
   sourceCommit: string,
   mapPath: string,
+  nodeSemantics: EcosystemMapNodeSemanticInput[] = [],
 ): EcosystemMapNodeNavigation[] {
   const linkByNodeId = new Map(crossLinks.map((link) => [link.node_id, link]));
+  const semanticsByNodeId = new Map(nodeSemantics.map((node) => [node.node_id, node]));
 
   return extractMermaidNodeIdentities(mapContent).map((identity) => {
     const sourceHref = canonicalSourceHref(
@@ -86,6 +99,7 @@ export function buildEcosystemMapNavigation(
     );
     const mapped = linkByNodeId.get(identity.nodeId);
     const target = mapped?.status === 'linked' ? mapped.links[0] : undefined;
+    const semantics = semanticsByNodeId.get(identity.nodeId);
 
     return {
       mermaid_id: identity.mermaidId,
@@ -95,6 +109,9 @@ export function buildEcosystemMapNavigation(
       title: target?.title || `${identity.label} im kanonischen Systemkatalog öffnen`,
       target_kind: target ? 'leitstand' : 'systemkatalog',
       source_href: sourceHref,
+      purpose: semantics?.purpose || '',
+      lifecycle_state: semantics?.lifecycle_state || 'unknown',
+      lifecycle_reviewed_at: semantics?.lifecycle_reviewed_at || null,
     };
   });
 }

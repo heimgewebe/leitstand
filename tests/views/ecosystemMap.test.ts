@@ -42,6 +42,12 @@ describe('ecosystem-map view', () => {
           freshness_state: 'fresh',
           freshness_reason: 'artifact_alignment_verified',
           stale_after_hours: 168,
+          semantic_review_state: 'declared',
+          semantic_review_reason: 'registry_lifecycle_contract_verified',
+          semantic_reviewed_at: '2026-07-25',
+          semantic_reviewed_node_count: 2,
+          semantic_node_count: 2,
+          lifecycle_counts: { active: 1, transition: 0, reference: 0, archived: 0, retired: 1 },
           does_not_establish: ['runtime_correctness'],
         },
         node_navigation_json: '[{"mermaid_id":"repo_bureau","href":"/bureau"}]',
@@ -62,10 +68,14 @@ describe('ecosystem-map view', () => {
     expect(html).toContain('/assets/ecosystem-map.mjs');
     expect(html).toContain(commit);
     expect(html).toContain(head);
-    expect(html).toContain('Inhalt aktuell, Repository weiterentwickelt');
+    expect(html).toContain('Artefakte technisch konsistent, Repository weiterentwickelt');
     expect(html).toContain('4 spätere Commits');
     expect(html).toContain('aktuelle HEAD und der Arbeitsbaum enthalten weiterhin exakt dieselben 6 deklarierten Kartenartefakte');
     expect(html).toContain('compatible · 6/6 Artefakte');
+    expect(html).toContain('Semantikprüfung');
+    expect(html).toContain('ältestes Prüfdatum 2026-07-25');
+    expect(html).toContain('außer Betrieb 1');
+    expect(html).toContain('Lebenszyklus ist kein Runtime-Status');
     expect(html).toContain('fresh · artifact_alignment_verified');
     expect(html).toContain('12 min · Grenze 168 h');
     expect(html).not.toContain('cdn.jsdelivr');
@@ -103,6 +113,12 @@ describe('ecosystem-map view', () => {
           freshness_state: 'stale',
           freshness_reason: 'current_artifact_mismatch:rendered/ecosystem-registry-map.mmd',
           stale_after_hours: 168,
+          semantic_review_state: 'unavailable',
+          semantic_review_reason: 'artifact_integrity_mismatch',
+          semantic_reviewed_at: null,
+          semantic_reviewed_node_count: 0,
+          semantic_node_count: 0,
+          lifecycle_counts: { active: 0, transition: 0, reference: 0, archived: 0, retired: 0 },
           does_not_establish: ['runtime_correctness'],
         },
         node_navigation_json: '[]',
@@ -154,6 +170,9 @@ describe('ecosystem-map view', () => {
     expect(browserModule).toContain('Umfeld erweitern');
     expect(browserModule).toContain('Kanonische Quelle');
     expect(browserModule).toContain("url.searchParams.set('node'");
+    expect(browserModule).toContain("url.searchParams.set('lifecycle'");
+    expect(browserModule).toContain('data-map-lifecycle-filters');
+    expect(browserModule).toContain('Alle Lebenszyklen');
     expect(browserModule).toContain("url.searchParams.set('view'");
     expect(browserModule).toContain("initialParameters.get('depth') === '2'");
     expect(browserModule).toContain("svg.addEventListener('pointermove'");

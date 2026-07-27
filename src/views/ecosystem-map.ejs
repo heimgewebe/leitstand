@@ -80,13 +80,13 @@
       <p class="subtitle">Grafische, ausschließlich lesende Projektion der vom Systemkatalog verantworteten Ökosystemsemantik.</p>
     </header>
 
-    <section class="truth-banner" data-state="<%= view_meta.alignment_state %>" aria-label="Inhaltlicher Quellenabgleich">
+    <section class="truth-banner" data-state="<%= view_meta.alignment_state %>" aria-label="Technischer Artefaktabgleich">
       <% if (view_meta.alignment_state === 'exact') { %>
-        <strong>Exakt gebunden</strong>
-        <p>Der Kartencommit entspricht dem aktuellen Systemkatalog-HEAD. Alle <%= view_meta.verified_artifact_count %> deklarierten Artefakte stimmen mit Manifest, Arbeitsbaum und gebundenem Git-Commit überein.</p>
+        <strong>Exakt gebunden – technische Artefakte</strong>
+        <p>Der Kartencommit entspricht dem aktuellen Systemkatalog-HEAD. Alle <%= view_meta.verified_artifact_count %> deklarierten Artefakte stimmen mit Manifest, Arbeitsbaum und gebundenem Git-Commit überein. Das belegt technische Konsistenz, nicht Runtime-Gesundheit oder eine neue semantische Prüfung.</p>
       <% } else if (view_meta.alignment_state === 'compatible') { %>
-        <strong>Inhalt aktuell, Repository weiterentwickelt</strong>
-        <p>Seit dem Kartencommit gibt es <%= view_meta.commits_ahead === null ? 'weitere' : view_meta.commits_ahead %> spätere Commits. Der aktuelle HEAD und der Arbeitsbaum enthalten weiterhin exakt dieselben <%= view_meta.declared_artifact_count %> deklarierten Kartenartefakte.</p>
+        <strong>Artefakte technisch konsistent, Repository weiterentwickelt</strong>
+        <p>Seit dem Kartencommit gibt es <%= view_meta.commits_ahead === null ? 'weitere' : view_meta.commits_ahead %> spätere Commits. Der aktuelle HEAD und der Arbeitsbaum enthalten weiterhin exakt dieselben <%= view_meta.declared_artifact_count %> deklarierten Kartenartefakte. Das belegt unveränderte Bytes, nicht automatisch aktuelle Semantik.</p>
       <% } else if (view_meta.alignment_state === 'drifted') { %>
         <strong>Drift erkannt</strong>
         <p>Mindestens ein Kartenartefakt oder seine Commitbindung stimmt nicht mehr. Technischer Grund: <code><%= view_meta.alignment_reason %></code>.</p>
@@ -113,7 +113,7 @@
           <a href="https://github.com/<%= view_meta.source_repository %>/blob/<%= view_meta.source_commit %>/<%= map.path %>"><%= map.path %></a>
           · <%= map.bytes %> Bytes · sha256 <%= map.sha256 %>
         </p>
-        <p class="link-note">Knoten mit einer passenden Leitstand-Ansicht öffnen diese Ansicht. Alle übrigen Knoten führen zur exakten Definitionszeile im gebundenen Systemkatalog-Commit. Tastatur: / sucht, F schaltet Vollbild, Esc beendet Vollbild oder Auswahl.</p>
+        <p class="link-note">Knoten lassen sich unabhängig nach Systemart und stabilem Lebenszyklus filtern. Eine passende Leitstand-Ansicht öffnet die jeweilige Ansicht; alle übrigen Knoten führen zur exakten Definitionszeile im gebundenen Systemkatalog-Commit. Lebenszyklus ist kein Runtime-Status. Tastatur: / sucht, F schaltet Vollbild, Esc beendet Vollbild oder Auswahl.</p>
         <div id="ecosystem-map-workspace" class="map-workspace" data-ecosystem-map-workspace tabindex="-1">
           <div class="map-workspace-toolbar">
             <span class="map-workspace-title">Ökosystemkarte</span>
@@ -138,13 +138,27 @@
       <summary>Quellen-, Prüf- und Zuständigkeitsdetails</summary>
       <div class="source-details-content">
         <section class="notice" aria-label="Zuständigkeitsgrenze">
-          <strong>Nur Ansicht.</strong> Der Systemkatalog besitzt Systeme, Beziehungen und Bedeutungen. Leitstand rendert das geprüfte, commit- und hashgebundene Artefakt als SVG. Er bearbeitet die Karte nicht, leitet keine neue Wahrheit ab und löst keine Aufgaben oder Änderungen aus.
+          <strong>Nur Ansicht.</strong> Der Systemkatalog besitzt Systeme, stabile Lebenszyklen, Beziehungen und Bedeutungen. Leitstand rendert die commit- und hashgebundenen Artefakte und zeigt die darin deklarierte Semantik getrennt von Artefaktalter und Runtime-Zustand. Er bearbeitet die Karte nicht, leitet keine neue Wahrheit ab und löst keine Aufgaben oder Änderungen aus.
         </section>
 
         <section class="meta-grid" aria-label="Quellenmetadaten">
-          <div class="meta-item"><div class="label">Gesamtstatus</div><div class="value" data-state="<%= view_meta.freshness_state %>"><%= view_meta.freshness_state %> · <%= view_meta.freshness_reason %></div></div>
-          <div class="meta-item"><div class="label">Inhaltsabgleich</div><div class="value" data-state="<%= view_meta.alignment_state %>"><%= view_meta.alignment_state %> · <%= view_meta.verified_artifact_count %>/<%= view_meta.declared_artifact_count %> Artefakte</div></div>
+          <div class="meta-item"><div class="label">Technische Freshness</div><div class="value" data-state="<%= view_meta.freshness_state %>"><%= view_meta.freshness_state %> · <%= view_meta.freshness_reason %></div></div>
+          <div class="meta-item"><div class="label">Artefaktabgleich</div><div class="value" data-state="<%= view_meta.alignment_state %>"><%= view_meta.alignment_state %> · <%= view_meta.verified_artifact_count %>/<%= view_meta.declared_artifact_count %> Artefakte</div></div>
           <div class="meta-item"><div class="label">Quellzustand</div><div class="value"><%= view_meta.source_kind %> / <%= view_meta.missing_reason %></div></div>
+          <div class="meta-item">
+            <div class="label">Semantikprüfung</div>
+            <div class="value" data-state="<%= view_meta.semantic_review_state === 'declared' ? 'exact' : 'unverifiable' %>">
+              <% if (view_meta.semantic_review_state === 'declared') { %>
+                deklariert · <%= view_meta.semantic_reviewed_node_count %>/<%= view_meta.semantic_node_count %> Knoten · ältestes Prüfdatum <%= view_meta.semantic_reviewed_at || '—' %>
+              <% } else { %>
+                nicht verfügbar · <%= view_meta.semantic_review_reason %>
+              <% } %>
+            </div>
+          </div>
+          <div class="meta-item">
+            <div class="label">Lebenszyklen</div>
+            <div class="value">aktiv <%= view_meta.lifecycle_counts.active %> · Übergang <%= view_meta.lifecycle_counts.transition %> · Referenz <%= view_meta.lifecycle_counts.reference %> · archiviert <%= view_meta.lifecycle_counts.archived %> · außer Betrieb <%= view_meta.lifecycle_counts.retired %></div>
+          </div>
           <div class="meta-item"><div class="label">Alter</div><div class="value"><% if (view_meta.data_age_minutes !== null) { %><%= view_meta.data_age_minutes %> min · Grenze <%= view_meta.stale_after_hours %> h<% } else { %>—<% } %></div></div>
           <div class="meta-item">
             <div class="label">Gebundener Commit</div>

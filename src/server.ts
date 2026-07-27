@@ -136,6 +136,7 @@ app.get('/ecosystem-map', async (_req, res) => {
         data.view_meta.source_repository,
         data.view_meta.source_commit,
         data.map.path,
+        data.nodes,
       )
       : [];
     res.render('ecosystem-map', {

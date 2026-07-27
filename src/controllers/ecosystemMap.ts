@@ -60,6 +60,16 @@ const DOES_NOT_ESTABLISH_CONTRACT = [
 export type EcosystemMapSourceKind = 'artifact' | 'missing' | 'corrupt';
 export type EcosystemMapFreshness = 'fresh' | 'stale' | 'unknown';
 export type EcosystemMapAlignment = 'exact' | 'compatible' | 'drifted' | 'unverifiable';
+export type EcosystemMapLifecycleState = 'active' | 'transition' | 'reference' | 'archived' | 'retired';
+export type EcosystemMapSemanticReviewState = 'declared' | 'unavailable';
+
+const LIFECYCLE_STATES: readonly EcosystemMapLifecycleState[] = [
+  'active',
+  'transition',
+  'reference',
+  'archived',
+  'retired',
+];
 
 interface MapManifestArtifact {
   role: string;
@@ -107,6 +117,25 @@ interface AlignmentInspection {
   verifiedArtifactCount: number;
 }
 
+export interface EcosystemMapNodeSemantics {
+  node_id: string;
+  name: string;
+  type: string;
+  purpose: string;
+  lifecycle_state: EcosystemMapLifecycleState;
+  lifecycle_reviewed_at: string;
+  lifecycle_evidence_refs: string[];
+}
+
+interface SemanticInspection {
+  nodes: EcosystemMapNodeSemantics[];
+  declaredNodeCount: number;
+  reviewState: EcosystemMapSemanticReviewState;
+  reviewReason: string;
+  reviewedAt: string | null;
+  lifecycleCounts: Record<EcosystemMapLifecycleState, number>;
+}
+
 export interface EcosystemMapArtifactView {
   role: string;
   path: string;
@@ -119,6 +148,7 @@ export interface EcosystemMapArtifactView {
 
 export interface EcosystemMapViewData {
   map: EcosystemMapArtifactView | null;
+  nodes: EcosystemMapNodeSemantics[];
   cross_links: EcosystemCrossViewLink[];
   cross_link_meta: {
     source_kind: string;
@@ -144,6 +174,12 @@ export interface EcosystemMapViewData {
     freshness_state: EcosystemMapFreshness;
     freshness_reason: string;
     stale_after_hours: number;
+    semantic_review_state: EcosystemMapSemanticReviewState;
+    semantic_review_reason: string;
+    semantic_reviewed_at: string | null;
+    semantic_reviewed_node_count: number;
+    semantic_node_count: number;
+    lifecycle_counts: Record<EcosystemMapLifecycleState, number>;
     does_not_establish: string[];
   };
 }
@@ -187,6 +223,7 @@ function emptyData(
 ): EcosystemMapViewData {
   return {
     map: null,
+    nodes: [],
     cross_links: crossLinks.links,
     cross_link_meta: crossLinks.meta,
     view_meta: {
@@ -207,6 +244,12 @@ function emptyData(
       freshness_state: 'unknown',
       freshness_reason: reason,
       stale_after_hours: configuredStaleAfterHours(),
+      semantic_review_state: 'unavailable',
+      semantic_review_reason: reason,
+      semantic_reviewed_at: null,
+      semantic_reviewed_node_count: 0,
+      semantic_node_count: 0,
+      lifecycle_counts: { active: 0, transition: 0, reference: 0, archived: 0, retired: 0 },
       does_not_establish: [
         'claim_truth',
         'runtime_correctness',
@@ -316,6 +359,100 @@ function parseManifest(raw: unknown): MapManifest {
     artifacts,
     doesNotEstablish: [...DOES_NOT_ESTABLISH_CONTRACT],
   };
+}
+
+function emptyLifecycleCounts(): Record<EcosystemMapLifecycleState, number> {
+  return { active: 0, transition: 0, reference: 0, archived: 0, retired: 0 };
+}
+
+function isExactCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (year < 1 || month < 1 || month > 12 || day < 1) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1];
+}
+
+function inspectSemanticNodes(artifact: EcosystemMapArtifactView | undefined): SemanticInspection {
+  let declaredNodeCount = 0;
+  const unavailable = (reason: string): SemanticInspection => ({
+    nodes: [],
+    declaredNodeCount,
+    reviewState: 'unavailable',
+    reviewReason: reason,
+    reviewedAt: null,
+    lifecycleCounts: emptyLifecycleCounts(),
+  });
+  if (!artifact?.content) return unavailable(artifact?.missing_reason || 'registry_nodes_unavailable');
+
+  try {
+    const raw = JSON.parse(artifact.content) as unknown;
+    if (!isRecord(raw) || !Array.isArray(raw.nodes) || raw.nodes.length === 0) {
+      return unavailable('registry_nodes_contract_mismatch');
+    }
+    declaredNodeCount = raw.nodes.length;
+    const counts = emptyLifecycleCounts();
+    const seenNodeIds = new Set<string>();
+    const nodes = raw.nodes.map((item, index): EcosystemMapNodeSemantics => {
+      if (!isRecord(item)
+        || typeof item.id !== 'string'
+        || item.id.trim().length === 0
+        || item.id !== item.id.trim()
+        || typeof item.name !== 'string'
+        || item.name.trim().length === 0
+        || typeof item.type !== 'string'
+        || item.type.trim().length === 0
+        || typeof item.purpose !== 'string'
+        || item.purpose.trim().length === 0
+        || !isRecord(item.lifecycle)
+        || seenNodeIds.has(item.id)) {
+        throw new Error(`registry node ${index} fields mismatch`);
+      }
+      seenNodeIds.add(item.id);
+      const state = item.lifecycle.state;
+      const reviewedAt = item.lifecycle.reviewedAt;
+      const evidenceRefs = item.lifecycle.evidenceRefs;
+      if (!LIFECYCLE_STATES.includes(state as EcosystemMapLifecycleState)
+        || typeof reviewedAt !== 'string'
+        || !isExactCalendarDate(reviewedAt)
+        || !Array.isArray(evidenceRefs)
+        || evidenceRefs.length === 0
+        || evidenceRefs.some((value) => typeof value !== 'string'
+          || value.trim().length === 0
+          || value !== value.trim())
+        || new Set(evidenceRefs).size !== evidenceRefs.length) {
+        throw new Error(`registry node ${index} lifecycle mismatch`);
+      }
+      const lifecycleState = state as EcosystemMapLifecycleState;
+      counts[lifecycleState] += 1;
+      return {
+        node_id: item.id,
+        name: item.name,
+        type: item.type,
+        purpose: item.purpose,
+        lifecycle_state: lifecycleState,
+        lifecycle_reviewed_at: reviewedAt,
+        lifecycle_evidence_refs: [...evidenceRefs] as string[],
+      };
+    });
+    const reviewedAt = nodes
+      .map((node) => node.lifecycle_reviewed_at)
+      .sort((left, right) => left.localeCompare(right))[0] || null;
+    return {
+      nodes,
+      declaredNodeCount,
+      reviewState: 'declared',
+      reviewReason: 'registry_lifecycle_contract_verified',
+      reviewedAt,
+      lifecycleCounts: counts,
+    };
+  } catch {
+    return unavailable('registry_lifecycle_contract_unavailable');
+  }
 }
 
 function ageFreshness(generatedAt: string | null, staleAfterHours: number): {
@@ -627,12 +764,17 @@ export async function getEcosystemMapData(): Promise<EcosystemMapViewData> {
       (item) => item.artifact.role === 'canonical_ecosystem_map_mermaid',
     );
     const map = mapInspection?.view || null;
+    const nodeInspection = currentArtifacts.find(
+      (item) => item.artifact.role === 'registry_nodes',
+    );
+    const semantics = inspectSemanticNodes(nodeInspection?.view);
     const missingReason = map?.missing_reason || (map ? 'ok' : 'artifact_role_missing');
     const alignment = await inspectAlignment(sourceRoot, manifest, currentArtifacts);
     const combinedFreshness = combineFreshness(ageState.freshness_state, alignment);
 
     return {
       map,
+      nodes: semantics.nodes,
       cross_links: crossLinks.links,
       cross_link_meta: crossLinks.meta,
       view_meta: {
@@ -653,6 +795,12 @@ export async function getEcosystemMapData(): Promise<EcosystemMapViewData> {
         freshness_state: combinedFreshness.state,
         freshness_reason: combinedFreshness.reason,
         stale_after_hours: staleAfterHours,
+        semantic_review_state: semantics.reviewState,
+        semantic_review_reason: semantics.reviewReason,
+        semantic_reviewed_at: semantics.reviewedAt,
+        semantic_reviewed_node_count: semantics.nodes.length,
+        semantic_node_count: semantics.declaredNodeCount,
+        lifecycle_counts: semantics.lifecycleCounts,
         does_not_establish: manifest.doesNotEstablish,
       },
     };

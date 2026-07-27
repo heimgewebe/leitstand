@@ -29,7 +29,7 @@ const ARTIFACT_CONTENT = [
     role: 'registry_nodes',
     path: 'registry/ecosystem/nodes.json',
     contentType: 'application/json',
-    content: '{"nodes":[]}\n',
+    content: '{"nodes":[{"id":"repo:systemkatalog","name":"Systemkatalog","type":"repository","purpose":"stable catalog semantics","lifecycle":{"state":"active","reviewedAt":"2026-07-26","evidenceRefs":["policy/system-catalog.v1.json"]}},{"id":"repo:heimserver","name":"Heimserver","type":"repository","purpose":"retired historical reference","lifecycle":{"state":"retired","reviewedAt":"2026-07-25","evidenceRefs":["bureau:T032"]}}]}\n',
   },
   {
     role: 'registry_edges',
@@ -96,14 +96,20 @@ async function initializeRepository(sourceRoot: string): Promise<string> {
 
 async function makeFixture(
   generatedAt = new Date().toISOString(),
-  options: { initializeGit?: boolean } = {},
+  options: { initializeGit?: boolean; nodesContent?: string } = {},
 ) {
   const root = await mkdtemp(join(tmpdir(), 'leitstand-map-'));
   tempRoots.push(root);
   const sourceRoot = join(root, 'systemkatalog');
   await mkdir(sourceRoot, { recursive: true });
 
-  for (const artifact of ARTIFACT_CONTENT) {
+  const artifacts = ARTIFACT_CONTENT.map((artifact) => (
+    artifact.role === 'registry_nodes' && options.nodesContent !== undefined
+      ? { ...artifact, content: options.nodesContent }
+      : artifact
+  ));
+
+  for (const artifact of artifacts) {
     const target = join(sourceRoot, artifact.path);
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, artifact.content, 'utf-8');
@@ -125,8 +131,8 @@ async function makeFixture(
       commit: sourceCommit,
       generatedAt,
     },
-    artifactCount: ARTIFACT_CONTENT.length,
-    artifacts: ARTIFACT_CONTENT.map((artifact) => ({
+    artifactCount: artifacts.length,
+    artifacts: artifacts.map((artifact) => ({
       role: artifact.role,
       path: artifact.path,
       contentType: artifact.contentType,
@@ -167,9 +173,148 @@ describe('getEcosystemMapData', () => {
     expect(data.view_meta.verified_artifact_count).toBe(6);
     expect(data.view_meta.declared_artifact_count).toBe(6);
     expect(data.view_meta.freshness_state).toBe('fresh');
+    expect(data.view_meta.semantic_review_state).toBe('declared');
+    expect(data.view_meta.semantic_reviewed_at).toBe('2026-07-25');
+    expect(data.view_meta.semantic_reviewed_node_count).toBe(2);
+    expect(data.view_meta.lifecycle_counts).toEqual({
+      active: 1, transition: 0, reference: 0, archived: 0, retired: 1,
+    });
+    expect(data.nodes).toMatchObject([
+      { node_id: 'repo:systemkatalog', lifecycle_state: 'active' },
+      { node_id: 'repo:heimserver', lifecycle_state: 'retired' },
+    ]);
     expect(data.map?.role).toBe('canonical_ecosystem_map_mermaid');
     expect(data.map?.content).toContain('Systemkatalog');
     expect(data.view_meta.does_not_establish).toContain('runtime_correctness');
+  });
+
+  it('keeps technical artifact truth fresh when lifecycle semantics are unavailable', async () => {
+    const fixture = await makeFixture(new Date().toISOString(), {
+      nodesContent: '{"nodes":[{"id":"repo:systemkatalog","name":"Systemkatalog","type":"repository","purpose":"catalog","lifecycle":{"state":"running","reviewedAt":"not-a-date","evidenceRefs":[]}}]}\n',
+    });
+    process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
+
+    const data = await getEcosystemMapData();
+
+    expect(data.view_meta.alignment_state).toBe('exact');
+    expect(data.view_meta.freshness_state).toBe('fresh');
+    expect(data.view_meta.semantic_review_state).toBe('unavailable');
+    expect(data.view_meta.semantic_review_reason).toBe('registry_lifecycle_contract_unavailable');
+    expect(data.view_meta.semantic_reviewed_node_count).toBe(0);
+    expect(data.view_meta.semantic_node_count).toBe(1);
+    expect(data.nodes).toEqual([]);
+    expect(data.view_meta.lifecycle_counts).toEqual({
+      active: 0, transition: 0, reference: 0, archived: 0, retired: 0,
+    });
+  });
+
+  it.each(['2026-02-30', '2025-02-29', '0000-01-01', '2026-2-03'])(
+    'rejects non-canonical or impossible lifecycle date %s without degrading artifact freshness',
+    async (reviewedAt) => {
+      const fixture = await makeFixture(new Date().toISOString(), {
+        nodesContent: `${JSON.stringify({
+          nodes: [{
+            id: 'repo:heimserver',
+            name: 'Heimserver',
+            type: 'repository',
+            purpose: 'retired historical reference',
+            lifecycle: { state: 'retired', reviewedAt, evidenceRefs: ['bureau:T032'] },
+          }],
+        })}\n`,
+      });
+      process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
+
+      const data = await getEcosystemMapData();
+
+      expect(data.view_meta.alignment_state).toBe('exact');
+      expect(data.view_meta.freshness_state).toBe('fresh');
+      expect(data.view_meta.semantic_review_state).toBe('unavailable');
+      expect(data.view_meta.semantic_node_count).toBe(1);
+      expect(data.view_meta.semantic_reviewed_node_count).toBe(0);
+      expect(data.nodes).toEqual([]);
+    },
+  );
+
+  it.each([
+    {
+      label: 'duplicate node identities',
+      nodes: [
+        {
+          id: 'repo:heimserver',
+          name: 'Heimserver',
+          type: 'repository',
+          purpose: 'retired historical reference',
+          lifecycle: { state: 'retired', reviewedAt: '2026-07-26', evidenceRefs: ['bureau:T032'] },
+        },
+        {
+          id: 'repo:heimserver',
+          name: 'Heimserver duplicate',
+          type: 'repository',
+          purpose: 'duplicate reference',
+          lifecycle: { state: 'retired', reviewedAt: '2026-07-26', evidenceRefs: ['bureau:T063'] },
+        },
+      ],
+    },
+    {
+      label: 'node identities with surrounding whitespace',
+      nodes: [
+        {
+          id: 'repo:heimserver',
+          name: 'Heimserver',
+          type: 'repository',
+          purpose: 'retired historical reference',
+          lifecycle: { state: 'retired', reviewedAt: '2026-07-26', evidenceRefs: ['bureau:T032'] },
+        },
+        {
+          id: ' repo:heimserver ',
+          name: 'Heimserver spaced',
+          type: 'repository',
+          purpose: 'non-canonical reference',
+          lifecycle: { state: 'retired', reviewedAt: '2026-07-26', evidenceRefs: ['bureau:T063'] },
+        },
+      ],
+    },
+    {
+      label: 'duplicate lifecycle evidence references',
+      nodes: [{
+        id: 'repo:heimserver',
+        name: 'Heimserver',
+        type: 'repository',
+        purpose: 'retired historical reference',
+        lifecycle: {
+          state: 'retired',
+          reviewedAt: '2026-07-26',
+          evidenceRefs: ['bureau:T032', 'bureau:T032'],
+        },
+      }],
+    },
+    {
+      label: 'lifecycle evidence references with surrounding whitespace',
+      nodes: [{
+        id: 'repo:heimserver',
+        name: 'Heimserver',
+        type: 'repository',
+        purpose: 'retired historical reference',
+        lifecycle: {
+          state: 'retired',
+          reviewedAt: '2026-07-26',
+          evidenceRefs: ['bureau:T032', ' bureau:T063 '],
+        },
+      }],
+    },
+  ])('rejects $label', async ({ nodes }) => {
+    const fixture = await makeFixture(new Date().toISOString(), {
+      nodesContent: `${JSON.stringify({ nodes })}\n`,
+    });
+    process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
+
+    const data = await getEcosystemMapData();
+
+    expect(data.view_meta.alignment_state).toBe('exact');
+    expect(data.view_meta.semantic_review_state).toBe('unavailable');
+    expect(data.view_meta.semantic_node_count).toBe(nodes.length);
+    expect(data.view_meta.semantic_reviewed_node_count).toBe(0);
+    expect(data.nodes).toEqual([]);
   });
 
   it('reports compatible newer commits when declared artifacts remain byte-identical', async () => {
