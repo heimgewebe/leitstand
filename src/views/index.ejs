@@ -376,7 +376,13 @@
                 <% }); %>
               </ol>
             <% } else { %>
-              <p class="decision-empty"><%= section.status === 'unavailable' ? 'Quelle nicht verfügbar.' : 'Aktuell kein belegter Eintrag.' %></p>
+              <p class="decision-empty"><%= section.freshness_state === 'stale'
+                ? 'Quelle veraltet; keine Priorität wird angezeigt.'
+                : section.freshness_state === 'unknown'
+                  ? 'Frische nicht belegt; keine Priorität wird angezeigt.'
+                  : section.status === 'unavailable'
+                    ? 'Quelle nicht verfügbar.'
+                    : 'Aktuell kein belegter Eintrag.' %></p>
             <% } %>
           </article>
         <% }); %>

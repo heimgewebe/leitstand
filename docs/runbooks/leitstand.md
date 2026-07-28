@@ -26,9 +26,9 @@ Current inputs:
 
 ## Canonical deployment
 
-Production uses `scripts/leitstand-release.py` and the coupled versioned units `leitstand.service` plus `leitstand-storage-health.service`. Host-specific paths come from an exact JSON file based on `deploy/systemd/runtime-config.example.json`.
+Production uses `scripts/leitstand-release.py` and four coupled versioned units: `leitstand.service`, `leitstand-storage-health.service`, `leitstand-operator-snapshots.service`, and `leitstand-operator-snapshots.timer`. Host-specific paths come from an exact JSON file based on `deploy/systemd/runtime-config.example.json`.
 
-The deployment source must be an exact clean checkout whose `HEAD`, local required ref, local `origin/main` and live remote `main` all equal the reviewed merge commit. The adapter builds a sealed release, switches both units as one transaction, runs the storage producer and verifies local plus canonical HTTP behavior. A failed postflight restores both prior unit files and release selectors.
+The deployment source must be an exact clean checkout whose `HEAD`, local required ref, local `origin/main` and live remote `main` all equal the reviewed merge commit. The adapter builds a sealed release, switches all four units as one transaction, activates the recurring timer, runs both producers and verifies local plus canonical HTTP behavior. A failed postflight restores all prior unit files, timer state and release selectors.
 
 `./scripts/leitstand-up` remains an optional Docker/Compose development path. Its LAN mode requires `LEITSTAND_BIND_IP`; it is not the canonical production deployment.
 
@@ -38,10 +38,9 @@ See [Local Versioned Release Runtime](local-release-runtime.md) for commands, re
 
 `/health` applies source-specific limits:
 
-- Bureau: 20 minutes
-- Checkouts: 20 minutes
+- Bureau, checkouts, decision axis, RepoGround index, and Systemkatalog canonical head: 20 minutes
 - Storage health: 90 minutes
-- Systemkarte: 168 hours
+- Systemkarte manifest: 168 hours
 
 A stale snapshot is `warn`; a missing, unreadable, invalid, or contract-mismatched required snapshot is `fail`. The receipt reports its applied limit as `stale_after_seconds` for every source.
 
@@ -51,8 +50,8 @@ A release is acceptable only when:
 
 1. vendored contracts, lint, typecheck, release-runtime tests, application tests, build, browser regression and repository guards pass on the exact release head;
 2. the release manifest binds the intended commit, tree, origin-main ref and critical artifact hashes;
-3. both user-systemd units bind the exact target release and expected FragmentPaths;
-4. the storage producer finishes successfully from the target release;
+3. all four user-systemd units bind the exact target release and expected FragmentPaths;
+4. the recurring timer is enabled and waiting with a finite next realtime trigger, and both producers finish successfully from the target release;
 5. local and canonical `/health` report the exact commit and all required snapshots as fresh;
 6. active routes return 200, `/repobriefs` redirects structurally to `/repoground`, and removed routes plus `POST /events` return 404;
 7. the web process remains stable and loopback-only on port 3000;
@@ -65,7 +64,7 @@ A release is acceptable only when:
 ## Failure handling
 
 - **Build failure:** no unit, selector or running-service effect is permitted.
-- **Unit or postflight failure:** both old unit files and release selectors must be restored, systemd reloaded, storage rerun and the old web service restarted.
+- **Unit or postflight failure:** all old unit files, timer enablement/activity and release selectors must be restored, systemd reloaded, the prior producers rerun when applicable and the old web service restarted.
 - **Health `warn` or `fail`:** stop rollout; identify the exact stale, missing, invalid or mismatched source.
 - **Git or tree mismatch:** fail closed. A healthy process running the wrong release is not successful.
 - **Route regression:** fail closed when a removed mutation or legacy route becomes available again.

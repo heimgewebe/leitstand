@@ -181,3 +181,7 @@ The adapter does not establish:
 - future runtime or snapshot health;
 - correctness of DNS, TLS or Caddy outside the verified canonical HTTP transaction;
 - permission to alter foreign dirty worktrees, unrelated units or unrelated release directories.
+
+## Coupled operator snapshot timer
+
+The release transaction installs the web, storage-health, operator-snapshot, and snapshot-timer user units together. It activates the recurring timer, runs both release-bound producers, restarts the web service, and validates local and canonical routes before completion. Rollback restores all four unit files, timer enablement/activity, selectors, and prior service state.

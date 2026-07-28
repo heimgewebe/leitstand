@@ -9,6 +9,7 @@ import { loadEcosystemCrossLinks, resolveEcosystemCrossLink } from '../../src/co
 
 const OLD_MANIFEST = process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH;
 const OLD_ROOT = process.env.LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT;
+const OLD_CURRENT_HEAD = process.env.LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH;
 const OLD_STALE = process.env.LEITSTAND_ECOSYSTEM_MAP_STALE_AFTER_HOURS;
 const OLD_LINKS = process.env.LEITSTAND_ECOSYSTEM_MAP_LINKS_PATH;
 
@@ -58,6 +59,8 @@ afterEach(async () => {
   else process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = OLD_MANIFEST;
   if (OLD_ROOT === undefined) delete process.env.LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT;
   else process.env.LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT = OLD_ROOT;
+  if (OLD_CURRENT_HEAD === undefined) delete process.env.LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH;
+  else process.env.LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH = OLD_CURRENT_HEAD;
   if (OLD_STALE === undefined) delete process.env.LEITSTAND_ECOSYSTEM_MAP_STALE_AFTER_HOURS;
   else process.env.LEITSTAND_ECOSYSTEM_MAP_STALE_AFTER_HOURS = OLD_STALE;
   if (OLD_LINKS === undefined) delete process.env.LEITSTAND_ECOSYSTEM_MAP_LINKS_PATH;
@@ -149,12 +152,30 @@ async function makeFixture(
     ],
   };
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf-8');
+  const currentHeadPath = join(root, 'ecosystem-map-current-head.json');
+  const writeCurrentHead = async (head: string, status: 'available' | 'unavailable' = 'available') => {
+    await writeFile(currentHeadPath, `${JSON.stringify({
+      schemaVersion: 1,
+      kind: 'leitstand_source_head_snapshot',
+      generatedAt: new Date().toISOString(),
+      repository: 'heimgewebe/systemkatalog',
+      ref: 'refs/heads/main',
+      status,
+      head: status === 'available' ? head : null,
+      reason: status === 'available' ? 'remote_main_resolved' : 'remote_head_unavailable',
+    })}\n`, 'utf-8');
+  };
+  await writeCurrentHead(sourceCommit);
+  process.env.LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH = currentHeadPath;
   return {
     sourceRoot,
     manifestPath,
     sourceCommit,
+    currentHeadPath,
+    writeCurrentHead,
     mapPath: join(sourceRoot, 'rendered', 'ecosystem-registry-map.mmd'),
   };
+
 }
 
 describe('getEcosystemMapData', () => {
@@ -322,6 +343,7 @@ describe('getEcosystemMapData', () => {
     await writeFile(join(fixture.sourceRoot, 'README.md'), 'unrelated follow-up\n', 'utf-8');
     await git(fixture.sourceRoot, ['add', '--', 'README.md']);
     await git(fixture.sourceRoot, ['commit', '--quiet', '-m', 'unrelated follow-up']);
+    await fixture.writeCurrentHead(await git(fixture.sourceRoot, ['rev-parse', 'HEAD']));
     process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
 
     const data = await getEcosystemMapData();
@@ -339,6 +361,7 @@ describe('getEcosystemMapData', () => {
     await writeFile(fixture.mapPath, 'committed changed map\n', 'utf-8');
     await git(fixture.sourceRoot, ['add', '--', 'rendered/ecosystem-registry-map.mmd']);
     await git(fixture.sourceRoot, ['commit', '--quiet', '-m', 'change map in head']);
+    await fixture.writeCurrentHead(await git(fixture.sourceRoot, ['rev-parse', 'HEAD']));
     await writeFile(fixture.mapPath, originalMap, 'utf-8');
     process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
 
@@ -347,6 +370,19 @@ describe('getEcosystemMapData', () => {
     expect(data.map?.content).toContain('Systemkatalog');
     expect(data.view_meta.alignment_state).toBe('drifted');
     expect(data.view_meta.alignment_reason).toBe('source_head_artifact_drift');
+    expect(data.view_meta.freshness_state).toBe('stale');
+  });
+
+  it('fails closed when the canonical Systemkatalog head differs from the selected release', async () => {
+    const fixture = await makeFixture();
+    await fixture.writeCurrentHead('f'.repeat(40));
+    process.env.LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH = fixture.manifestPath;
+
+    const data = await getEcosystemMapData();
+
+    expect(data.view_meta.alignment_state).toBe('drifted');
+    expect(data.view_meta.alignment_reason).toBe('canonical_source_head_differs_from_release');
+    expect(data.view_meta.source_head).toBe('f'.repeat(40));
     expect(data.view_meta.freshness_state).toBe('stale');
   });
 

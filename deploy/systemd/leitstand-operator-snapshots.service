@@ -1,0 +1,19 @@
+[Unit]
+Description=Refresh bounded Leitstand operator and publication snapshots
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@RELEASE_ROOT@
+Environment=NODE_OPTIONS=--jitless
+Environment=LEITSTAND_RELEASE_ROOT=@RELEASE_ROOT@
+Environment=LEITSTAND_RUNTIME_CONFIG=@RUNTIME_CONFIG_PATH@
+Environment=LEITSTAND_REPOGROUND_PUBLICATION_ROOT=@REPOGROUND_PUBLICATION_ROOT@
+ExecStartPre=/usr/bin/test -f @RELEASE_ROOT@/release-manifest.json
+ExecStartPre=/usr/bin/test -x @RELEASE_ROOT@/scripts/leitstand-export-operator-snapshots
+ExecStart=@RELEASE_ROOT@/scripts/leitstand-export-operator-snapshots
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=@ARTIFACT_ROOT@ /tmp
+UMask=0077

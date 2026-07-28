@@ -144,7 +144,18 @@ async function createEcosystemFixture(root) {
     artifacts,
     doesNotEstablish: DOES_NOT_ESTABLISH,
   });
-  return { root, manifestPath, commit };
+  const currentHeadPath = join(root, 'ecosystem-map-current-head.json');
+  await writeJson(currentHeadPath, {
+    schemaVersion: 1,
+    kind: 'leitstand_source_head_snapshot',
+    generatedAt: new Date().toISOString(),
+    repository: 'heimgewebe/systemkatalog',
+    ref: 'refs/heads/main',
+    status: 'available',
+    head: commit,
+    reason: 'remote_main_resolved',
+  });
+  return { root, manifestPath, currentHeadPath, commit };
 }
 
 async function createFixtures(tempRoot) {
@@ -158,10 +169,20 @@ async function createFixtures(tempRoot) {
   await writeJson(emptyBureauPath, { ...bureau, generatedAt: new Date().toISOString(), tasks: [] });
   await writeFile(corruptCheckoutPath, '{not valid json\n', 'utf-8');
   const ecosystem = await createEcosystemFixture(join(tempRoot, 'systemkatalog-source'));
+  const repoGroundPath = join(tempRoot, 'repoground-bundles.json');
+  const repoGround = JSON.parse(await readFile(join(sourceFixtures, 'repobrief-bundles.json'), 'utf-8'));
+  await writeJson(repoGroundPath, {
+    ...repoGround,
+    generatedAt: new Date().toISOString(),
+    staleAfterSeconds: 1200,
+    sourceStatus: 'available',
+    warnings: [],
+  });
 
   return {
     sourceFixtures,
     ecosystem,
+    repoGroundPath,
     staleBureauPath,
     emptyBureauPath,
     corruptCheckoutPath,
@@ -178,9 +199,10 @@ function baselineEnvironment(fixtures) {
     LEITSTAND_CHECKOUT_SNAPSHOT_PATH: join(fixtures.sourceFixtures, 'checkout-inventory.json'),
     LEITSTAND_STORAGE_HEALTH_FIXTURE_FALLBACK: '0',
     LEITSTAND_STORAGE_HEALTH_PATH: join(fixtures.sourceFixtures, 'storage-health.json'),
-    LEITSTAND_REPOBRIEF_BUNDLES_PATH: join(fixtures.sourceFixtures, 'repobrief-bundles.json'),
+    LEITSTAND_REPOGROUND_BUNDLES_PATH: fixtures.repoGroundPath,
     LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH: fixtures.ecosystem.manifestPath,
     LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT: fixtures.ecosystem.root,
+    LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH: fixtures.ecosystem.currentHeadPath,
     LEITSTAND_ECOSYSTEM_MAP_STALE_AFTER_HOURS: '168',
   };
 }

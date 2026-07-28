@@ -6,10 +6,11 @@ of one exact commit whose checkout HEAD, required ref and ``origin/main`` agree.
 Every effect runs under one owner-checked lock and writes create-only JSON receipts
 with SHA-256 sidecars.
 
-The web and storage-health user-systemd units form one transaction. Both rendered
-unit files, release selectors, storage producer, web process, local routes and
-canonical HTTPS routes must agree on the exact release. Any failed write, reload,
-producer run, restart or postflight restores both prior unit files and selectors.
+The web, storage-health and operator-snapshot user-systemd units form one
+transaction. All rendered unit files, the recurring snapshot timer, release
+selectors, producers, web process, local routes and canonical HTTPS routes must
+agree on the exact release. Any failed write, reload, producer run, restart or
+postflight restores all prior unit files, timer state and selectors.
 An identical completed deployment is handled as a read-only idempotent replay.
 
 Leitstand remains a read-only observer. This adapter does not grant mutation or
@@ -67,11 +68,22 @@ SYSTEM_CA_BUNDLE_CANDIDATES = (
 
 WEB_SERVICE = "leitstand.service"
 STORAGE_SERVICE = "leitstand-storage-health.service"
+SNAPSHOT_SERVICE = "leitstand-operator-snapshots.service"
+SNAPSHOT_TIMER = "leitstand-operator-snapshots.timer"
 WEB_UNIT_RELATIVE_PATH = Path("deploy/systemd/leitstand.service")
 STORAGE_UNIT_RELATIVE_PATH = Path("deploy/systemd/leitstand-storage-health.service")
+SNAPSHOT_UNIT_RELATIVE_PATH = Path("deploy/systemd/leitstand-operator-snapshots.service")
+SNAPSHOT_TIMER_RELATIVE_PATH = Path("deploy/systemd/leitstand-operator-snapshots.timer")
 DEFAULT_STORAGE_UNIT_TARGET = (
     Path.home() / ".config" / "systemd" / "user" / STORAGE_SERVICE
 )
+DEFAULT_SNAPSHOT_UNIT_TARGET = (
+    Path.home() / ".config" / "systemd" / "user" / SNAPSHOT_SERVICE
+)
+DEFAULT_SNAPSHOT_TIMER_TARGET = (
+    Path.home() / ".config" / "systemd" / "user" / SNAPSHOT_TIMER
+)
+DEFAULT_REPOGROUND_PUBLICATION_ROOT = Path.home() / "repos" / "manifest-publications" / "bundles"
 DEFAULT_RUNTIME_CONFIG = Path.home() / ".config" / "leitstand" / "runtime.json"
 RUNTIME_CONFIG_KIND = "leitstand_local_runtime_config"
 RUNTIME_CONFIG_SCHEMA_VERSION = 1
@@ -103,6 +115,9 @@ REMOVED_ROUTES = (
 SNAPSHOT_THRESHOLDS = {
     "bureau_tasks": 20 * 60,
     "checkout_inventory": 20 * 60,
+    "decision_axis": 20 * 60,
+    "repoground": 20 * 60,
+    "ecosystem_map_head": 20 * 60,
     "storage_health": 90 * 60,
     "ecosystem_map": 168 * 60 * 60,
 }
@@ -114,6 +129,8 @@ CRITICAL_ARTIFACTS: tuple[str, ...] = (
     "dist/server.js",
     WEB_UNIT_RELATIVE_PATH.as_posix(),
     STORAGE_UNIT_RELATIVE_PATH.as_posix(),
+    SNAPSHOT_UNIT_RELATIVE_PATH.as_posix(),
+    SNAPSHOT_TIMER_RELATIVE_PATH.as_posix(),
     "scripts/collect-storage-health-runtime",
     "scripts/leitstand-export-operator-snapshots",
     "scripts/leitstand-release.py",
@@ -1200,6 +1217,8 @@ class Paths:
     state_root: Path
     unit_target: Path
     storage_unit_target: Path | None = None
+    snapshot_unit_target: Path | None = None
+    snapshot_timer_target: Path | None = None
 
     def __post_init__(self) -> None:
         if self.storage_unit_target is None:
@@ -1207,6 +1226,18 @@ class Paths:
                 self,
                 "storage_unit_target",
                 self.unit_target.with_name(STORAGE_SERVICE),
+            )
+        if self.snapshot_unit_target is None:
+            object.__setattr__(
+                self,
+                "snapshot_unit_target",
+                self.unit_target.with_name(SNAPSHOT_SERVICE),
+            )
+        if self.snapshot_timer_target is None:
+            object.__setattr__(
+                self,
+                "snapshot_timer_target",
+                self.unit_target.with_name(SNAPSHOT_TIMER),
             )
 
     @property
@@ -1672,7 +1703,11 @@ def _template_replacements(target: Path, config: RuntimeConfig) -> dict[str, str
         "@BUREAU_SNAPSHOT_PATH@": str(artifact_root / "bureau-tasks.json"),
         "@CHECKOUT_SNAPSHOT_PATH@": str(artifact_root / "checkout-inventory.json"),
         "@DECISION_AXIS_SNAPSHOT_PATH@": str(artifact_root / "operator-decision-axis.json"),
+        "@REPOGROUND_BUNDLES_PATH@": str(artifact_root / "repoground-bundles.json"),
+        "@ECOSYSTEM_MAP_CURRENT_HEAD_PATH@": str(artifact_root / "ecosystem-map-current-head.json"),
         "@STORAGE_HEALTH_PATH@": str(artifact_root / "storage-health.json"),
+        "@RUNTIME_CONFIG_PATH@": str(config.source_path),
+        "@REPOGROUND_PUBLICATION_ROOT@": str(DEFAULT_REPOGROUND_PUBLICATION_ROOT),
         "@ARTIFACT_ROOT@": str(artifact_root),
         "@LEITSTAND_ARTIFACT_ROOT@": str(artifact_root),
         "@HEIM_PC_ROOT@": str(config.heim_pc_root),
@@ -1732,6 +1767,8 @@ def validate_unit_content(
         f"Environment=LEITSTAND_BUREAU_SNAPSHOT_PATH={artifact_root / 'bureau-tasks.json'}",
         f"Environment=LEITSTAND_CHECKOUT_SNAPSHOT_PATH={artifact_root / 'checkout-inventory.json'}",
         f"Environment=LEITSTAND_DECISION_AXIS_SNAPSHOT_PATH={artifact_root / 'operator-decision-axis.json'}",
+        f"Environment=LEITSTAND_REPOGROUND_BUNDLES_PATH={artifact_root / 'repoground-bundles.json'}",
+        f"Environment=LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH={artifact_root / 'ecosystem-map-current-head.json'}",
         f"Environment=LEITSTAND_STORAGE_HEALTH_PATH={artifact_root / 'storage-health.json'}",
         f"ExecStartPre=/usr/bin/test -f {target / MANIFEST_NAME}",
         f"ExecStartPre=/usr/bin/test -f {target / 'dist/server.js'}",
@@ -1780,6 +1817,55 @@ def validate_storage_unit_content(
             raise ReleaseError(f"storage systemd unit contains forbidden value: {value}")
 
 
+def validate_snapshot_unit_content(
+    content: bytes,
+    *,
+    target: Path,
+    config: RuntimeConfig,
+) -> None:
+    try:
+        lines = content.decode("utf-8").splitlines()
+    except UnicodeDecodeError as error:
+        raise ReleaseError("operator snapshot systemd unit is not valid UTF-8") from error
+    expected = (
+        "Type=oneshot",
+        f"WorkingDirectory={target}",
+        "Environment=NODE_OPTIONS=--jitless",
+        f"Environment=LEITSTAND_RELEASE_ROOT={target}",
+        f"Environment=LEITSTAND_RUNTIME_CONFIG={config.source_path}",
+        f"Environment=LEITSTAND_REPOGROUND_PUBLICATION_ROOT={DEFAULT_REPOGROUND_PUBLICATION_ROOT}",
+        f"ExecStartPre=/usr/bin/test -f {target / MANIFEST_NAME}",
+        f"ExecStartPre=/usr/bin/test -x {target / 'scripts/leitstand-export-operator-snapshots'}",
+        f"ExecStart={target / 'scripts/leitstand-export-operator-snapshots'}",
+        f"ReadWritePaths={config.artifact_root} /tmp",
+        "NoNewPrivileges=true",
+        "ProtectSystem=full",
+    )
+    _require_exact_unit_lines(lines, expected, label="operator snapshot systemd unit")
+    joined = "\n".join(lines)
+    for value in ("ExecStart=/bin/sh", "ExecStart=/usr/bin/env", "@"):
+        if value in joined:
+            raise ReleaseError(f"operator snapshot systemd unit contains forbidden value: {value}")
+
+
+def validate_snapshot_timer_content(content: bytes) -> None:
+    try:
+        lines = content.decode("utf-8").splitlines()
+    except UnicodeDecodeError as error:
+        raise ReleaseError("operator snapshot timer is not valid UTF-8") from error
+    expected = (
+        "OnCalendar=*-*-* *:00/10:00",
+        "Persistent=true",
+        "AccuracySec=30s",
+        "RandomizedDelaySec=0",
+        f"Unit={SNAPSHOT_SERVICE}",
+        "WantedBy=timers.target",
+    )
+    _require_exact_unit_lines(lines, expected, label="operator snapshot timer")
+    if "OnUnitActiveSec=" in lines or "OnBootSec=" in lines or "@" in "\n".join(lines):
+        raise ReleaseError("operator snapshot timer contains a noncanonical schedule")
+
+
 def rendered_unit_specs(paths: Paths, target: Path, config: RuntimeConfig) -> tuple[UnitSpec, ...]:
     replacements = _template_replacements(target, config)
     web = _render_unit_template(
@@ -1792,17 +1878,28 @@ def rendered_unit_specs(paths: Paths, target: Path, config: RuntimeConfig) -> tu
         replacements=replacements,
         label="versioned storage systemd unit",
     )
+    snapshots = _render_unit_template(
+        target / SNAPSHOT_UNIT_RELATIVE_PATH,
+        replacements=replacements,
+        label="versioned operator snapshot systemd unit",
+    )
+    snapshot_timer = _render_unit_template(
+        target / SNAPSHOT_TIMER_RELATIVE_PATH,
+        replacements=replacements,
+        label="versioned operator snapshot timer",
+    )
     validate_unit_content(web, target=target, config=config)
     validate_storage_unit_content(storage, target=target, config=config)
+    validate_snapshot_unit_content(snapshots, target=target, config=config)
+    validate_snapshot_timer_content(snapshot_timer)
     assert paths.storage_unit_target is not None
+    assert paths.snapshot_unit_target is not None
+    assert paths.snapshot_timer_target is not None
     return (
         UnitSpec(WEB_SERVICE, WEB_UNIT_RELATIVE_PATH, paths.unit_target, web),
-        UnitSpec(
-            STORAGE_SERVICE,
-            STORAGE_UNIT_RELATIVE_PATH,
-            paths.storage_unit_target,
-            storage,
-        ),
+        UnitSpec(STORAGE_SERVICE, STORAGE_UNIT_RELATIVE_PATH, paths.storage_unit_target, storage),
+        UnitSpec(SNAPSHOT_SERVICE, SNAPSHOT_UNIT_RELATIVE_PATH, paths.snapshot_unit_target, snapshots),
+        UnitSpec(SNAPSHOT_TIMER, SNAPSHOT_TIMER_RELATIVE_PATH, paths.snapshot_timer_target, snapshot_timer),
     )
 
 
@@ -1868,9 +1965,13 @@ def _verify_unit_spec(spec: UnitSpec, expected_mode: int = 0o600) -> dict[str, s
 
 def snapshot_units(paths: Paths) -> dict[str, UnitState]:
     assert paths.storage_unit_target is not None
+    assert paths.snapshot_unit_target is not None
+    assert paths.snapshot_timer_target is not None
     return {
         WEB_SERVICE: snapshot_unit(paths.unit_target),
         STORAGE_SERVICE: snapshot_unit(paths.storage_unit_target),
+        SNAPSHOT_SERVICE: snapshot_unit(paths.snapshot_unit_target),
+        SNAPSHOT_TIMER: snapshot_unit(paths.snapshot_timer_target),
     }
 
 
@@ -1936,8 +2037,12 @@ def write_prior_state_backup(
 
 def _restore_units(paths: Paths, states: Mapping[str, UnitState]) -> None:
     assert paths.storage_unit_target is not None
+    assert paths.snapshot_unit_target is not None
+    assert paths.snapshot_timer_target is not None
     restore_unit(paths.unit_target, states[WEB_SERVICE])
     restore_unit(paths.storage_unit_target, states[STORAGE_SERVICE])
+    restore_unit(paths.snapshot_unit_target, states[SNAPSHOT_SERVICE])
+    restore_unit(paths.snapshot_timer_target, states[SNAPSHOT_TIMER])
 
 
 def install_units(paths: Paths, target: Path, config: RuntimeConfig) -> dict[str, dict[str, str]]:
@@ -2131,6 +2236,71 @@ def _route_matrix(
     return evidence
 
 
+def _snapshot_timer_properties() -> dict[str, str]:
+    return _systemctl_properties(
+        SNAPSHOT_TIMER,
+        fields=(
+            "LoadState",
+            "ActiveState",
+            "SubState",
+            "UnitFileState",
+            "Result",
+            "FragmentPath",
+            "LastTriggerUSec",
+            "NextElapseUSecRealtime",
+            "NextElapseUSecMonotonic",
+            "Triggers",
+        ),
+    )
+
+
+def _activate_snapshot_timer(paths: Paths) -> dict[str, str]:
+    assert paths.snapshot_timer_target is not None
+    run(("systemctl", "--user", "enable", SNAPSHOT_TIMER), timeout=60)
+    run(("systemctl", "--user", "restart", SNAPSHOT_TIMER), timeout=60)
+    properties = _snapshot_timer_properties()
+    if (
+        properties.get("LoadState") != "loaded"
+        or properties.get("ActiveState") != "active"
+        or properties.get("SubState") != "waiting"
+        or properties.get("UnitFileState") != "enabled"
+        or Path(properties.get("FragmentPath", "")) != paths.snapshot_timer_target
+        or not properties.get("NextElapseUSecRealtime")
+    ):
+        raise ReleaseError(f"operator snapshot timer did not enter a recurring waiting state: {properties}")
+    return properties
+
+
+def _restore_snapshot_timer_state(before: Mapping[str, str]) -> None:
+    enabled = before.get("UnitFileState") == "enabled"
+    active = before.get("ActiveState") == "active"
+    run(
+        ("systemctl", "--user", "enable" if enabled else "disable", SNAPSHOT_TIMER),
+        check=False,
+        timeout=60,
+    )
+    run(
+        ("systemctl", "--user", "restart" if active else "stop", SNAPSHOT_TIMER),
+        check=False,
+        timeout=60,
+    )
+
+
+def _run_operator_snapshot_producer(paths: Paths, target: Path) -> dict[str, str]:
+    assert paths.snapshot_unit_target is not None
+    run(("systemctl", "--user", "start", SNAPSHOT_SERVICE), timeout=180)
+    properties = _systemctl_properties(SNAPSHOT_SERVICE)
+    if properties.get("LoadState") != "loaded":
+        raise ReleaseError("operator snapshot producer unit is not loaded")
+    if properties.get("Result") != "success" or properties.get("ExecMainStatus") != "0":
+        raise ReleaseError(f"operator snapshot producer failed: {properties}")
+    if Path(properties.get("FragmentPath", "")) != paths.snapshot_unit_target:
+        raise ReleaseError("operator snapshot producer FragmentPath mismatch")
+    if Path(properties.get("WorkingDirectory", "")) != target:
+        raise ReleaseError("operator snapshot producer WorkingDirectory mismatch")
+    return properties
+
+
 def _run_storage_producer(paths: Paths, target: Path) -> dict[str, str]:
     assert paths.storage_unit_target is not None
     run(("systemctl", "--user", "start", STORAGE_SERVICE), timeout=180)
@@ -2202,6 +2372,8 @@ def postflight(
         raise ReleaseError(f"current selector mismatch: {selected} != {target}")
     web = _systemctl_properties(WEB_SERVICE)
     storage = _systemctl_properties(STORAGE_SERVICE)
+    snapshot_service = _systemctl_properties(SNAPSHOT_SERVICE)
+    snapshot_timer = _snapshot_timer_properties()
     if (
         web.get("LoadState") != "loaded"
         or web.get("ActiveState") != "active"
@@ -2222,6 +2394,25 @@ def postflight(
         or Path(storage.get("WorkingDirectory", "")) != target
     ):
         raise ReleaseError(f"storage producer readback failed: {storage}")
+    assert paths.snapshot_unit_target is not None
+    assert paths.snapshot_timer_target is not None
+    if (
+        snapshot_service.get("LoadState") != "loaded"
+        or snapshot_service.get("Result") != "success"
+        or snapshot_service.get("ExecMainStatus") != "0"
+        or Path(snapshot_service.get("FragmentPath", "")) != paths.snapshot_unit_target
+        or Path(snapshot_service.get("WorkingDirectory", "")) != target
+    ):
+        raise ReleaseError(f"operator snapshot producer readback failed: {snapshot_service}")
+    if (
+        snapshot_timer.get("LoadState") != "loaded"
+        or snapshot_timer.get("ActiveState") != "active"
+        or snapshot_timer.get("SubState") != "waiting"
+        or snapshot_timer.get("UnitFileState") != "enabled"
+        or Path(snapshot_timer.get("FragmentPath", "")) != paths.snapshot_timer_target
+        or not snapshot_timer.get("NextElapseUSecRealtime")
+    ):
+        raise ReleaseError(f"operator snapshot timer readback failed: {snapshot_timer}")
     try:
         pid = int(web.get("MainPID", "0"))
         restarts = int(web.get("NRestarts", "-1"))
@@ -2295,6 +2486,8 @@ def postflight(
         "nrestarts": restarts,
         "web_unit": web,
         "storage_unit": storage,
+        "operator_snapshot_unit": snapshot_service,
+        "operator_snapshot_timer": snapshot_timer,
         "process_cwd": str(process_cwd),
         "local_health_sha256": sha256_bytes(local_health_body),
         "canonical_health_sha256": sha256_bytes(canonical_health_body),
@@ -2318,6 +2511,7 @@ def _restore_transaction(
     units: Mapping[str, UnitState],
     web_was_active: bool,
     storage_was_loaded: bool,
+    snapshot_timer_before: Mapping[str, str],
     prior_target: Path | None,
 ) -> dict[str, Any]:
     errors: list[str] = []
@@ -2326,6 +2520,7 @@ def _restore_transaction(
         ("previous", lambda: restore_link_state(paths.previous, previous)),
         ("units", lambda: _restore_units(paths, units)),
         ("daemon_reload", lambda: run(("systemctl", "--user", "daemon-reload"))),
+        ("snapshot_timer", lambda: _restore_snapshot_timer_state(snapshot_timer_before)),
         (
             "storage_start",
             (lambda: run(("systemctl", "--user", "start", STORAGE_SERVICE), timeout=180))
@@ -2348,12 +2543,20 @@ def _restore_transaction(
             service: _unit_state_evidence(state)
             for service, state in restored_units.items()
         }
+        readback["snapshot_timer"] = _snapshot_timer_properties()
         if readback["current"] != dataclasses.asdict(current):
             errors.append("current:readback-mismatch")
         if readback["previous"] != dataclasses.asdict(previous):
             errors.append("previous:readback-mismatch")
         if restored_units != dict(units):
             errors.append("units:readback-mismatch")
+        expected_enabled = snapshot_timer_before.get("UnitFileState") == "enabled"
+        expected_active = snapshot_timer_before.get("ActiveState") == "active"
+        observed_timer = readback["snapshot_timer"]
+        if (observed_timer.get("UnitFileState") == "enabled") != expected_enabled:
+            errors.append("snapshot_timer:enablement-mismatch")
+        if (observed_timer.get("ActiveState") == "active") != expected_active:
+            errors.append("snapshot_timer:activity-mismatch")
         if storage_was_loaded:
             storage = _systemctl_properties(STORAGE_SERVICE)
             readback["storage_service"] = storage
@@ -2401,6 +2604,7 @@ def switch_transaction(
     unit_states = snapshot_units(paths)
     web_before = _systemctl_properties(WEB_SERVICE)
     storage_before = _systemctl_properties(STORAGE_SERVICE)
+    snapshot_timer_before = _snapshot_timer_properties()
     old_target = _resolve_link_target(paths.current)
     if old_target is None:
         old_target = _running_target()
@@ -2448,6 +2652,8 @@ def switch_transaction(
                 os.path.relpath(old_target, paths.previous.parent),
             )
         atomic_symlink(paths.current, os.path.relpath(target, paths.current.parent))
+        snapshot_timer_result = _activate_snapshot_timer(paths)
+        snapshot_result = _run_operator_snapshot_producer(paths, target)
         storage_result = _run_storage_producer(paths, target)
         _restart_service()
         evidence = postflight(
@@ -2476,6 +2682,8 @@ def switch_transaction(
                 for service, state in unit_states.items()
             },
             "units": unit_result,
+            "snapshot_timer": snapshot_timer_result,
+            "operator_snapshot_producer": snapshot_result,
             "storage_producer": storage_result,
             "postflight": evidence,
             "restoration": None,
@@ -2500,6 +2708,7 @@ def switch_transaction(
             units=unit_states,
             web_was_active=web_before.get("ActiveState") == "active",
             storage_was_loaded=storage_before.get("LoadState") == "loaded",
+            snapshot_timer_before=snapshot_timer_before,
             prior_target=old_target,
         )
         failure = {
@@ -2868,6 +3077,8 @@ def status_payload(paths: Paths) -> dict[str, Any]:
         "units": {
             WEB_SERVICE: _systemctl_properties(WEB_SERVICE),
             STORAGE_SERVICE: _systemctl_properties(STORAGE_SERVICE),
+            SNAPSHOT_SERVICE: _systemctl_properties(SNAPSHOT_SERVICE),
+            SNAPSHOT_TIMER: _snapshot_timer_properties(),
         },
     }
 
@@ -2878,6 +3089,8 @@ def _paths_from_args(args: argparse.Namespace) -> Paths:
         Path(args.state_root),
         Path(args.unit_target),
         Path(args.storage_unit_target),
+        Path(args.snapshot_unit_target),
+        Path(args.snapshot_timer_target),
     )
 
 
@@ -2887,6 +3100,12 @@ def _add_common_paths(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--unit-target", type=Path, default=DEFAULT_UNIT_TARGET)
     parser.add_argument(
         "--storage-unit-target", type=Path, default=DEFAULT_STORAGE_UNIT_TARGET
+    )
+    parser.add_argument(
+        "--snapshot-unit-target", type=Path, default=DEFAULT_SNAPSHOT_UNIT_TARGET
+    )
+    parser.add_argument(
+        "--snapshot-timer-target", type=Path, default=DEFAULT_SNAPSHOT_TIMER_TARGET
     )
 
 

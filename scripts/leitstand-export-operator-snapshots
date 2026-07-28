@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import stat
 import subprocess
 import tempfile
@@ -97,6 +98,317 @@ def load_json_file(path: Path, label: str) -> tuple[bytes, dict[str, object]]:
     return raw, value
 
 
+def atomic_json_write(path: Path, payload: dict[str, object]) -> None:
+    data = (json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            os.fchmod(handle.fileno(), 0o600)
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        directory_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def systemkatalog_head_snapshot(observed_at: str) -> dict[str, object]:
+    origin = "https://github.com/heimgewebe/systemkatalog.git"
+    ref = "refs/heads/main"
+    payload: dict[str, object] = {
+        "schemaVersion": 1,
+        "kind": "leitstand_source_head_snapshot",
+        "generatedAt": observed_at,
+        "repository": "heimgewebe/systemkatalog",
+        "ref": ref,
+        "status": "unavailable",
+        "head": None,
+        "reason": "remote_head_unavailable",
+        "doesNotEstablish": [
+            "artifact_content_equivalence",
+            "runtime_correctness",
+            "merge_readiness",
+        ],
+    }
+    try:
+        completed = subprocess.run(
+            ["git", "ls-remote", "--refs", origin, ref],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0", "LC_ALL": "C"},
+        )
+        lines = [line.split() for line in completed.stdout.splitlines() if line.strip()]
+        if (
+            completed.returncode == 0
+            and len(lines) == 1
+            and len(lines[0]) == 2
+            and re.fullmatch(r"[0-9a-f]{40}", lines[0][0])
+            and lines[0][1] == ref
+        ):
+            payload.update(
+                {
+                    "status": "available",
+                    "head": lines[0][0],
+                    "reason": "remote_main_resolved",
+                }
+            )
+        elif completed.returncode != 0:
+            payload["reason"] = f"git_ls_remote_exit_{completed.returncode}"
+        else:
+            payload["reason"] = "remote_head_shape_invalid"
+    except (OSError, subprocess.TimeoutExpired):
+        payload["reason"] = "remote_head_probe_failed"
+    return payload
+
+
+def repoground_bundle_index(
+    publication_root: Path,
+    observed_at: str,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "schemaVersion": 1,
+        "kind": "leitstand_repobrief_bundle_index",
+        "generatedAt": observed_at,
+        "staleAfterSeconds": 1200,
+        "sourceStatus": "unavailable",
+        "sourceRoot": str(publication_root),
+        "sourceAuthority": "canonical_publication_catalog",
+        "bundles": [],
+        "warnings": [],
+        "doesNotEstablish": [
+            "repo_understanding",
+            "review_completeness",
+            "runtime_correctness",
+            "test_sufficiency",
+            "freshness_against_remote_after_generation",
+        ],
+    }
+
+    def safe_segment(value: str) -> bool:
+        return bool(re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9._-]{0,198}[A-Za-z0-9])?", value))
+
+    def created_timestamp(value: object) -> float:
+        if not isinstance(value, str) or not value:
+            raise RuntimeError("RepoGround publication created_at is missing")
+        normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+        parsed = datetime.datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            raise RuntimeError("RepoGround publication created_at lacks timezone")
+        return parsed.timestamp()
+
+    def read_sidecar(path: Path, label: str) -> dict[str, object]:
+        _raw, document = load_json_file(path, label)
+        return document
+
+    rejected = 0
+    selected: dict[str, tuple[float, str, dict[str, object]]] = {}
+    try:
+        if publication_root.is_symlink() or not publication_root.is_dir():
+            raise RuntimeError("canonical publication root unavailable")
+        root_resolved = publication_root.resolve(strict=True)
+
+        def display_path(path: Path) -> str:
+            return path.resolve(strict=True).relative_to(root_resolved).as_posix()
+
+        candidates = sorted(publication_root.glob("*/*/*/*_merge.bundle.manifest.json"))
+        if len(candidates) > 5_000:
+            raise RuntimeError("canonical publication catalog is unbounded")
+        for manifest_path in candidates:
+            try:
+                lexical_relative = manifest_path.relative_to(publication_root)
+                inspected = publication_root
+                for part in lexical_relative.parts:
+                    inspected = inspected / part
+                    metadata = os.lstat(inspected)
+                    if stat.S_ISLNK(metadata.st_mode):
+                        raise RuntimeError("publication path contains symlink component")
+                resolved = manifest_path.resolve(strict=True)
+                relative = resolved.relative_to(root_resolved)
+                if len(relative.parts) != 4:
+                    raise RuntimeError("canonical publication path shape invalid")
+                repo_id, ref, publication_run_id, filename = relative.parts
+                if (
+                    "__" not in repo_id
+                    or not safe_segment(repo_id.split("__", 1)[0])
+                    or not safe_segment(repo_id.split("__", 1)[1])
+                    or not safe_segment(ref)
+                    or not safe_segment(publication_run_id)
+                    or ref != "main"
+                    or filename != manifest_path.name
+                ):
+                    raise RuntimeError("canonical publication identity invalid")
+                _raw, manifest = load_json_file(manifest_path, "RepoGround bundle manifest")
+                if manifest.get("kind") != "repoground.bundle.manifest":
+                    raise RuntimeError("RepoGround manifest kind mismatch")
+                created_at = manifest.get("created_at") or manifest.get("generatedAt")
+                created_unix = created_timestamp(created_at)
+                artifacts = manifest.get("artifacts")
+                if not isinstance(artifacts, list) or not artifacts:
+                    raise RuntimeError("RepoGround manifest artifacts missing")
+                by_role = {
+                    item.get("role"): item
+                    for item in artifacts
+                    if isinstance(item, dict) and isinstance(item.get("role"), str)
+                }
+                required_roles = (
+                    "canonical_md",
+                    "agent_reading_pack",
+                    "output_health",
+                    "export_safety_report",
+                )
+                if any(role not in by_role for role in required_roles):
+                    raise RuntimeError("RepoGround required artifact role missing")
+
+                def artifact_path(role: str) -> str:
+                    item = by_role[role]
+                    value = item.get("path")
+                    if (
+                        not isinstance(value, str)
+                        or not value
+                        or Path(value).is_absolute()
+                        or ".." in Path(value).parts
+                    ):
+                        raise RuntimeError(f"unsafe RepoGround artifact path for {role}")
+                    candidate = manifest_path.parent / value
+                    metadata = require_regular(candidate, f"RepoGround {role}")
+                    if metadata.st_size > 50_000_000:
+                        raise RuntimeError(f"RepoGround {role} exceeds bounded size")
+                    content = candidate.read_bytes()
+                    expected_bytes = item.get("bytes")
+                    expected_sha = item.get("sha256")
+                    if (
+                        not isinstance(expected_bytes, int)
+                        or expected_bytes != len(content)
+                        or not isinstance(expected_sha, str)
+                        or not re.fullmatch(r"[0-9a-f]{64}", expected_sha)
+                        or expected_sha != sha256_bytes(content)
+                    ):
+                        raise RuntimeError(f"RepoGround {role} integrity mismatch")
+                    return display_path(candidate)
+
+                snapshot = manifest.get("snapshot_provenance")
+                if not isinstance(snapshot, dict):
+                    raise RuntimeError("RepoGround snapshot provenance missing")
+                repositories = snapshot.get("repositories")
+                if not isinstance(repositories, list):
+                    raise RuntimeError("RepoGround snapshot repositories missing")
+                source_entry = None
+                for entry in repositories:
+                    if not isinstance(entry, dict):
+                        continue
+                    names = {
+                        value
+                        for value in (
+                            entry.get("repo"),
+                            entry.get("repository"),
+                            entry.get("repo_id"),
+                            entry.get("name"),
+                        )
+                        if isinstance(value, str)
+                    }
+                    if repo_id in names or f"{repo_id}__{ref}" in names:
+                        source_entry = entry
+                        break
+                if source_entry is None:
+                    raise RuntimeError("RepoGround source provenance entry missing")
+                source_commit = (
+                    source_entry.get("git_commit")
+                    or source_entry.get("commit")
+                    or source_entry.get("head")
+                )
+                source_dirty = source_entry.get("git_dirty")
+                if (
+                    not isinstance(source_commit, str)
+                    or not re.fullmatch(r"[0-9a-f]{40}", source_commit)
+                    or source_dirty is not False
+                ):
+                    raise RuntimeError("RepoGround source identity is not clean and commit-bound")
+
+                bundle_stem = manifest_path.name[: -len(".bundle.manifest.json")]
+                post_health = read_sidecar(
+                    manifest_path.parent / f"{bundle_stem}.bundle_health.post.json",
+                    "RepoGround post-emit health",
+                )
+                output_health = read_sidecar(
+                    manifest_path.parent / f"{bundle_stem}.output_health.json",
+                    "RepoGround output health",
+                )
+                links = manifest.get("links")
+                if not isinstance(links, dict):
+                    links = {}
+                if (
+                    post_health.get("status") != "pass"
+                    or output_health.get("verdict") != "pass"
+                    or links.get("export_safety_report_status") != "pass"
+                    or links.get("agent_export_gate_status") != "pass"
+                ):
+                    raise RuntimeError("RepoGround publication health is not pass")
+
+                profile = {}
+                capabilities = manifest.get("capabilities")
+                if isinstance(capabilities, dict):
+                    candidate_profile = capabilities.get("repobrief_profile_evaluation")
+                    if isinstance(candidate_profile, dict):
+                        profile = candidate_profile
+                missing_recommended = profile.get("missing_recommended", [])
+                if not isinstance(missing_recommended, list):
+                    missing_recommended = []
+                required = []
+                profile_artifacts = profile.get("artifacts")
+                if isinstance(profile_artifacts, list):
+                    required = [
+                        str(item.get("role"))
+                        for item in profile_artifacts
+                        if isinstance(item, dict)
+                        and item.get("requirement") == "required"
+                        and isinstance(item.get("role"), str)
+                    ]
+                record: dict[str, object] = {
+                    "repo": repo_id,
+                    "bundleStem": bundle_stem,
+                    "bundleDirectory": relative.parent.as_posix(),
+                    "bundleManifest": relative.as_posix(),
+                    "agentReadingPack": artifact_path("agent_reading_pack"),
+                    "canonicalDump": artifact_path("canonical_md"),
+                    "sourceCommit": source_commit,
+                    "snapshotStatus": "pass",
+                    "preflightStatus": "pass",
+                    "exportSafety": "pass",
+                    "publicExportReady": True,
+                    "summary": f"Canonical RepoGround publication at {source_commit[:12]}",
+                    "requiredArtifacts": required,
+                    "warnings": [
+                        str(value)
+                        for value in missing_recommended
+                        if isinstance(value, str)
+                    ],
+                }
+                current = selected.get(repo_id)
+                ordering = (created_unix, publication_run_id)
+                if current is None or ordering > (current[0], current[1]):
+                    selected[repo_id] = (created_unix, publication_run_id, record)
+            except Exception:
+                rejected += 1
+        bundles = [item[2] for _, item in sorted(selected.items())]
+        if not bundles:
+            raise RuntimeError("no healthy canonical RepoGround publications")
+        payload["bundles"] = bundles
+        payload["sourceStatus"] = "available"
+        payload["warnings"] = [f"rejected_candidates={rejected}"] if rejected else []
+    except Exception as error:
+        payload["warnings"] = [f"catalog_unavailable:{error.__class__.__name__}"]
+    return payload
+
+
 release_selector = env_path(
     "LEITSTAND_RELEASE_ROOT", "/home/alex/.local/lib/leitstand/current"
 )
@@ -114,6 +426,10 @@ allowed_snapshot_root = env_path(
 ).resolve()
 grabowski_repo = env_path("GRABOWSKI_REPO", "/home/alex/repos/grabowski")
 bureau_bin = env_path("BUREAU_BIN", "/home/alex/.local/bin/bureau")
+repoground_publication_root = env_path(
+    "LEITSTAND_REPOGROUND_PUBLICATION_ROOT",
+    "/home/alex/repos/manifest-publications/bundles",
+)
 verify_only = os.environ.get("LEITSTAND_SNAPSHOT_VERIFY_ONLY", "").strip().lower() in {
     "1",
     "true",
@@ -546,5 +862,20 @@ with tempfile.TemporaryDirectory(prefix="leitstand-snapshot-raw-") as temporary:
         env={**os.environ, "NODE_OPTIONS": os.environ.get("NODE_OPTIONS", "--jitless")},
     )
 
-print(json.dumps({**evidence, "checkout_raw_count": len(inventory_result.get("worktrees", [])), "bureau_raw_count": len(tasks), "decision_axis_sections": list(decision_payload["sections"]), "decision_axis_source_errors": decision_payload["sourceErrors"]}, sort_keys=True))
+head_payload = systemkatalog_head_snapshot(observed_at)
+repoground_payload = repoground_bundle_index(repoground_publication_root, observed_at)
+atomic_json_write(artifact_root / "ecosystem-map-current-head.json", head_payload)
+atomic_json_write(artifact_root / "repoground-bundles.json", repoground_payload)
+
+print(json.dumps({
+    **evidence,
+    "checkout_raw_count": len(inventory_result.get("worktrees", [])),
+    "bureau_raw_count": len(tasks),
+    "decision_axis_sections": list(decision_payload["sections"]),
+    "decision_axis_source_errors": decision_payload["sourceErrors"],
+    "systemkatalog_head_status": head_payload["status"],
+    "systemkatalog_head": head_payload["head"],
+    "repoground_source_status": repoground_payload["sourceStatus"],
+    "repoground_bundle_count": len(repoground_payload["bundles"]),
+}, sort_keys=True))
 PY

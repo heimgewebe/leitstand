@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 
 export type RepoBriefSourceKind = 'artifact' | 'fixture' | 'missing' | 'corrupt';
 export type RepoBriefStatus = 'ok' | 'warn' | 'fail' | 'unknown';
@@ -30,6 +30,9 @@ export interface RepoBriefViewData {
     source_path: string;
     missing_reason: string;
     generated_at: string | null;
+    data_age_seconds: number | null;
+    stale_after_seconds: number | null;
+    source_status: 'available' | 'unavailable' | 'unknown';
     bundle_count: number;
     public_export_ready_count: number;
     warning_count: number;
@@ -85,6 +88,9 @@ function emptyData(kind: RepoBriefSourceKind, reason: string, sourcePath: string
       source_path: sourcePath,
       missing_reason: reason,
       generated_at: null,
+      data_age_seconds: null,
+      stale_after_seconds: null,
+      source_status: 'unavailable',
       bundle_count: 0,
       public_export_ready_count: 0,
       warning_count: 0,
@@ -95,6 +101,13 @@ function emptyData(kind: RepoBriefSourceKind, reason: string, sourcePath: string
 
 function parseStringArray(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function isSafeBrowserPointer(value: string): boolean {
+  return value.length > 0
+    && !isAbsolute(value)
+    && !value.includes('\\')
+    && !value.split('/').includes('..');
 }
 
 function parseBundle(raw: unknown): RepoBriefBundleView {
@@ -110,6 +123,9 @@ function parseBundle(raw: unknown): RepoBriefBundleView {
   const canonicalDump = typeof bundle.canonicalDump === 'string' ? bundle.canonicalDump : '';
   if (!repo || !bundleStem || !bundleDirectory || !bundleManifest || !agentReadingPack || !canonicalDump) {
     throw new Error('invalid RepoBrief bundle: missing required path fields');
+  }
+  if (![bundleDirectory, bundleManifest, agentReadingPack, canonicalDump].every(isSafeBrowserPointer)) {
+    throw new Error('invalid RepoBrief bundle: browser pointers must be relative and traversal-free');
   }
   return {
     repo,
@@ -132,6 +148,9 @@ function parseBundle(raw: unknown): RepoBriefBundleView {
 function parseIndex(raw: unknown): {
   bundles: RepoBriefBundleView[];
   generatedAt: string | null;
+  staleAfterSeconds: number | null;
+  sourceStatus: 'available' | 'unavailable' | 'unknown';
+  warnings: string[];
   doesNotEstablish: string[];
 } {
   if (!raw || typeof raw !== 'object') {
@@ -141,7 +160,10 @@ function parseIndex(raw: unknown): {
     schemaVersion?: unknown;
     kind?: unknown;
     generatedAt?: unknown;
+    staleAfterSeconds?: unknown;
+    sourceStatus?: unknown;
     bundles?: unknown;
+    warnings?: unknown;
     doesNotEstablish?: unknown;
   };
   if (index.schemaVersion !== 1 || index.kind !== CONTRACT_KIND) {
@@ -151,9 +173,20 @@ function parseIndex(raw: unknown): {
     throw new Error('invalid RepoBrief bundle index: bundles must be a list');
   }
   const bundles = index.bundles.map(parseBundle);
+  const staleAfterSeconds = typeof index.staleAfterSeconds === 'number'
+    && Number.isInteger(index.staleAfterSeconds)
+    && index.staleAfterSeconds > 0
+    ? index.staleAfterSeconds
+    : null;
+  const sourceStatus = index.sourceStatus === 'available' || index.sourceStatus === 'unavailable'
+    ? index.sourceStatus
+    : 'unknown';
   return {
     bundles,
     generatedAt: typeof index.generatedAt === 'string' ? index.generatedAt : null,
+    staleAfterSeconds,
+    sourceStatus,
+    warnings: parseStringArray(index.warnings),
     doesNotEstablish: parseStringArray(index.doesNotEstablish).length > 0
       ? parseStringArray(index.doesNotEstablish)
       : DEFAULT_NON_CLAIMS,
@@ -165,19 +198,40 @@ export async function getRepoBriefData(): Promise<RepoBriefViewData> {
   const sourcePath = resolve(configured.path);
   try {
     const parsed = parseIndex(JSON.parse(await readFile(sourcePath, 'utf-8')) as unknown);
-    const warningCount = parsed.bundles.reduce((total, bundle) => total + bundle.warnings.length, 0);
+    const generatedMs = parsed.generatedAt ? Date.parse(parsed.generatedAt) : Number.NaN;
+    const dataAgeSeconds = Number.isFinite(generatedMs)
+      ? Math.max(0, Math.floor((Date.now() - generatedMs) / 1000))
+      : null;
+    const freshness = configured.sourceKind === 'artifact'
+      && parsed.sourceStatus === 'available'
+      && parsed.staleAfterSeconds !== null
+      && dataAgeSeconds !== null
+      ? (dataAgeSeconds <= parsed.staleAfterSeconds ? 'fresh' : 'stale')
+      : 'unknown';
+    const visibleBundles = freshness === 'fresh' ? parsed.bundles : [];
+    const warningCount = parsed.warnings.length
+      + parsed.bundles.reduce((total, bundle) => total + bundle.warnings.length, 0);
     return {
-      bundles: parsed.bundles,
+      bundles: visibleBundles,
       view_meta: {
-        // A timestamp alone does not define freshness. RepoGround must publish an
-        // explicit threshold or verdict before Leitstand may claim fresh/stale.
-        freshness_state: 'unknown',
+        freshness_state: freshness,
         source_kind: configured.sourceKind,
         source_path: sourcePath,
-        missing_reason: configured.sourceKind === 'fixture' ? 'fixture_fallback' : 'ok',
+        missing_reason: configured.sourceKind === 'fixture'
+          ? 'fixture_fallback'
+          : parsed.sourceStatus !== 'available'
+            ? 'canonical_publication_catalog_unavailable'
+            : freshness === 'stale'
+              ? 'canonical_publication_catalog_stale'
+              : freshness === 'unknown'
+                ? 'canonical_publication_freshness_unbound'
+                : 'ok',
         generated_at: parsed.generatedAt,
-        bundle_count: parsed.bundles.length,
-        public_export_ready_count: parsed.bundles.filter((bundle) => bundle.public_export_ready).length,
+        data_age_seconds: dataAgeSeconds,
+        stale_after_seconds: parsed.staleAfterSeconds,
+        source_status: parsed.sourceStatus,
+        bundle_count: visibleBundles.length,
+        public_export_ready_count: visibleBundles.filter((bundle) => bundle.public_export_ready).length,
         warning_count: warningCount,
         does_not_establish: parsed.doesNotEstablish,
       },
