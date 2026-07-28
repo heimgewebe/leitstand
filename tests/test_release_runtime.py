@@ -387,6 +387,69 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
                 config=self.config,
             )
 
+    def test_snapshot_timer_waits_for_persistent_catch_up_to_stabilize(self) -> None:
+        assert self.paths.snapshot_timer_target is not None
+        running = {
+            "LoadState": "loaded",
+            "ActiveState": "active",
+            "SubState": "running",
+            "UnitFileState": "enabled",
+            "Result": "success",
+            "FragmentPath": str(self.paths.snapshot_timer_target),
+            "NextElapseUSecRealtime": "",
+            "Triggers": release.SNAPSHOT_SERVICE,
+        }
+        waiting = {
+            **running,
+            "SubState": "waiting",
+            "NextElapseUSecRealtime": "Tue 2026-07-28 07:00:00 CEST",
+        }
+        with (
+            patch.object(
+                release,
+                "run",
+                return_value=subprocess.CompletedProcess([], 0, "", ""),
+            ),
+            patch.object(
+                release,
+                "_snapshot_timer_properties",
+                side_effect=[running, waiting],
+            ),
+            patch.object(release.time, "sleep") as sleep,
+        ):
+            result = release._activate_snapshot_timer(
+                self.paths,
+                stability_timeout_seconds=5,
+            )
+        self.assertEqual(result, waiting)
+        sleep.assert_called_once()
+
+    def test_snapshot_timer_fails_when_catch_up_never_stabilizes(self) -> None:
+        assert self.paths.snapshot_timer_target is not None
+        running = {
+            "LoadState": "loaded",
+            "ActiveState": "active",
+            "SubState": "running",
+            "UnitFileState": "enabled",
+            "Result": "success",
+            "FragmentPath": str(self.paths.snapshot_timer_target),
+            "NextElapseUSecRealtime": "",
+            "Triggers": release.SNAPSHOT_SERVICE,
+        }
+        with (
+            patch.object(
+                release,
+                "run",
+                return_value=subprocess.CompletedProcess([], 0, "", ""),
+            ),
+            patch.object(release, "_snapshot_timer_properties", return_value=running),
+        ):
+            with self.assertRaisesRegex(release.ReleaseError, "did not stabilize"):
+                release._activate_snapshot_timer(
+                    self.paths,
+                    stability_timeout_seconds=0,
+                )
+
     def test_release_verification_binds_tree_artifacts_git_head_and_seal(self) -> None:
         target = self.create_verified_release("3" * 40)
         manifest = release.verify_release_path(self.paths, target)
