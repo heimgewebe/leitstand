@@ -58,6 +58,7 @@ DEFAULT_LOCK_TIMEOUT_SECONDS = 60.0
 DEFAULT_POSTFLIGHT_TIMEOUT_SECONDS = 35.0
 DEFAULT_STABILITY_SECONDS = 2.0
 DEFAULT_POLL_SECONDS = 1.0
+DEFAULT_SNAPSHOT_TIMER_STABILITY_SECONDS = 180.0
 BROWSER_BINARIES = ("chromium", "chromium-browser", "google-chrome-stable", "google-chrome")
 SYSTEM_CA_BUNDLE_CANDIDATES = (
     Path("/etc/ssl/certs/ca-certificates.crt"),
@@ -2254,21 +2255,43 @@ def _snapshot_timer_properties() -> dict[str, str]:
     )
 
 
-def _activate_snapshot_timer(paths: Paths) -> dict[str, str]:
+def _activate_snapshot_timer(
+    paths: Paths,
+    *,
+    stability_timeout_seconds: float = DEFAULT_SNAPSHOT_TIMER_STABILITY_SECONDS,
+) -> dict[str, str]:
     assert paths.snapshot_timer_target is not None
     run(("systemctl", "--user", "enable", SNAPSHOT_TIMER), timeout=60)
     run(("systemctl", "--user", "restart", SNAPSHOT_TIMER), timeout=60)
-    properties = _snapshot_timer_properties()
-    if (
-        properties.get("LoadState") != "loaded"
-        or properties.get("ActiveState") != "active"
-        or properties.get("SubState") != "waiting"
-        or properties.get("UnitFileState") != "enabled"
-        or Path(properties.get("FragmentPath", "")) != paths.snapshot_timer_target
-        or not properties.get("NextElapseUSecRealtime")
-    ):
-        raise ReleaseError(f"operator snapshot timer did not enter a recurring waiting state: {properties}")
-    return properties
+    deadline = time.monotonic() + max(0.0, stability_timeout_seconds)
+    properties: dict[str, str] = {}
+    while True:
+        properties = _snapshot_timer_properties()
+        if (
+            properties.get("LoadState") != "loaded"
+            or properties.get("ActiveState") != "active"
+            or properties.get("UnitFileState") != "enabled"
+            or properties.get("Result") != "success"
+            or Path(properties.get("FragmentPath", "")) != paths.snapshot_timer_target
+            or properties.get("Triggers") != SNAPSHOT_SERVICE
+        ):
+            raise ReleaseError(
+                f"operator snapshot timer identity or active state is invalid: {properties}"
+            )
+        sub_state = properties.get("SubState")
+        if sub_state == "waiting" and properties.get("NextElapseUSecRealtime"):
+            return properties
+        if sub_state not in {"running", "waiting"}:
+            raise ReleaseError(
+                f"operator snapshot timer entered an invalid transient state: {properties}"
+            )
+        now = time.monotonic()
+        if now >= deadline:
+            raise ReleaseError(
+                "operator snapshot timer did not stabilize after a persistent catch-up run: "
+                f"{properties}"
+            )
+        time.sleep(min(DEFAULT_POLL_SECONDS, deadline - now))
 
 
 def _restore_snapshot_timer_state(before: Mapping[str, str]) -> None:

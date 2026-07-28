@@ -184,4 +184,4 @@ The adapter does not establish:
 
 ## Coupled operator snapshot timer
 
-The release transaction installs the web, storage-health, operator-snapshot, and snapshot-timer user units together. It activates the recurring timer, runs both release-bound producers, restarts the web service, and validates local and canonical routes before completion. Rollback restores all four unit files, timer enablement/activity, selectors, and prior service state.
+The release transaction installs the web, storage-health, operator-snapshot, and snapshot-timer user units together. It activates the recurring timer, runs both release-bound producers, restarts the web service, and validates local and canonical routes before completion. Because `Persistent=true` may immediately start one catch-up producer run, activation accepts `active/running` only as a bounded transient state and waits for `active/waiting` with a finite next realtime trigger. A timer that does not stabilize still fails closed. Rollback restores all four unit files, timer enablement/activity, selectors, and prior service state.
