@@ -17,7 +17,7 @@ afterEach(async () => {
   tempRoots = [];
 });
 
-async function writeBundleIndex(publicExportReady = false, freshnessBound = false) {
+async function writeBundleIndex(publicExportReady = false, freshnessBound = false, absolutePointers = false) {
   const root = await mkdtemp(join(tmpdir(), 'leitstand-repobrief-'));
   tempRoots.push(root);
   const path = join(root, 'bundles.json');
@@ -31,10 +31,10 @@ async function writeBundleIndex(publicExportReady = false, freshnessBound = fals
       {
         repo: 'leitstand',
         bundleStem: 'leitstand-max-260705-0443',
-        bundleDirectory: '/tmp/leitstand-bundle',
-        bundleManifest: '/tmp/leitstand-bundle/manifest.json',
-        agentReadingPack: '/tmp/leitstand-bundle/pack.md',
-        canonicalDump: '/tmp/leitstand-bundle/dump.md',
+        bundleDirectory: absolutePointers ? '/home/alex/private/leitstand-bundle' : 'heimgewebe__leitstand/main/run-1',
+        bundleManifest: absolutePointers ? '/home/alex/private/leitstand-bundle/manifest.json' : 'heimgewebe__leitstand/main/run-1/manifest.json',
+        agentReadingPack: absolutePointers ? '/home/alex/private/leitstand-bundle/pack.md' : 'heimgewebe__leitstand/main/run-1/pack.md',
+        canonicalDump: absolutePointers ? '/home/alex/private/leitstand-bundle/dump.md' : 'heimgewebe__leitstand/main/run-1/dump.md',
         sourceCommit: 'a'.repeat(40),
         snapshotStatus: 'ok',
         preflightStatus: 'warn',
@@ -63,7 +63,6 @@ describe('getRepoBriefData', () => {
     expect(data.bundles).toEqual([]);
   });
 
-
   it('renders only a fresh explicitly bound canonical publication index', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-27T18:10:00Z'));
@@ -81,6 +80,18 @@ describe('getRepoBriefData', () => {
       repo: 'leitstand',
       public_export_ready: true,
     });
+  });
+
+  it('rejects absolute host paths before they reach the browser view', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-27T18:10:00Z'));
+    process.env.LEITSTAND_REPOGROUND_BUNDLES_PATH = await writeBundleIndex(true, true, true);
+
+    const data = await getRepoBriefData();
+
+    expect(data.view_meta.source_kind).toBe('corrupt');
+    expect(data.view_meta.missing_reason).toBe('repobrief_bundle_index_corrupt');
+    expect(data.bundles).toEqual([]);
   });
 
   it('labels the repository demo bundle as fixture, not artifact', async () => {

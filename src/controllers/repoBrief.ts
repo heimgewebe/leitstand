@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 
 export type RepoBriefSourceKind = 'artifact' | 'fixture' | 'missing' | 'corrupt';
 export type RepoBriefStatus = 'ok' | 'warn' | 'fail' | 'unknown';
@@ -103,6 +103,13 @@ function parseStringArray(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : [];
 }
 
+function isSafeBrowserPointer(value: string): boolean {
+  return value.length > 0
+    && !isAbsolute(value)
+    && !value.includes('\\')
+    && !value.split('/').includes('..');
+}
+
 function parseBundle(raw: unknown): RepoBriefBundleView {
   if (!raw || typeof raw !== 'object') {
     throw new Error('invalid RepoBrief bundle: must be object');
@@ -116,6 +123,9 @@ function parseBundle(raw: unknown): RepoBriefBundleView {
   const canonicalDump = typeof bundle.canonicalDump === 'string' ? bundle.canonicalDump : '';
   if (!repo || !bundleStem || !bundleDirectory || !bundleManifest || !agentReadingPack || !canonicalDump) {
     throw new Error('invalid RepoBrief bundle: missing required path fields');
+  }
+  if (![bundleDirectory, bundleManifest, agentReadingPack, canonicalDump].every(isSafeBrowserPointer)) {
+    throw new Error('invalid RepoBrief bundle: browser pointers must be relative and traversal-free');
   }
   return {
     repo,

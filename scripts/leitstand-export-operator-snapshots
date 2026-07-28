@@ -215,6 +215,10 @@ def repoground_bundle_index(
         if publication_root.is_symlink() or not publication_root.is_dir():
             raise RuntimeError("canonical publication root unavailable")
         root_resolved = publication_root.resolve(strict=True)
+
+        def display_path(path: Path) -> str:
+            return path.resolve(strict=True).relative_to(root_resolved).as_posix()
+
         candidates = sorted(publication_root.glob("*/*/*/*_merge.bundle.manifest.json"))
         if len(candidates) > 5_000:
             raise RuntimeError("canonical publication catalog is unbounded")
@@ -289,7 +293,7 @@ def repoground_bundle_index(
                         or expected_sha != sha256_bytes(content)
                     ):
                         raise RuntimeError(f"RepoGround {role} integrity mismatch")
-                    return str(candidate)
+                    return display_path(candidate)
 
                 snapshot = manifest.get("snapshot_provenance")
                 if not isinstance(snapshot, dict):
@@ -371,8 +375,8 @@ def repoground_bundle_index(
                 record: dict[str, object] = {
                     "repo": repo_id,
                     "bundleStem": bundle_stem,
-                    "bundleDirectory": str(manifest_path.parent),
-                    "bundleManifest": str(manifest_path),
+                    "bundleDirectory": relative.parent.as_posix(),
+                    "bundleManifest": relative.as_posix(),
                     "agentReadingPack": artifact_path("agent_reading_pack"),
                     "canonicalDump": artifact_path("canonical_md"),
                     "sourceCommit": source_commit,

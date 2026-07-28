@@ -15,7 +15,7 @@
     <p class="subtitle">Read-only surface for repository snapshot bundles. This view shows status, required artifacts and export-safety warnings; it does not generate bundles or claim repository understanding.</p>
 
     <section class="notice">
-      <strong>View only.</strong> Local bundle paths are operator pointers. Export-safety failures must remain visible and block public-share framing.
+      <strong>View only.</strong> Publication identifiers are browser-safe and relative to the canonical catalog. Export-safety failures must remain visible and block public-share framing.
     </section>
 
 
@@ -35,7 +35,7 @@
           <div class="meta-item"><div class="label">Source commit</div><div class="value"><%= bundle.source_commit || '—' %></div></div>
           <div class="meta-item"><div class="label">Manifest</div><div class="value"><%= bundle.bundle_manifest %></div></div>
         </div>
-        <h3>Local operator pointers</h3>
+        <h3>Publication identifiers</h3>
         <ul>
           <li>Bundle directory: <code><%= bundle.bundle_directory %></code></li>
           <li>Agent reading pack: <code><%= bundle.agent_reading_pack %></code></li>
