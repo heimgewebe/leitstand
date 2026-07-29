@@ -12,7 +12,9 @@ class RunbookContractTests(unittest.TestCase):
         )
         required = (
             "### Secure deployment-source ancestry",
-            "`assert_secure_ancestry` verifies the checkout and every relevant component",
+            "`source_identity` calls `assert_secure_ancestry` for the checkout",
+            "may first materialize or reseal the immutable Systemkatalog release",
+            "before any unit, selector, daemon or service effect",
             "below `/home/alex/repos/.leitstand-worktrees/...` is rejected",
             "~/.local/state/leitstand/deploy-sources/<commit>",
             "Do not move, chmod, clean or reuse a foreign worktree.",
