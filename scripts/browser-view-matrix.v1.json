@@ -38,7 +38,18 @@
       "id": "dashboard",
       "path": "/",
       "activeHref": "/",
-      "heading": "Leitstand"
+      "heading": "Leitstand",
+      "decisionAxis": {
+        "selector": "[data-decision-section]",
+        "labels": [
+          "Jetzt",
+          "Im Fokus",
+          "Blockiert",
+          "Konvergenz",
+          "Danach"
+        ],
+        "minReadableFontPx": 11
+      }
     },
     {
       "id": "repoground",

@@ -19,6 +19,11 @@ interface BrowserViewMatrix {
     activeHref: string;
     heading: string;
     modal?: boolean;
+    decisionAxis?: {
+      selector: string;
+      labels: string[];
+      minReadableFontPx: number;
+    };
   }>;
   scenarios: Array<{
     id: string;
@@ -90,6 +95,11 @@ describe('LSV-V1-T009 browser view matrix', () => {
       expect(view.heading.length).toBeGreaterThan(2);
     }
     expect(matrix.views.find((view) => view.id === 'ecosystem-map')?.modal).toBe(true);
+    expect(matrix.views.find((view) => view.id === 'dashboard')?.decisionAxis).toEqual({
+      selector: '[data-decision-section]',
+      labels: ['Jetzt', 'Im Fokus', 'Blockiert', 'Konvergenz', 'Danach'],
+      minReadableFontPx: 11,
+    });
   });
 
   it('covers valid, degraded, empty and reduced-motion states without claiming live incidents', async () => {

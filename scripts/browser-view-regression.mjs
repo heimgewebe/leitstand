@@ -165,6 +165,21 @@ async function createFixtures(tempRoot) {
   const emptyBureauPath = join(tempRoot, 'bureau-empty.json');
   const corruptCheckoutPath = join(tempRoot, 'checkout-corrupt.json');
   const missingBureauPath = join(tempRoot, 'does-not-exist', 'bureau.json');
+  const decisionAxisPath = join(tempRoot, 'operator-decision-axis.json');
+  const observedAt = new Date().toISOString();
+  await writeJson(decisionAxisPath, {
+    schemaVersion: 1,
+    kind: 'leitstand_operator_decision_axis_snapshot',
+    generatedAt: observedAt,
+    sections: {
+      now: { status: 'available', source: 'bureau.frontier', observedAt, items: [{ id: 'now-1', title: 'Aktuelle revisionsgebundene Aufgabe abschließen', detail: 'Diese längere Beschreibung beweist lesbaren Umbruch ohne horizontales Überlaufen.', meta: 'task: LSV-V1-T010' }] },
+      focus: { status: 'available', source: 'grabowski.current_work', observedAt, items: [{ id: 'focus-1', title: 'Isolierten UI-Slice integrieren', detail: 'Der Leitstand bleibt eine reine Beobachtungsoberfläche.', meta: 'owner: browser-regression' }] },
+      blocked: { status: 'unknown', source: 'bureau.blockers', observedAt, items: [{ id: 'blocked-1', title: 'Keine unbelegte Blockade behaupten', detail: 'Die Testprojektion verändert keine externe Zustandswahrheit.', meta: 'boundary: read-only' }] },
+      convergence: { status: 'available', source: 'grabowski.convergence', observedAt, items: [{ id: 'convergence-1', title: 'Gemeinsame UI-Verträge wiederverwenden', detail: 'Karten, Raster und Typografie stammen aus dem gemeinsamen System.', meta: 'contract: shared-ui' }] },
+      later: { status: 'available', source: 'bureau.queue', observedAt, items: [{ id: 'later-1', title: 'Danach nur belegte Arbeit anzeigen', detail: 'Die semantische Reihenfolge bleibt unverändert.', meta: 'queue: later' }] },
+    },
+    doesNotEstablish: ['task_or_priority_authority', 'queue_truth', 'dispatch_or_mutation_authority'],
+  });
   await writeJson(staleBureauPath, { ...bureau, generatedAt: '2020-01-01T00:00:00Z' });
   await writeJson(emptyBureauPath, { ...bureau, generatedAt: new Date().toISOString(), tasks: [] });
   await writeFile(corruptCheckoutPath, '{not valid json\n', 'utf-8');
@@ -183,6 +198,7 @@ async function createFixtures(tempRoot) {
     sourceFixtures,
     ecosystem,
     repoGroundPath,
+    decisionAxisPath,
     staleBureauPath,
     emptyBureauPath,
     corruptCheckoutPath,
@@ -200,6 +216,7 @@ function baselineEnvironment(fixtures) {
     LEITSTAND_STORAGE_HEALTH_FIXTURE_FALLBACK: '0',
     LEITSTAND_STORAGE_HEALTH_PATH: join(fixtures.sourceFixtures, 'storage-health.json'),
     LEITSTAND_REPOGROUND_BUNDLES_PATH: fixtures.repoGroundPath,
+    LEITSTAND_DECISION_AXIS_SNAPSHOT_PATH: fixtures.decisionAxisPath,
     LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH: fixtures.ecosystem.manifestPath,
     LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT: fixtures.ecosystem.root,
     LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH: fixtures.ecosystem.currentHeadPath,
@@ -323,6 +340,52 @@ async function checkMobileNavigation(page) {
   assert(await page.evaluate(() => document.activeElement === document.querySelector('[data-leitstand-nav-toggle]')), 'Escape did not restore navigation focus');
 }
 
+async function checkDecisionAxis(page, contract, viewport) {
+  const result = await page.evaluate(({ selector, labels }) => {
+    const axis = document.querySelector('[aria-labelledby="decision-axis-heading"]');
+    const grid = axis?.querySelector('[data-decision-axis-grid]');
+    const cards = [...(axis?.querySelectorAll(selector) || [])];
+    const cardMetrics = cards.map((card) => {
+      const rect = card.getBoundingClientRect();
+      const title = card.querySelector('.ui-item-title');
+      const source = card.querySelector('.ui-card__source');
+      return {
+        id: card.getAttribute('data-decision-section'),
+        label: card.querySelector('h3')?.textContent?.trim() || '',
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        scrollWidth: card.scrollWidth,
+        clientWidth: card.clientWidth,
+        title: title?.textContent?.trim() || '',
+        titleFontPx: title ? Number.parseFloat(getComputedStyle(title).fontSize) : 0,
+        sourceFontPx: source ? Number.parseFloat(getComputedStyle(source).fontSize) : 0,
+        sharedCard: card.classList.contains('card') && card.classList.contains('ui-card'),
+        statusClass: [...card.classList].some((name) => name.startsWith('ui-card--status-')),
+      };
+    });
+    const uniqueColumns = new Set(cardMetrics.map((card) => Math.round(card.left))).size;
+    return {
+      axisVisible: Boolean(axis && axis.getBoundingClientRect().height > 0),
+      sharedGrid: Boolean(grid?.classList.contains('ui-card-grid')),
+      labelsMatch: JSON.stringify(cardMetrics.map((card) => card.label)) === JSON.stringify(labels),
+      cardMetrics,
+      uniqueColumns,
+      innerWidth: window.innerWidth,
+    };
+  }, contract);
+
+  assert(result.axisVisible, `decision axis is not visible for ${viewport.id}`);
+  assert(result.sharedGrid && result.cardMetrics.every((card) => card.sharedCard && card.statusClass), `decision axis bypasses shared UI contracts for ${viewport.id}`);
+  assert(result.labelsMatch, `decision axis semantics changed for ${viewport.id}`, result.cardMetrics.map((card) => card.label).join(','));
+  assert(result.cardMetrics.length === contract.labels.length, `decision axis card count changed for ${viewport.id}`, result.cardMetrics.length);
+  assert(result.cardMetrics.every((card) => card.left >= -1 && card.right <= result.innerWidth + 1 && card.scrollWidth <= card.clientWidth + 1), `decision axis overflow for ${viewport.id}`, JSON.stringify(result.cardMetrics));
+  assert(result.cardMetrics.every((card) => card.title.length > 0 && card.titleFontPx >= contract.minReadableFontPx && card.sourceFontPx >= contract.minReadableFontPx), `decision axis copy is not readable for ${viewport.id}`, JSON.stringify(result.cardMetrics));
+  if (viewport.id === 'mobile') assert(result.uniqueColumns === 1, 'decision axis mobile layout is not single-column', result.uniqueColumns);
+  else assert(result.uniqueColumns >= 2, 'decision axis desktop layout did not use available width', result.uniqueColumns);
+  return 7;
+}
+
 async function runView(browser, origin, viewport, view, baseline) {
   applyEnvironment(baseline);
   const context = await browser.newContext({
@@ -349,13 +412,14 @@ async function runView(browser, origin, viewport, view, baseline) {
     assert(layout.injectedHarnessStyles === 0, `test harness style detected for ${view.id}`);
     assert(await checkSkipLink(page), `skip link did not focus main for ${view.id}`);
     if (viewport.id === 'mobile' && view.id === 'dashboard') await checkMobileNavigation(page);
+    const decisionAxisChecks = view.decisionAxis ? await checkDecisionAxis(page, view.decisionAxis, viewport) : 0;
     assert(diagnostics.diagnostics.length === 0, `browser diagnostics failed for ${view.id}/${viewport.id}`, diagnostics.diagnostics.join(' | '));
     return {
       viewport: viewport.id,
       view: view.id,
       path: view.path,
       assetPaths: [...diagnostics.assets.keys()].sort(),
-      checks: 11 + (viewport.id === 'mobile' && view.id === 'dashboard' ? 3 : 0),
+      checks: 11 + (viewport.id === 'mobile' && view.id === 'dashboard' ? 3 : 0) + decisionAxisChecks,
     };
   } finally {
     await context.close();
