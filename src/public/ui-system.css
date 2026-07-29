@@ -129,15 +129,15 @@ h1 {
   padding: 16px;
 }
 
-.ui-card--status-unavailable {
+.card.ui-card--status-unavailable {
   border-left: 3px solid var(--ui-fail);
 }
 
-.ui-card--status-unknown {
+.card.ui-card--status-unknown {
   border-left: 3px solid var(--ui-warn);
 }
 
-.ui-card--status-available {
+.card.ui-card--status-available {
   border-left: 3px solid var(--ui-ok);
 }
 

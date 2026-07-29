@@ -362,6 +362,7 @@ async function checkDecisionAxis(page, contract, viewport) {
         titleFontPx: title ? Number.parseFloat(getComputedStyle(title).fontSize) : 0,
         sourceFontPx: source ? Number.parseFloat(getComputedStyle(source).fontSize) : 0,
         minimumCopyFontPx: copy.length > 0 ? Math.min(...copy.map((element) => Number.parseFloat(getComputedStyle(element).fontSize))) : 0,
+        borderLeftWidthPx: Number.parseFloat(getComputedStyle(card).borderLeftWidth),
         sharedCard: card.classList.contains('card') && card.classList.contains('ui-card'),
         statusClass: [...card.classList].some((name) => name.startsWith('ui-card--status-')),
       };
@@ -378,7 +379,7 @@ async function checkDecisionAxis(page, contract, viewport) {
   }, contract);
 
   assert(result.axisVisible, `decision axis is not visible for ${viewport.id}`);
-  assert(result.sharedGrid && result.cardMetrics.every((card) => card.sharedCard && card.statusClass), `decision axis bypasses shared UI contracts for ${viewport.id}`);
+  assert(result.sharedGrid && result.cardMetrics.every((card) => card.sharedCard && card.statusClass && card.borderLeftWidthPx === 3), `decision axis bypasses shared UI status contracts for ${viewport.id}`, JSON.stringify(result.cardMetrics));
   assert(result.labelsMatch, `decision axis semantics changed for ${viewport.id}`, result.cardMetrics.map((card) => card.label).join(','));
   assert(result.cardMetrics.length === contract.labels.length, `decision axis card count changed for ${viewport.id}`, result.cardMetrics.length);
   assert(result.cardMetrics.every((card) => card.left >= -1 && card.right <= result.innerWidth + 1 && card.scrollWidth <= card.clientWidth + 1), `decision axis overflow for ${viewport.id}`, JSON.stringify(result.cardMetrics));
