@@ -349,6 +349,7 @@ async function checkDecisionAxis(page, contract, viewport) {
       const rect = card.getBoundingClientRect();
       const title = card.querySelector('.ui-item-title');
       const source = card.querySelector('.ui-card__source');
+      const copy = [...card.querySelectorAll('.ui-card__source, .ui-item-title, .ui-item-detail, .ui-item-meta')];
       return {
         id: card.getAttribute('data-decision-section'),
         label: card.querySelector('h3')?.textContent?.trim() || '',
@@ -360,6 +361,7 @@ async function checkDecisionAxis(page, contract, viewport) {
         title: title?.textContent?.trim() || '',
         titleFontPx: title ? Number.parseFloat(getComputedStyle(title).fontSize) : 0,
         sourceFontPx: source ? Number.parseFloat(getComputedStyle(source).fontSize) : 0,
+        minimumCopyFontPx: copy.length > 0 ? Math.min(...copy.map((element) => Number.parseFloat(getComputedStyle(element).fontSize))) : 0,
         sharedCard: card.classList.contains('card') && card.classList.contains('ui-card'),
         statusClass: [...card.classList].some((name) => name.startsWith('ui-card--status-')),
       };
@@ -380,7 +382,7 @@ async function checkDecisionAxis(page, contract, viewport) {
   assert(result.labelsMatch, `decision axis semantics changed for ${viewport.id}`, result.cardMetrics.map((card) => card.label).join(','));
   assert(result.cardMetrics.length === contract.labels.length, `decision axis card count changed for ${viewport.id}`, result.cardMetrics.length);
   assert(result.cardMetrics.every((card) => card.left >= -1 && card.right <= result.innerWidth + 1 && card.scrollWidth <= card.clientWidth + 1), `decision axis overflow for ${viewport.id}`, JSON.stringify(result.cardMetrics));
-  assert(result.cardMetrics.every((card) => card.title.length > 0 && card.titleFontPx >= contract.minReadableFontPx && card.sourceFontPx >= contract.minReadableFontPx), `decision axis copy is not readable for ${viewport.id}`, JSON.stringify(result.cardMetrics));
+  assert(result.cardMetrics.every((card) => card.title.length > 0 && card.titleFontPx >= contract.minReadableFontPx && card.sourceFontPx >= contract.minReadableFontPx && card.minimumCopyFontPx >= contract.minReadableFontPx), `decision axis copy is not readable for ${viewport.id}`, JSON.stringify(result.cardMetrics));
   if (viewport.id === 'mobile') assert(result.uniqueColumns === 1, 'decision axis mobile layout is not single-column', result.uniqueColumns);
   else assert(result.uniqueColumns >= 2, 'decision axis desktop layout did not use available width', result.uniqueColumns);
   return 7;
