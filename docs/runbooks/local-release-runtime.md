@@ -29,6 +29,20 @@ A build accepts:
 
 Full Git-dependent CI runs first in the exact clean source checkout. The adapter then re-reads live remote `main`, creates the release with `git archive`, and runs frozen installation, release-adapter tests and deterministic builds inside the archive. `SOURCE_DATE_EPOCH` is bound to the source commit timestamp. Uncommitted files cannot enter the release.
 
+### Secure deployment-source ancestry
+
+A clean, commit-exact checkout is necessary but not sufficient. Before the Leitstand release build, `source_identity` calls `assert_secure_ancestry` for the checkout and every relevant component of its resolved source path. A component that is writable by group or others is rejected, except for the narrow root-owned sticky-directory case handled by the existing guard. This check remains fail closed; operators must not add an exception for `/home/alex/repos`, weaken the guard, or change permissions on a foreign parent path merely to make a release pass.
+
+The observed failure mode is intentional: an otherwise clean checkout below `/home/alex/repos/.leitstand-worktrees/...` is rejected when `/home/alex/repos` is group- or other-writable. Git cleanliness does not make that parent chain a trusted release source. Prepare a private host-local source root instead, for example:
+
+```text
+~/.local/state/leitstand/deploy-sources/<commit>
+```
+
+For `deploy`, the adapter may first materialize or reseal the immutable Systemkatalog release described below. The ancestry guarantee begins before the Leitstand release is built and before any unit, selector, daemon or service effect; it does not claim that deployment performs no earlier immutable filesystem preparation.
+
+The source root and its ancestors must be owned and writable only within the boundary accepted by `assert_secure_ancestry`; a mode such as `0700` is appropriate for the user-owned `deploy-sources` directory. Clone or materialize the exact reviewed commit there, verify that `HEAD`, `origin/main` and live remote `main` still agree, and pass that checkout to `--source-repo`. Do not move, chmod, clean or reuse a foreign worktree. The private source path is preparation for a later explicitly authorized deployment; creating it does not itself change units, release selectors or running services.
+
 Release directory:
 
 ```text
