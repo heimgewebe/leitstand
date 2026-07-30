@@ -133,6 +133,7 @@ CRITICAL_ARTIFACTS: tuple[str, ...] = (
     SNAPSHOT_UNIT_RELATIVE_PATH.as_posix(),
     SNAPSHOT_TIMER_RELATIVE_PATH.as_posix(),
     "scripts/collect-storage-health-runtime",
+    "scripts/decision_axis_selection.py",
     "scripts/leitstand-export-operator-snapshots",
     "scripts/leitstand-release.py",
 )

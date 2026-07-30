@@ -23,6 +23,7 @@ interface BrowserViewMatrix {
       selector: string;
       labels: string[];
       minReadableFontPx: number;
+      minimumNowItems: number;
     };
   }>;
   scenarios: Array<{
@@ -99,6 +100,7 @@ describe('LSV-V1-T009 browser view matrix', () => {
       selector: '[data-decision-section]',
       labels: ['Jetzt', 'Im Fokus', 'Blockiert', 'Konvergenz', 'Danach'],
       minReadableFontPx: 11,
+      minimumNowItems: 4,
     });
   });
 

@@ -166,6 +166,8 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
         collector = target / "scripts/collect-storage-health-runtime"
         collector.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         os.chmod(collector, 0o755)
+        selector = target / "scripts/decision_axis_selection.py"
+        selector.write_text("def build_decision_axis_queue_items(*args, **kwargs):\n    return [], []\n", encoding="utf-8")
         snapshot_wrapper = target / "scripts/leitstand-export-operator-snapshots"
         snapshot_wrapper.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         os.chmod(snapshot_wrapper, 0o755)

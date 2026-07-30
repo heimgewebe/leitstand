@@ -53,6 +53,10 @@ async function fixture() {
   );
   await writeFile(join(releaseRoot, 'scripts', 'export-operator-snapshots.mjs'), '// bridge\n');
   await writeFile(
+    join(releaseRoot, 'scripts', 'decision_axis_selection.py'),
+    'def build_decision_axis_queue_items(*args, **kwargs):\n    return [], []\n',
+  );
+  await writeFile(
     runtimeConfig,
     `${JSON.stringify({
       schema_version: 1,
@@ -209,6 +213,7 @@ describe('leitstand-export-operator-snapshots', () => {
     expect(source).toContain('canonical_registry_inventory_sha256');
     expect(source).toContain('canonical_registry_tree_sha256');
     expect(source).toContain('export-operator-snapshots.mjs');
+    expect(source).toContain('decision_axis_selection.py');
     expect(source).toContain('raw = json.loads(snapshot_contents[relative.as_posix()])');
     expect(source).not.toContain('raw = json.loads(path.read_text())');
   });

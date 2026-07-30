@@ -12,17 +12,17 @@ summary: >
 
 # Operator Decision Axis v1
 
-Task: `OPERATOR-MACHINE-READABILITY-V1-T024`
+Basis: `OPERATOR-MACHINE-READABILITY-V1-T024`; paralleler Jetzt-Korridor: `LSV-V1-T013`
 
 ## Ziel
 
 Der Leitstand zeigt eine read-only Entscheidungsprojektion für fünf Fragen:
 
-- **Jetzt** – der erste aktuell von Bureaus bestehender Statusprojektion aus der kanonischen Registry-Queue vorgeschlagene Task;
+- **Jetzt** – Bureaus globaler Spitzenkandidat plus höchstens ein bereits aktiver oder konfliktfrei claimbarer aktueller Repository-Ball je Ausführungsdomäne;
 - **Im Fokus** – der jüngste aktive Thread-Fokus aus dem Bureau Live Register;
 - **Blockiert** – explizite `blocked_reasons` beziehungsweise ein belegter blockierter Zustand aus Bureaus Statusprojektion;
 - **Konvergenz** – die bestehende Grabowski-`current_work`-Konvergenzprojektion;
-- **Danach** – weitere von Bureaus bestehender Statusprojektion aus der kanonischen Registry-Queue vorgeschlagene Tasks.
+- **Danach** – weitere kanonische Kandidaten außerhalb der `now`-Lane; nicht ausgewählte `now`-Tasks werden nicht fälschlich als spätere Arbeit bezeichnet.
 
 Die Achse ist ausschließlich eine Projektion. Sie erzeugt keine Task-, Queue-, Prioritäts-, Fokus-, Blocking-, Runtime- oder Konvergenzwahrheit.
 
@@ -30,7 +30,7 @@ Die Achse ist ausschließlich eine Projektion. Sie erzeugt keine Task-, Queue-, 
 
 | Abschnitt | Primär-/Projektionsquelle | Leitstand darf nicht |
 | --- | --- | --- |
-| Jetzt | Bureau `status-projection`, Quelle `registry-queue` | Task priorisieren, claimen oder dispatchen |
+| Jetzt | Bureau `status-projection`, `repository_balls` und Quelle `registry-queue` | Task priorisieren, claimen oder dispatchen |
 | Im Fokus | Bureau Live Register, jüngster aktiver Thread-Fokus | Fokus schreiben, schließen oder als Queue-Wahrheit behandeln |
 | Blockiert | Bureau `status-projection` | Blocker erfinden oder selbst auflösen |
 | Konvergenz | Grabowski `current_work` | Lifecycle-Zustand, Leases oder Prozesse mutieren |
@@ -42,7 +42,7 @@ Bureau bleibt Aufgaben- und Prioritätsautorität. Grabowski bleibt Ausführungs
 
 1. `scripts/leitstand-export-operator-snapshots` läuft producer-seitig außerhalb des HTTP-Request-Pfads.
 2. Der Producer bindet Bureau-Registry-Daten weiterhin an das digest-validierte kanonische Runtime-Snapshot.
-3. Der Producer liest Bureaus bestehende read-only Projektionen `status-projection` und `live-list`.
+3. Der Producer liest Bureaus bestehende read-only Projektionen `status-projection` einschließlich `repository_balls` und `live-list`.
 4. Der Producer liest Grabowskis bestehende `current_work`-Projektion für Konvergenzevidenz.
 5. `scripts/export-operator-snapshots.mjs` begrenzt die Abschnitte und schreibt atomar `artifacts/operator-decision-axis.json` mit Contract-Kind `leitstand_operator_decision_axis_snapshot`.
 6. `src/controllers/decisionAxis.ts` liest ausschließlich dieses Artefakt. Es gibt keinen request-time Aufruf von Bureau oder Grabowski.
@@ -54,7 +54,7 @@ Fehlt eine Producer-Quelle, wird der betroffene Abschnitt als `unavailable` mit 
 
 ## Bounds und Nicht-Ansprüche
 
-Jeder Abschnitt ist auf höchstens acht Items begrenzt. Das Snapshot nennt explizit unter anderem folgende Nicht-Ansprüche:
+Der Abschnitt `Jetzt` ist auf höchstens sechs Einträge begrenzt: zuerst der globale Spitzenkandidat, danach deterministisch deduplizierte aktive Repository-Bälle und schließlich konfliktfrei claimbare aktuelle `now`-Bälle. Ein Task, der mehreren Repository-Bällen zugeordnet ist, belegt alle diese Domänen. Unbekannte Domänen werden nicht als parallel sicher interpretiert. Die übrigen Abschnitte bleiben auf höchstens acht Items begrenzt. Das Snapshot nennt explizit unter anderem folgende Nicht-Ansprüche:
 
 - keine Task- oder Prioritätsautorität;
 - keine Queue-Wahrheit;
@@ -69,4 +69,5 @@ Verifiziert durch:
 - `tests/controllers/decisionAxis.test.ts` – vollständige fünf Abschnitte, stale/missing, keine erfundenen Werte;
 - `tests/exportDecisionAxis.test.ts` – bounded Snapshot und Nicht-Ansprüche;
 - `tests/operatorSnapshotWrapper.test.ts` – kanonisch digest-gebundene Bureau-Quelle;
+- `tests/test_decision_axis_selection.py` – globaler Spitzenkandidat, aktive und claimbare Domänen, Mehrrepo-Deduplikation, Bounds und Ausschluss von `now` aus `Danach`;
 - `tests/controllers/dashboardAuthority.test.ts` und Repository-CI – bestehende Observer-Grenzen bleiben erhalten.

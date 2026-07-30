@@ -172,7 +172,12 @@ async function createFixtures(tempRoot) {
     kind: 'leitstand_operator_decision_axis_snapshot',
     generatedAt: observedAt,
     sections: {
-      now: { status: 'available', source: 'bureau.frontier', observedAt, items: [{ id: 'now-1', title: 'Aktuelle revisionsgebundene Aufgabe abschließen', detail: 'Diese längere Beschreibung beweist lesbaren Umbruch ohne horizontales Überlaufen.', meta: 'task: LSV-V1-T010' }] },
+      now: { status: 'available', source: 'bureau.status-projection / repository_balls', observedAt, items: [
+        { id: 'now-global', title: 'Audio-Systemwahrheit sicher abschließen', detail: 'Globale Bureau-Spitzenpriorität mit lesbarem Umbruch ohne horizontales Überlaufen.', meta: 'global first · already active · repo.audio' },
+        { id: 'now-bureau', title: 'Bureau-Registrierung revisionsgebunden fortführen', detail: 'Bereits aktiver Repository-Ball ohne neue Claim-Entscheidung.', meta: 'already active · repo.bureau' },
+        { id: 'now-grabowski', title: 'Grabowski-Konvergenzarbeit abschließen', detail: 'Zweite aktive, nicht überlappende Ausführungsdomäne.', meta: 'already active · repo.grabowski' },
+        { id: 'now-repoground', title: 'RepoGround-Kernkomplexität reduzieren', detail: 'Konfliktfrei claimbarer aktueller Repository-Ball.', meta: 'parallel claimable · repo.repoground' },
+      ] },
       focus: { status: 'available', source: 'grabowski.current_work', observedAt, items: [{ id: 'focus-1', title: 'Isolierten UI-Slice integrieren', detail: 'Der Leitstand bleibt eine reine Beobachtungsoberfläche.', meta: 'owner: browser-regression' }] },
       blocked: { status: 'unknown', source: 'bureau.blockers', observedAt, items: [{ id: 'blocked-1', title: 'Keine unbelegte Blockade behaupten', detail: 'Die Testprojektion verändert keine externe Zustandswahrheit.', meta: 'boundary: read-only' }] },
       convergence: { status: 'available', source: 'grabowski.convergence', observedAt, items: [{ id: 'convergence-1', title: 'Gemeinsame UI-Verträge wiederverwenden', detail: 'Karten, Raster und Typografie stammen aus dem gemeinsamen System.', meta: 'contract: shared-ui' }] },
@@ -352,6 +357,7 @@ async function checkDecisionAxis(page, contract, viewport) {
       const copy = [...card.querySelectorAll('.ui-card__source, .ui-item-title, .ui-item-detail, .ui-item-meta')];
       return {
         id: card.getAttribute('data-decision-section'),
+        itemCount: card.querySelectorAll('.ui-list > li').length,
         label: card.querySelector('h3')?.textContent?.trim() || '',
         left: rect.left,
         right: rect.right,
@@ -384,9 +390,11 @@ async function checkDecisionAxis(page, contract, viewport) {
   assert(result.cardMetrics.length === contract.labels.length, `decision axis card count changed for ${viewport.id}`, result.cardMetrics.length);
   assert(result.cardMetrics.every((card) => card.left >= -1 && card.right <= result.innerWidth + 1 && card.scrollWidth <= card.clientWidth + 1), `decision axis overflow for ${viewport.id}`, JSON.stringify(result.cardMetrics));
   assert(result.cardMetrics.every((card) => card.title.length > 0 && card.titleFontPx >= contract.minReadableFontPx && card.sourceFontPx >= contract.minReadableFontPx && card.minimumCopyFontPx >= contract.minReadableFontPx), `decision axis copy is not readable for ${viewport.id}`, JSON.stringify(result.cardMetrics));
+  const nowCard = result.cardMetrics.find((card) => card.id === 'now');
+  assert(nowCard?.itemCount >= contract.minimumNowItems, `decision axis does not render the bounded parallel Now corridor for ${viewport.id}`, JSON.stringify(nowCard));
   if (viewport.id === 'mobile') assert(result.uniqueColumns === 1, 'decision axis mobile layout is not single-column', result.uniqueColumns);
   else assert(result.uniqueColumns >= 2, 'decision axis desktop layout did not use available width', result.uniqueColumns);
-  return 7;
+  return 8;
 }
 
 async function runView(browser, origin, viewport, view, baseline) {

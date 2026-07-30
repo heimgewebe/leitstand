@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -458,6 +459,16 @@ if release_root.name != f"{release_commit}-runtime-v1":
     raise RuntimeError("Leitstand release path and source commit disagree")
 bridge_path = release_root / "scripts" / "export-operator-snapshots.mjs"
 require_regular(bridge_path, "versioned Leitstand snapshot bridge")
+selection_path = release_root / "scripts" / "decision_axis_selection.py"
+require_regular(selection_path, "versioned Leitstand decision-axis selector")
+selection_spec = importlib.util.spec_from_file_location(
+    "leitstand_decision_axis_selection", selection_path
+)
+if selection_spec is None or selection_spec.loader is None:
+    raise RuntimeError("cannot load versioned Leitstand decision-axis selector")
+selection_module = importlib.util.module_from_spec(selection_spec)
+selection_spec.loader.exec_module(selection_module)
+build_decision_axis_queue_items = selection_module.build_decision_axis_queue_items
 
 _runtime_bytes, runtime_config = load_json_file(runtime_config_path, "Leitstand runtime config")
 if (
@@ -711,18 +722,12 @@ except Exception as error:
     convergence_projection = None
     convergence_error = error.__class__.__name__
 
-next_actions = status_projection.get("next_actions", []) if status_projection else []
-ranked_actions = [item for item in next_actions if isinstance(item, dict) and item.get("task_id")]
-
-def task_action_item(action: dict[str, object]) -> dict[str, str]:
-    task_id = str(action.get("task_id"))
-    task = task_by_id.get(task_id, {})
-    title = str(task.get("title") or task_id)
-    lane = str(action.get("queue_lane") or "unknown")
-    return {"id": task_id, "title": title, "detail": f"Bureau queue lane: {lane}", "meta": "Bureau status-projection"}
-
-now_items = [task_action_item(ranked_actions[0])] if ranked_actions else []
-later_items = [task_action_item(item) for item in ranked_actions[1:6]]
+now_items, later_items = build_decision_axis_queue_items(
+    status_projection,
+    task_by_id,
+    max_now_items=6,
+    max_later_items=5,
+)
 status_observed_at = str(status_projection.get("generated_at")) if status_projection and status_projection.get("generated_at") else observed_at
 
 blocked_items: list[dict[str, str]] = []
@@ -798,7 +803,7 @@ if convergence_projection:
 
 decision_payload = {
     "sections": {
-        "now": section("unavailable" if status_error else ("available" if now_items else "unknown"), "Bureau status-projection / registry queue", status_observed_at if not status_error else None, now_items),
+        "now": section("unavailable" if status_error else ("available" if now_items else "unknown"), "Bureau status-projection / repository_balls / registry queue", status_observed_at if not status_error else None, now_items),
         "focus": section("unavailable" if focus_error else ("available" if focus_items else "unknown"), "Bureau Live Register", observed_at if not focus_error else None, focus_items),
         "blocked": section("unavailable" if status_error else ("available" if blocked_items else "unknown"), "Bureau status-projection blocker evidence", status_observed_at if not status_error else None, blocked_items),
         "convergence": section("unavailable" if convergence_error else ("unknown" if convergence_degraded or not convergence_items else "available"), "Grabowski current_work convergence projection", convergence_observed_at if not convergence_error else None, convergence_items),
