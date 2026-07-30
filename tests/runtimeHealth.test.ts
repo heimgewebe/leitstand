@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getRuntimeHealthData } from '../src/runtimeHealth.js';
@@ -266,5 +266,35 @@ describe('runtime health receipt', () => {
     expect(receipt.status).toBe('fail');
     expect(receipt.snapshots.bureau_tasks.status).toBe('fail');
     expect(receipt.snapshots.bureau_tasks.reason).toBe('snapshot_missing');
+  });
+
+  it('reports corrupt snapshot content as invalid JSON', async () => {
+    await writeSnapshots('2026-07-08T17:55:00.000Z');
+    await writeFile(join(artifactsDir, 'bureau-tasks.json'), '{"tasks": [', 'utf-8');
+
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)) });
+
+    expect(receipt.status).toBe('fail');
+    expect(receipt.snapshots.bureau_tasks.status).toBe('fail');
+    expect(receipt.snapshots.bureau_tasks.reason).toBe('snapshot_json_invalid');
+    expect(receipt.snapshots.bureau_tasks.exists).toBe(true);
+  });
+
+  it('separates an unreadable snapshot path from corrupt snapshot content', async () => {
+    // A symlink loop fails in `stat` with ELOOP before any byte is read, so the
+    // receipt must not blame the file's JSON. The errno message embeds the
+    // `.json` path, which is exactly what message-substring classification
+    // mistook for corruption.
+    await writeSnapshots('2026-07-08T17:55:00.000Z');
+    const loopingPath = join(artifactsDir, 'bureau-tasks.json');
+    await rm(loopingPath);
+    await symlink(loopingPath, loopingPath);
+
+    const receipt = await getRuntimeHealthData({ cwd: testDir, now, ecosystemMapSourceRoot: join(testDir, 'a'.repeat(40)) });
+
+    expect(receipt.status).toBe('fail');
+    expect(receipt.snapshots.bureau_tasks.status).toBe('fail');
+    expect(receipt.snapshots.bureau_tasks.reason).toBe('snapshot_unreadable');
+    expect(receipt.snapshots.bureau_tasks.age_seconds).toBeNull();
   });
 });

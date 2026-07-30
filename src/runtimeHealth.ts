@@ -240,9 +240,13 @@ async function readSnapshotHealth(
       record_count: recordCount,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-    const missing = message.includes('enoent') || message.includes('no such file');
-    const invalidJson = message.includes('json') || message.includes('unexpected');
+    // Classify structurally, not by message text: every snapshot path ends in
+    // `.json` and Node embeds that path in errno messages, so substring matching
+    // reported EACCES/ELOOP/ENOTDIR as corrupt JSON and made `snapshot_unreadable`
+    // unreachable. An operator reading the receipt must be able to tell a broken
+    // file from a broken mount or permission.
+    const missing = (error as NodeJS.ErrnoException | null)?.code === 'ENOENT';
+    const invalidJson = error instanceof SyntaxError;
     let mtime: string | null = null;
     if (!missing) {
       try {
