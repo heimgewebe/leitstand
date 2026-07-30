@@ -48,7 +48,8 @@
           "Konvergenz",
           "Danach"
         ],
-        "minReadableFontPx": 11
+        "minReadableFontPx": 11,
+        "minimumNowItems": 4
       }
     },
     {
