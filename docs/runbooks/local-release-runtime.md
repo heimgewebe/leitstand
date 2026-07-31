@@ -52,6 +52,8 @@ Release directory:
 Every release manifest binds source commit, source tree, origin URL, validation commands, release-tree digest and critical artifact digests.
 The critical-artifact set includes the versioned operator-snapshot launcher `scripts/leitstand-export-operator-snapshots` and its decision-axis selector `scripts/decision_axis_selection.py`; their exact bytes are therefore sealed and digest-bound with the release before the host-local installed copy may be updated. The launcher resolves both the format bridge and the selector from that same immutable release rather than from a mutable checkout. A missing or unloadable selector fails the producer before it can publish a decision-axis snapshot.
 
+Historical immutable releases retain the exact critical-artifact set written by their own manifest. Validation accepts only the four known sets produced by earlier release-contract revisions and hashes exactly those recorded paths; unknown, partial or invented sets remain fail-closed. This preserves rollback to older releases without weakening their whole-tree SHA-256 seal.
+
 ## Runtime configuration
 
 Host-specific source paths are not embedded in the repository. The effect commands read one exact-key JSON object, normally:
