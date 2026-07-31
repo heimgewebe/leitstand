@@ -10,7 +10,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.4.0
       - name: Fail on forbidden files (env, keys, secrets, config)
         shell: bash
         run: |
