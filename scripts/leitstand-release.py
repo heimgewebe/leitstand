@@ -124,7 +124,21 @@ SNAPSHOT_THRESHOLDS = {
 }
 RUNTIME_LINK_NAMES: tuple[str, ...] = ()
 
-CRITICAL_ARTIFACTS: tuple[str, ...] = (
+BASE_CRITICAL_ARTIFACTS: tuple[str, ...] = (
+    "package.json",
+    "pnpm-lock.yaml",
+    "dist/server.js",
+    WEB_UNIT_RELATIVE_PATH.as_posix(),
+    STORAGE_UNIT_RELATIVE_PATH.as_posix(),
+    "scripts/collect-storage-health-runtime",
+    "scripts/leitstand-release.py",
+)
+SNAPSHOT_WRAPPER_CRITICAL_ARTIFACTS: tuple[str, ...] = (
+    *BASE_CRITICAL_ARTIFACTS[:-1],
+    "scripts/leitstand-export-operator-snapshots",
+    BASE_CRITICAL_ARTIFACTS[-1],
+)
+SNAPSHOT_TIMER_CRITICAL_ARTIFACTS: tuple[str, ...] = (
     "package.json",
     "pnpm-lock.yaml",
     "dist/server.js",
@@ -133,9 +147,19 @@ CRITICAL_ARTIFACTS: tuple[str, ...] = (
     SNAPSHOT_UNIT_RELATIVE_PATH.as_posix(),
     SNAPSHOT_TIMER_RELATIVE_PATH.as_posix(),
     "scripts/collect-storage-health-runtime",
-    "scripts/decision_axis_selection.py",
     "scripts/leitstand-export-operator-snapshots",
     "scripts/leitstand-release.py",
+)
+CRITICAL_ARTIFACTS: tuple[str, ...] = (
+    *SNAPSHOT_TIMER_CRITICAL_ARTIFACTS[:-2],
+    "scripts/decision_axis_selection.py",
+    *SNAPSHOT_TIMER_CRITICAL_ARTIFACTS[-2:],
+)
+SUPPORTED_CRITICAL_ARTIFACT_SETS: tuple[tuple[str, ...], ...] = (
+    BASE_CRITICAL_ARTIFACTS,
+    SNAPSHOT_WRAPPER_CRITICAL_ARTIFACTS,
+    SNAPSHOT_TIMER_CRITICAL_ARTIFACTS,
+    CRITICAL_ARTIFACTS,
 )
 
 SOURCE_VALIDATION_COMMANDS: tuple[tuple[str, ...], ...] = (
@@ -743,9 +767,11 @@ def release_tree_sha256(root: Path) -> str:
     return digest.hexdigest()
 
 
-def critical_hashes(root: Path) -> dict[str, str]:
+def critical_hashes(
+    root: Path, artifacts: Sequence[str] = CRITICAL_ARTIFACTS
+) -> dict[str, str]:
     result: dict[str, str] = {}
-    for relative in CRITICAL_ARTIFACTS:
+    for relative in artifacts:
         path = root / relative
         _require_regular_file(path, owner_uid=os.getuid(), label=f"critical artifact {relative}")
         result[relative] = sha256_file(path)
@@ -839,6 +865,14 @@ def _validate_string_list(value: object, label: str) -> list[str]:
     return value
 
 
+def _critical_artifact_set(critical: Mapping[str, object]) -> tuple[str, ...]:
+    keys = frozenset(critical)
+    for candidate in SUPPORTED_CRITICAL_ARTIFACT_SETS:
+        if keys == frozenset(candidate):
+            return candidate
+    raise ReleaseError("critical artifact manifest keys mismatch")
+
+
 def validate_manifest(manifest: object, *, target: Path | None = None) -> dict[str, Any]:
     if not isinstance(manifest, dict):
         raise ReleaseError("release manifest must be one JSON object")
@@ -875,8 +909,7 @@ def validate_manifest(manifest: object, *, target: Path | None = None) -> dict[s
         raise ReleaseError("release attempt_id is invalid")
     _validate_string_list(manifest["does_not_establish"], "does_not_establish")
     critical = manifest["critical_artifacts"]
-    if set(critical) != set(CRITICAL_ARTIFACTS):
-        raise ReleaseError("critical artifact manifest keys mismatch")
+    _critical_artifact_set(critical)
     for key, value in critical.items():
         if not isinstance(value, str) or not SHA256_RE.fullmatch(value):
             raise ReleaseError(f"critical artifact digest is invalid: {key}")
@@ -930,7 +963,8 @@ def verify_release_path(paths: Paths, target: Path) -> dict[str, Any]:
         raise ReleaseError(
             f"release tree SHA-256 mismatch: expected {manifest['release_tree_sha256']}, got {actual_tree}"
         )
-    actual_critical = critical_hashes(target)
+    artifact_set = _critical_artifact_set(manifest["critical_artifacts"])
+    actual_critical = critical_hashes(target, artifact_set)
     if actual_critical != manifest["critical_artifacts"]:
         raise ReleaseError("release critical artifact hashes mismatch")
     if runtime_links(target) != manifest["runtime_links"]:
