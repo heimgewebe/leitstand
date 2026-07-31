@@ -241,6 +241,39 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
         buffer.seek(0)
         return tarfile.open(fileobj=buffer, mode="r:")
 
+    def test_historical_critical_artifact_sets_remain_verifiable(self) -> None:
+        historical_sets = release.SUPPORTED_CRITICAL_ARTIFACT_SETS[:-1]
+        for index, artifact_set in enumerate(historical_sets, 1):
+            with self.subTest(artifact_count=len(artifact_set)):
+                head = f"{index:x}" * 40
+                target = self.create_verified_release(head, seal=False)
+                manifest_path = target / release.MANIFEST_NAME
+                manifest = json.loads(manifest_path.read_text("utf-8"))
+                manifest["critical_artifacts"] = release.critical_hashes(target, artifact_set)
+                manifest_path.write_bytes(release.canonical_json_bytes(manifest))
+                release.seal_release(target)
+
+                verified = release.verify_release_path(self.paths, target)
+
+                self.assertEqual(set(verified["critical_artifacts"]), set(artifact_set))
+                self.assertNotIn(
+                    "scripts/decision_axis_selection.py", verified["critical_artifacts"]
+                )
+
+    def test_unknown_critical_artifact_set_fails_closed(self) -> None:
+        head = "8" * 40
+        target = self.create_verified_release(head, seal=False)
+        manifest_path = target / release.MANIFEST_NAME
+        manifest = json.loads(manifest_path.read_text("utf-8"))
+        manifest["critical_artifacts"].pop("scripts/leitstand-release.py")
+        manifest_path.write_bytes(release.canonical_json_bytes(manifest))
+        release.seal_release(target)
+
+        with self.assertRaisesRegex(
+            release.ReleaseError, "critical artifact manifest keys mismatch"
+        ):
+            release.verify_release_path(self.paths, target)
+
     def test_head_and_release_identity_are_strict(self) -> None:
         head = "a" * 40
         self.assertEqual(release.validate_head(head), head)
