@@ -13,6 +13,10 @@ import { join, relative, resolve } from 'node:path';
  */
 
 export type BureauSourceKind = 'artifact' | 'fixture' | 'missing' | 'corrupt';
+
+export interface BureauDataOptions {
+  sourceRoot?: string;
+}
 export type BureauFreshness = 'fresh' | 'stale' | 'unknown';
 
 /** Canonical Bureau lifecycle states, normalised from producer vocab. */
@@ -85,13 +89,13 @@ const OPEN_STATES: ReadonlySet<BureauTaskState> = new Set<BureauTaskState>([
   'blocked',
 ]);
 
-function artifactSnapshotPath(): string {
+function artifactSnapshotPath(sourceRoot: string): string {
   return process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH
-    || join(process.cwd(), 'artifacts', 'bureau-tasks.json');
+    || join(sourceRoot, 'artifacts', 'bureau-tasks.json');
 }
 
-function fixtureSnapshotPath(): string {
-  return join(process.cwd(), 'src', 'fixtures', 'bureau-tasks.json');
+function fixtureSnapshotPath(sourceRoot: string): string {
+  return join(sourceRoot, 'src', 'fixtures', 'bureau-tasks.json');
 }
 
 function fixtureFallbackEnabled(): boolean {
@@ -199,20 +203,25 @@ function buildColumns(tasks: BureauTaskView[]): BureauViewData['columns'] {
 }
 
 
-function displaySourcePath(sourcePath: string): string {
-  const rel = relative(resolve(process.cwd()), resolve(sourcePath));
+function displaySourcePath(sourcePath: string, sourceRoot: string): string {
+  const rel = relative(sourceRoot, resolve(sourcePath));
   if (rel && !rel.startsWith('..') && !rel.startsWith('/')) return rel;
   return '<external snapshot>';
 }
 
-function emptyData(kind: BureauSourceKind, reason: string, sourcePath: string): BureauViewData {
+function emptyData(
+  kind: BureauSourceKind,
+  reason: string,
+  sourcePath: string,
+  sourceRoot: string,
+): BureauViewData {
   return {
     tasks: [],
     columns: buildColumns([]),
     view_meta: {
       source_kind: kind,
       source_path: sourcePath,
-      source_path_display: displaySourcePath(sourcePath),
+      source_path_display: displaySourcePath(sourcePath, sourceRoot),
       missing_reason: reason,
       generated_at: null,
       freshness_state: 'unknown',
@@ -230,6 +239,7 @@ function dataFromParsed(
   sourceKind: BureauSourceKind,
   sourcePath: string,
   missingReason: string,
+  sourceRoot: string,
 ): BureauViewData {
   return {
     tasks: parsed.tasks,
@@ -237,7 +247,7 @@ function dataFromParsed(
     view_meta: {
       source_kind: sourceKind,
       source_path: sourcePath,
-      source_path_display: displaySourcePath(sourcePath),
+      source_path_display: displaySourcePath(sourcePath, sourceRoot),
       missing_reason: missingReason,
       generated_at: parsed.generatedAt,
       freshness_state: freshnessOf(parsed.generatedAt),
@@ -254,28 +264,30 @@ async function loadSnapshot(path: string): Promise<ReturnType<typeof parseSnapsh
   return parseSnapshot(JSON.parse(await readFile(path, 'utf-8')) as unknown);
 }
 
-export async function getBureauData(): Promise<BureauViewData> {
-  const sourcePath = resolve(artifactSnapshotPath());
+export async function getBureauData(options: BureauDataOptions = {}): Promise<BureauViewData> {
+  const sourceRoot = resolve(options.sourceRoot ?? process.cwd());
+  const sourcePath = resolve(artifactSnapshotPath(sourceRoot));
   try {
-    return dataFromParsed(await loadSnapshot(sourcePath), 'artifact', sourcePath, 'ok');
+    return dataFromParsed(await loadSnapshot(sourcePath), 'artifact', sourcePath, 'ok', sourceRoot);
   } catch (error) {
     const classified = classifyError(error);
     const envOverride = process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH !== undefined;
     if (envOverride || classified.kind !== 'missing' || !fixtureFallbackEnabled()) {
-      return emptyData(classified.kind, classified.reason, sourcePath);
+      return emptyData(classified.kind, classified.reason, sourcePath, sourceRoot);
     }
 
-    const fallbackPath = resolve(fixtureSnapshotPath());
+    const fallbackPath = resolve(fixtureSnapshotPath(sourceRoot));
     try {
       return dataFromParsed(
         await loadSnapshot(fallbackPath),
         'fixture',
         fallbackPath,
         'bureau_snapshot_missing_fixture_fallback',
+        sourceRoot,
       );
     } catch (fallbackError) {
       const fallbackClassified = classifyError(fallbackError);
-      return emptyData(fallbackClassified.kind, fallbackClassified.reason, fallbackPath);
+      return emptyData(fallbackClassified.kind, fallbackClassified.reason, fallbackPath, sourceRoot);
     }
   }
 }

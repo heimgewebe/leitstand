@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -8,6 +8,17 @@ const oldPath = process.env.LEITSTAND_STORAGE_HEALTH_PATH;
 const oldFallback = process.env.LEITSTAND_STORAGE_HEALTH_FIXTURE_FALLBACK;
 const oldStrict = process.env.LEITSTAND_STRICT;
 const roots: string[] = [];
+
+async function isolatedSourceRoot(fixtureName?: string): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), 'leitstand-storage-root-'));
+  roots.push(root);
+  if (fixtureName) {
+    const fixtureDir = join(root, 'src', 'fixtures');
+    await mkdir(fixtureDir, { recursive: true });
+    await copyFile(join(process.cwd(), 'src', 'fixtures', fixtureName), join(fixtureDir, fixtureName));
+  }
+  return root;
+}
 
 function restore(name: string, value: string | undefined) {
   if (value === undefined) delete process.env[name];
@@ -30,17 +41,27 @@ describe('getStorageHealthData', () => {
     delete process.env.LEITSTAND_STORAGE_HEALTH_PATH;
     delete process.env.LEITSTAND_STORAGE_HEALTH_FIXTURE_FALLBACK;
     delete process.env.LEITSTAND_STRICT;
-    const data = await getStorageHealthData();
+    const sourceRoot = await isolatedSourceRoot();
+    const data = await getStorageHealthData({ sourceRoot });
     expect(data.current).toBeNull();
     expect(data.view_meta.source_kind).toBe('missing');
     expect(data.view_meta.missing_reason).toBe('storage_health_missing');
     expect(data.view_meta.unavailable_count).toBe(1);
   });
 
+  it('keeps process.cwd() as the production default source root', async () => {
+    delete process.env.LEITSTAND_STORAGE_HEALTH_PATH;
+    delete process.env.LEITSTAND_STORAGE_HEALTH_FIXTURE_FALLBACK;
+    delete process.env.LEITSTAND_STRICT;
+    const data = await getStorageHealthData();
+    expect(data.view_meta.source_path).toBe(join(process.cwd(), 'artifacts', 'storage-health.json'));
+  });
+
   it('uses fixture data only when fallback is explicit', async () => {
     delete process.env.LEITSTAND_STORAGE_HEALTH_PATH;
     process.env.LEITSTAND_STORAGE_HEALTH_FIXTURE_FALLBACK = 'true';
-    const data = await getStorageHealthData();
+    const sourceRoot = await isolatedSourceRoot('storage-health.json');
+    const data = await getStorageHealthData({ sourceRoot });
     expect(data.view_meta.source_kind).toBe('fixture');
     expect(data.view_meta.missing_reason).toBe('storage_health_missing_fixture_fallback');
     expect(data.current?.topProducers[0].id).toBe('linked-worktrees');
