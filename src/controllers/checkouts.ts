@@ -12,6 +12,10 @@ import { join, relative, resolve } from 'node:path';
  */
 
 export type CheckoutSourceKind = 'artifact' | 'fixture' | 'missing' | 'corrupt';
+
+export interface CheckoutDataOptions {
+  sourceRoot?: string;
+}
 export type CheckoutFreshness = 'fresh' | 'stale' | 'unknown';
 
 /** Retention verdict, normalised from producer vocab. Ordered worst→best for triage. */
@@ -60,13 +64,13 @@ const DEFAULT_NON_CLAIMS = [
   'process_control',
 ];
 
-function artifactSnapshotPath(): string {
+function artifactSnapshotPath(sourceRoot: string): string {
   return process.env.LEITSTAND_CHECKOUT_SNAPSHOT_PATH
-    || join(process.cwd(), 'artifacts', 'checkout-inventory.json');
+    || join(sourceRoot, 'artifacts', 'checkout-inventory.json');
 }
 
-function fixtureSnapshotPath(): string {
-  return join(process.cwd(), 'src', 'fixtures', 'checkout-inventory.json');
+function fixtureSnapshotPath(sourceRoot: string): string {
+  return join(sourceRoot, 'src', 'fixtures', 'checkout-inventory.json');
 }
 
 function fixtureFallbackEnabled(): boolean {
@@ -172,19 +176,24 @@ function isSprawl(checkout: CheckoutView): boolean {
 }
 
 
-function displaySourcePath(sourcePath: string): string {
-  const rel = relative(resolve(process.cwd()), resolve(sourcePath));
+function displaySourcePath(sourcePath: string, sourceRoot: string): string {
+  const rel = relative(sourceRoot, resolve(sourcePath));
   if (rel && !rel.startsWith('..') && !rel.startsWith('/')) return rel;
   return '<external snapshot>';
 }
 
-function emptyData(kind: CheckoutSourceKind, reason: string, sourcePath: string): CheckoutViewData {
+function emptyData(
+  kind: CheckoutSourceKind,
+  reason: string,
+  sourcePath: string,
+  sourceRoot: string,
+): CheckoutViewData {
   return {
     checkouts: [],
     view_meta: {
       source_kind: kind,
       source_path: sourcePath,
-      source_path_display: displaySourcePath(sourcePath),
+      source_path_display: displaySourcePath(sourcePath, sourceRoot),
       missing_reason: reason,
       generated_at: null,
       freshness_state: 'unknown',
@@ -203,6 +212,7 @@ function dataFromParsed(
   sourceKind: CheckoutSourceKind,
   sourcePath: string,
   missingReason: string,
+  sourceRoot: string,
 ): CheckoutViewData {
   // Sort worst retention first so triage-relevant checkouts surface at the top.
   const order: Record<CheckoutRetention, number> = { orphan: 0, archivable: 1, unknown: 2, retained: 3 };
@@ -212,7 +222,7 @@ function dataFromParsed(
     view_meta: {
       source_kind: sourceKind,
       source_path: sourcePath,
-      source_path_display: displaySourcePath(sourcePath),
+      source_path_display: displaySourcePath(sourcePath, sourceRoot),
       missing_reason: missingReason,
       generated_at: parsed.generatedAt,
       freshness_state: freshnessOf(parsed.generatedAt),
@@ -230,28 +240,30 @@ async function loadSnapshot(path: string): Promise<ReturnType<typeof parseSnapsh
   return parseSnapshot(JSON.parse(await readFile(path, 'utf-8')) as unknown);
 }
 
-export async function getCheckoutData(): Promise<CheckoutViewData> {
-  const sourcePath = resolve(artifactSnapshotPath());
+export async function getCheckoutData(options: CheckoutDataOptions = {}): Promise<CheckoutViewData> {
+  const sourceRoot = resolve(options.sourceRoot ?? process.cwd());
+  const sourcePath = resolve(artifactSnapshotPath(sourceRoot));
   try {
-    return dataFromParsed(await loadSnapshot(sourcePath), 'artifact', sourcePath, 'ok');
+    return dataFromParsed(await loadSnapshot(sourcePath), 'artifact', sourcePath, 'ok', sourceRoot);
   } catch (error) {
     const classified = classifyError(error);
     const envOverride = process.env.LEITSTAND_CHECKOUT_SNAPSHOT_PATH !== undefined;
     if (envOverride || classified.kind !== 'missing' || !fixtureFallbackEnabled()) {
-      return emptyData(classified.kind, classified.reason, sourcePath);
+      return emptyData(classified.kind, classified.reason, sourcePath, sourceRoot);
     }
 
-    const fallbackPath = resolve(fixtureSnapshotPath());
+    const fallbackPath = resolve(fixtureSnapshotPath(sourceRoot));
     try {
       return dataFromParsed(
         await loadSnapshot(fallbackPath),
         'fixture',
         fallbackPath,
         'checkout_inventory_missing_fixture_fallback',
+        sourceRoot,
       );
     } catch (fallbackError) {
       const fallbackClassified = classifyError(fallbackError);
-      return emptyData(fallbackClassified.kind, fallbackClassified.reason, fallbackPath);
+      return emptyData(fallbackClassified.kind, fallbackClassified.reason, fallbackPath, sourceRoot);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile, rm } from 'fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -8,6 +8,17 @@ const OLD_PATH = process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH;
 const OLD_FIXTURE_FALLBACK = process.env.LEITSTAND_BUREAU_FIXTURE_FALLBACK;
 const OLD_STRICT = process.env.LEITSTAND_STRICT;
 let tempRoots: string[] = [];
+
+async function isolatedSourceRoot(fixtureName?: string): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), 'leitstand-bureau-root-'));
+  tempRoots.push(root);
+  if (fixtureName) {
+    const fixtureDir = join(root, 'src', 'fixtures');
+    await mkdir(fixtureDir, { recursive: true });
+    await copyFile(join(process.cwd(), 'src', 'fixtures', fixtureName), join(fixtureDir, fixtureName));
+  }
+  return root;
+}
 
 afterEach(async () => {
   if (OLD_PATH === undefined) delete process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH;
@@ -48,17 +59,27 @@ describe('getBureauData', () => {
     delete process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH;
     delete process.env.LEITSTAND_BUREAU_FIXTURE_FALLBACK;
     delete process.env.LEITSTAND_STRICT;
-    const data = await getBureauData();
+    const sourceRoot = await isolatedSourceRoot();
+    const data = await getBureauData({ sourceRoot });
     expect(data.view_meta.source_kind).toBe('missing');
     expect(data.view_meta.missing_reason).toBe('bureau_snapshot_missing');
     expect(data.view_meta.source_path_display.startsWith('artifacts/')).toBe(true);
     expect(data.view_meta.source_path.endsWith('/artifacts/bureau-tasks.json')).toBe(true);
   });
 
+  it('keeps process.cwd() as the production default source root', async () => {
+    delete process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH;
+    delete process.env.LEITSTAND_BUREAU_FIXTURE_FALLBACK;
+    delete process.env.LEITSTAND_STRICT;
+    const data = await getBureauData();
+    expect(data.view_meta.source_path).toBe(join(process.cwd(), 'artifacts', 'bureau-tasks.json'));
+  });
+
   it('uses the demo fixture only when fixture fallback is explicit', async () => {
     delete process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH;
     process.env.LEITSTAND_BUREAU_FIXTURE_FALLBACK = '1';
-    const data = await getBureauData();
+    const sourceRoot = await isolatedSourceRoot('bureau-tasks.json');
+    const data = await getBureauData({ sourceRoot });
     expect(data.view_meta.source_kind).toBe('fixture');
     expect(data.view_meta.missing_reason).toBe('bureau_snapshot_missing_fixture_fallback');
     expect(data.view_meta.source_path_display.startsWith('src/fixtures/')).toBe(true);
@@ -69,7 +90,8 @@ describe('getBureauData', () => {
     delete process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH;
     delete process.env.LEITSTAND_BUREAU_FIXTURE_FALLBACK;
     process.env.LEITSTAND_STRICT = 'false';
-    const data = await getBureauData();
+    const sourceRoot = await isolatedSourceRoot('bureau-tasks.json');
+    const data = await getBureauData({ sourceRoot });
     expect(data.view_meta.source_kind).toBe('fixture');
     expect(data.view_meta.missing_reason).toBe('bureau_snapshot_missing_fixture_fallback');
   });

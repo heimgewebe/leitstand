@@ -3,6 +3,10 @@ import { join, relative, resolve } from 'node:path';
 
 export type StorageTruth = 'observed' | 'estimated' | 'unavailable';
 export type StorageHealthSourceKind = 'artifact' | 'fixture' | 'missing' | 'corrupt';
+
+export interface StorageHealthDataOptions {
+  sourceRoot?: string;
+}
 export type StorageHealthFreshness = 'fresh' | 'stale' | 'unknown';
 
 export interface StorageMetric {
@@ -105,13 +109,13 @@ const DEFAULT_NON_CLAIMS = [
 ];
 const TRUTH_VALUES = new Set<StorageTruth>(['observed', 'estimated', 'unavailable']);
 
-function artifactPath(): string {
+function artifactPath(sourceRoot: string): string {
   return process.env.LEITSTAND_STORAGE_HEALTH_PATH
-    || join(process.cwd(), 'artifacts', 'storage-health.json');
+    || join(sourceRoot, 'artifacts', 'storage-health.json');
 }
 
-function fixturePath(): string {
-  return join(process.cwd(), 'src', 'fixtures', 'storage-health.json');
+function fixturePath(sourceRoot: string): string {
+  return join(sourceRoot, 'src', 'fixtures', 'storage-health.json');
 }
 
 function fixtureFallbackEnabled(): boolean {
@@ -138,8 +142,8 @@ function freshnessOf(generatedAt: string | null): StorageHealthFreshness {
   return Date.now() - timestamp <= STALE_AFTER_MS ? 'fresh' : 'stale';
 }
 
-function displaySourcePath(sourcePath: string): string {
-  const rel = relative(resolve(process.cwd()), resolve(sourcePath));
+function displaySourcePath(sourcePath: string, sourceRoot: string): string {
+  const rel = relative(sourceRoot, resolve(sourcePath));
   if (rel && !rel.startsWith('..') && !rel.startsWith('/')) return rel;
   return '<external snapshot>';
 }
@@ -390,14 +394,19 @@ function parseSnapshot(raw: unknown): {
   };
 }
 
-function emptyData(kind: StorageHealthSourceKind, reason: string, sourcePath: string): StorageHealthViewData {
+function emptyData(
+  kind: StorageHealthSourceKind,
+  reason: string,
+  sourcePath: string,
+  sourceRoot: string,
+): StorageHealthViewData {
   return {
     current: null,
     notifications: [],
     view_meta: {
       source_kind: kind,
       source_path: sourcePath,
-      source_path_display: displaySourcePath(sourcePath),
+      source_path_display: displaySourcePath(sourcePath, sourceRoot),
       missing_reason: reason,
       generated_at: null,
       freshness_state: 'unknown',
@@ -420,6 +429,7 @@ function dataFromParsed(
   sourceKind: StorageHealthSourceKind,
   sourcePath: string,
   missingReason: string,
+  sourceRoot: string,
 ): StorageHealthViewData {
   return {
     current: parsed.current,
@@ -427,7 +437,7 @@ function dataFromParsed(
     view_meta: {
       source_kind: sourceKind,
       source_path: sourcePath,
-      source_path_display: displaySourcePath(sourcePath),
+      source_path_display: displaySourcePath(sourcePath, sourceRoot),
       missing_reason: missingReason,
       generated_at: parsed.generatedAt,
       freshness_state: freshnessOf(parsed.generatedAt),
@@ -449,27 +459,29 @@ async function loadSnapshot(path: string): Promise<ReturnType<typeof parseSnapsh
   return parseSnapshot(JSON.parse(await readFile(path, 'utf8')) as unknown);
 }
 
-export async function getStorageHealthData(): Promise<StorageHealthViewData> {
-  const sourcePath = resolve(artifactPath());
+export async function getStorageHealthData(options: StorageHealthDataOptions = {}): Promise<StorageHealthViewData> {
+  const sourceRoot = resolve(options.sourceRoot ?? process.cwd());
+  const sourcePath = resolve(artifactPath(sourceRoot));
   try {
-    return dataFromParsed(await loadSnapshot(sourcePath), 'artifact', sourcePath, 'ok');
+    return dataFromParsed(await loadSnapshot(sourcePath), 'artifact', sourcePath, 'ok', sourceRoot);
   } catch (error) {
     const classified = classifyError(error);
     const envOverride = process.env.LEITSTAND_STORAGE_HEALTH_PATH !== undefined;
     if (envOverride || classified.kind !== 'missing' || !fixtureFallbackEnabled()) {
-      return emptyData(classified.kind, classified.reason, sourcePath);
+      return emptyData(classified.kind, classified.reason, sourcePath, sourceRoot);
     }
-    const fallbackPath = resolve(fixturePath());
+    const fallbackPath = resolve(fixturePath(sourceRoot));
     try {
       return dataFromParsed(
         await loadSnapshot(fallbackPath),
         'fixture',
         fallbackPath,
         'storage_health_missing_fixture_fallback',
+        sourceRoot,
       );
     } catch (fallbackError) {
       const fallbackClassified = classifyError(fallbackError);
-      return emptyData(fallbackClassified.kind, fallbackClassified.reason, fallbackPath);
+      return emptyData(fallbackClassified.kind, fallbackClassified.reason, fallbackPath, sourceRoot);
     }
   }
 }
