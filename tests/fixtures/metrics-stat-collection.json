@@ -1,0 +1,19 @@
+{
+  "workerLimit": 10,
+  "mtime": "2026-08-01T12:00:00.000Z",
+  "expectedLatestFile": "metric-11.json",
+  "files": [
+    { "file": "metric-00.json", "repoCount": 0 },
+    { "file": "metric-01.json", "repoCount": 1 },
+    { "file": "metric-02.json", "repoCount": 2 },
+    { "file": "metric-03.json", "repoCount": 3 },
+    { "file": "metric-04.json", "repoCount": 4 },
+    { "file": "metric-05.json", "repoCount": 5 },
+    { "file": "metric-06.json", "repoCount": 6 },
+    { "file": "metric-07.json", "repoCount": 7 },
+    { "file": "metric-08.json", "repoCount": 8 },
+    { "file": "metric-09.json", "repoCount": 9 },
+    { "file": "metric-10.json", "repoCount": 10 },
+    { "file": "metric-11.json", "repoCount": 11 }
+  ]
+}

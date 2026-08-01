@@ -4,6 +4,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { envConfig, loadConfig, resetEnvConfig } from '../src/config.js';
 
+function validConfigData() {
+  return {
+    paths: {
+      semantah: { todayInsights: './insights/today.json' },
+      chronik: { dataDir: './chronik/data' },
+      wgx: { metricsDir: './wgx/metrics' },
+    },
+    output: { dir: './digests/daily' },
+  };
+}
+
 describe('config', () => {
   let testDir: string;
   let configPath: string;
@@ -54,14 +65,14 @@ describe('config', () => {
       expect(envConfig.bindHost).toBe('127.0.0.1');
     });
 
-    it('accepts explicit IPv4 and IPv6 literals', () => {
-      vi.stubEnv('LEITSTAND_BIND_HOST', '192.168.178.10');
+    it.each([
+      ['IPv4', '192.168.178.10'],
+      ['IPv6', '::1'],
+    ])('preserves an explicit non-default %s bind host', (_family, host) => {
+      vi.stubEnv('LEITSTAND_BIND_HOST', host);
       resetEnvConfig();
-      expect(envConfig.bindHost).toBe('192.168.178.10');
-
-      vi.stubEnv('LEITSTAND_BIND_HOST', '::1');
-      resetEnvConfig();
-      expect(envConfig.bindHost).toBe('::1');
+      expect(envConfig.bindHost).toBe(host);
+      expect(warnSpy).not.toHaveBeenCalled();
     });
 
     it('rejects hostnames without corrupting unrelated environment values', () => {
@@ -106,24 +117,42 @@ describe('config', () => {
   });
 
   it('loads valid digest configuration', async () => {
-    const configData = {
-      paths: {
-        semantah: { todayInsights: './insights/today.json' },
-        chronik: { dataDir: './chronik/data' },
-        wgx: { metricsDir: './wgx/metrics' },
-      },
-      output: { dir: './digests/daily' },
-    };
-
-    await writeFile(configPath, JSON.stringify(configData), 'utf-8');
+    await writeFile(configPath, JSON.stringify(validConfigData()), 'utf-8');
     const config = await loadConfig(configPath);
 
-    expect(config.paths.semantah.todayInsights).toContain('insights/today.json');
-    expect(config.paths.chronik.dataDir).toContain('chronik/data');
+    expect(config).toEqual({
+      paths: {
+        semantah: { todayInsights: join(testDir, 'insights', 'today.json') },
+        chronik: { dataDir: join(testDir, 'chronik', 'data') },
+        wgx: { metricsDir: join(testDir, 'wgx', 'metrics') },
+      },
+      output: { dir: join(testDir, 'digests', 'daily') },
+      digest: { maxEvents: 20 },
+    });
   });
 
-  it('rejects invalid configuration', async () => {
-    await writeFile(configPath, JSON.stringify({ paths: { semantah: {} } }), 'utf-8');
+  it.each([
+    ['a null root', null],
+    ['an array root', []],
+    ['a scalar root', 'not-an-object'],
+    ['missing required sections', { paths: { semantah: {} } }],
+    ['a non-string path', {
+      ...validConfigData(),
+      paths: {
+        ...validConfigData().paths,
+        semantah: { todayInsights: 42 },
+      },
+    }],
+    ['a non-positive event limit', {
+      ...validConfigData(),
+      digest: { maxEvents: 0 },
+    }],
+    ['a fractional event limit', {
+      ...validConfigData(),
+      digest: { maxEvents: 2.5 },
+    }],
+  ])('rejects malformed configuration: %s', async (_label, malformed) => {
+    await writeFile(configPath, JSON.stringify(malformed), 'utf-8');
     await expect(loadConfig(configPath)).rejects.toThrow('Configuration validation failed');
   });
 
