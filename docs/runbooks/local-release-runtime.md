@@ -79,7 +79,7 @@ For `deploy`, the configured exact Systemkatalog release is a bootstrap and rele
 1. derives the Systemkatalog release base from the configured exact commit path;
 2. reads `main` directly from the canonical `git@github.com:heimgewebe/systemkatalog.git` remote;
 3. reuses `<release-base>/<remote-main-commit>` only when its Git `HEAD`, durable `refs/remotes/origin/main`, origin URL and tracked bytes still match that exact commit; unexpected untracked files are rejected, while inert `__pycache__/*.pyc` remnants are tolerated for compatibility with previously verified local releases; otherwise it clones canonical `main` into a temporary sibling and atomically publishes the verified commit directory;
-4. executes that release's own `scripts/write_ecosystem_map_artifact_manifest.py --check --durable-source-ref refs/remotes/origin/main --json` contract under isolated Python path handling and records the manifest digest, artifact count and manifest source commit;
+4. executes that release's own `scripts/write_ecosystem_map_artifact_manifest.py --check --durable-source-ref refs/remotes/origin/main --json` contract under Python `-I` isolation, explicitly adding only that verified release's `scripts` directory for tracked sibling imports, and records the manifest digest, artifact count and manifest source commit;
 5. re-reads live Systemkatalog `main` and re-verifies the release immediately before the Leitstand switch transaction.
 
 The published map manifest may legitimately bind an older artifact-producing commit than the Systemkatalog release `HEAD`. The producer's manifest checker owns the durable-ancestry and byte-binding proof; Leitstand must not replace it with an incorrect equality check between manifest source commit and repository head.
