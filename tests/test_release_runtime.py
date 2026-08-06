@@ -68,7 +68,13 @@ class ReleaseRuntimeTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def _create_systemkatalog_remote(self) -> tuple[Path, str, str]:
+    def _create_systemkatalog_remote(
+        self,
+        *,
+        provenance_required: bool = False,
+        publish_provenance_tag: bool = True,
+        mismatched_provenance_tag: bool = False,
+    ) -> tuple[Path, str, str]:
         source = self.root / "systemkatalog-source"
         remote = self.root / "systemkatalog-origin.git"
         subprocess.run(
@@ -83,8 +89,11 @@ class ReleaseRuntimeTest(unittest.TestCase):
         (source / "scripts").mkdir()
         provenance = source / "scripts/system_catalog_provenance.py"
         provenance.write_text(
+            "PROVENANCE_TAG_NAMESPACE = \"systemkatalog-provenance-v1\"\n"
+            "def provenance_tag_ref(commit):\n"
+            "    return f\"refs/tags/{PROVENANCE_TAG_NAMESPACE}/{commit}\"\n"
             "def manifest_summary(manifest):\n"
-            "    return {\"ok\": True, \"sourceCommit\": manifest[\"sourceCommit\"], \"artifactCount\": manifest[\"artifactCount\"]}\n",
+            "    return {\"ok\": True, \"sourceCommit\": manifest[\"source\"][\"commit\"], \"artifactCount\": manifest[\"artifactCount\"]}\n",
             encoding="utf-8",
         )
         checker = source / release.SYSTEMKATALOG_MANIFEST_CHECKER_RELATIVE_PATH
@@ -92,9 +101,10 @@ class ReleaseRuntimeTest(unittest.TestCase):
             """#!/usr/bin/env python3
 import argparse
 import json
+import subprocess
 from pathlib import Path
 
-from system_catalog_provenance import manifest_summary
+from system_catalog_provenance import manifest_summary, provenance_tag_ref
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--repo-root', required=True)
@@ -103,6 +113,22 @@ parser.add_argument('--durable-source-ref')
 parser.add_argument('--json', action='store_true')
 args = parser.parse_args()
 manifest = json.loads((Path(args.repo_root) / 'rendered/ecosystem-map-artifact-manifest.json').read_text())
+source_commit = manifest['source']['commit']
+ancestry = subprocess.run(
+    ['git', 'merge-base', '--is-ancestor', source_commit, args.durable_source_ref],
+    cwd=args.repo_root,
+    check=False,
+)
+if ancestry.returncode == 1:
+    resolved = subprocess.check_output(
+        ['git', 'rev-parse', f'{provenance_tag_ref(source_commit)}^{{commit}}'],
+        cwd=args.repo_root,
+        text=True,
+    ).strip()
+    if resolved != source_commit:
+        raise SystemExit('provenance tag mismatch')
+elif ancestry.returncode != 0:
+    raise SystemExit('could not inspect manifest source ancestry')
 print(json.dumps(manifest_summary(manifest)))
 """,
             encoding="utf-8",
@@ -110,7 +136,7 @@ print(json.dumps(manifest_summary(manifest)))
         os.chmod(checker, 0o755)
         manifest = source / release.SYSTEMKATALOG_MANIFEST_RELATIVE_PATH
         manifest.write_text(
-            json.dumps({"sourceCommit": "0" * 40, "artifactCount": 6}) + "\n",
+            json.dumps({"source": {"commit": "0" * 40}, "artifactCount": 6}) + "\n",
             encoding="utf-8",
         )
         subprocess.run(["git", "-C", str(source), "add", "."], check=True)
@@ -122,8 +148,43 @@ print(json.dumps(manifest_summary(manifest)))
         manifest_source = subprocess.check_output(
             ["git", "-C", str(source), "rev-parse", "HEAD"], text=True
         ).strip()
+        if provenance_required:
+            provenance_base = manifest_source
+            subprocess.run(
+                ["git", "-C", str(source), "checkout", "-b", "manifest-source"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+            (source / "rendered/provenance-source.txt").write_text(
+                "artifact-equivalent side source\n", encoding="utf-8"
+            )
+            subprocess.run(
+                ["git", "-C", str(source), "add", "rendered/provenance-source.txt"],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(source), "commit", "-m", "publish side source"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+            manifest_source = subprocess.check_output(
+                ["git", "-C", str(source), "rev-parse", "HEAD"], text=True
+            ).strip()
+            if publish_provenance_tag:
+                tag_target = provenance_base if mismatched_provenance_tag else manifest_source
+                tag_name = (
+                    f"{release.SYSTEMKATALOG_PROVENANCE_TAG_NAMESPACE}/{manifest_source}"
+                )
+                subprocess.run(
+                    ["git", "-C", str(source), "tag", tag_name, tag_target], check=True
+                )
+            subprocess.run(
+                ["git", "-C", str(source), "checkout", "main"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
         manifest.write_text(
-            json.dumps({"sourceCommit": manifest_source, "artifactCount": 6}) + "\n",
+            json.dumps({"source": {"commit": manifest_source}, "artifactCount": 6}) + "\n",
             encoding="utf-8",
         )
         subprocess.run(["git", "-C", str(source), "add", str(manifest)], check=True)
@@ -343,6 +404,118 @@ print(json.dumps(manifest_summary(manifest)))
             )
             self.assertEqual(resolved_again.sha256, resolved.sha256)
             self.assertEqual(evidence_again["manifest_sha256"], evidence["manifest_sha256"])
+
+    def test_prepare_systemkatalog_runtime_config_fetches_only_exact_required_provenance_tag(self) -> None:
+        remote, latest, manifest_source = self._create_systemkatalog_remote(
+            provenance_required=True
+        )
+        expected_ref = (
+            f"refs/tags/{release.SYSTEMKATALOG_PROVENANCE_TAG_NAMESPACE}/{manifest_source}"
+        )
+        with patch.object(release, "SYSTEMKATALOG_ORIGIN", str(remote)):
+            with patch.object(release, "run", wraps=release.run) as run_mock:
+                resolved, evidence = release.prepare_systemkatalog_runtime_config(
+                    self.config, attempt_id=ATTEMPT
+                )
+
+        self.assertEqual(evidence["release_commit"], latest)
+        self.assertEqual(evidence["manifest_source_commit"], manifest_source)
+        self.assertEqual(evidence["provenance_ref"], expected_ref)
+        local_tag_commit = subprocess.check_output(
+            [
+                "git",
+                "-C",
+                str(resolved.ecosystem_map_source_root),
+                "rev-parse",
+                f"{expected_ref}^{{commit}}",
+            ],
+            text=True,
+        ).strip()
+        self.assertEqual(local_tag_commit, manifest_source)
+        commands = [call.args[0] for call in run_mock.call_args_list if call.args]
+        expected_fetch = (
+            "git",
+            "fetch",
+            "--quiet",
+            "--no-tags",
+            "origin",
+            f"{expected_ref}:{expected_ref}",
+        )
+        self.assertIn(expected_fetch, commands)
+        self.assertFalse(any("--tags" in command for command in commands))
+
+        with patch.object(release, "SYSTEMKATALOG_ORIGIN", str(remote)):
+            confirmed = release.confirm_systemkatalog_runtime_config(
+                resolved, evidence
+            )
+            self.assertEqual(confirmed["provenance_ref"], expected_ref)
+            tampered_evidence = {
+                **evidence,
+                "provenance_ref": (
+                    f"refs/tags/{release.SYSTEMKATALOG_PROVENANCE_TAG_NAMESPACE}/"
+                    + "0" * 40
+                ),
+            }
+            with self.assertRaisesRegex(
+                release.ReleaseError, "prepared release identity changed"
+            ):
+                release.confirm_systemkatalog_runtime_config(
+                    resolved, tampered_evidence
+                )
+
+        release.private_release_permissions(resolved.ecosystem_map_source_root)
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(resolved.ecosystem_map_source_root),
+                "update-ref",
+                "-d",
+                expected_ref,
+            ],
+            check=True,
+        )
+        with patch.object(release, "SYSTEMKATALOG_ORIGIN", str(remote)):
+            with self.assertRaisesRegex(
+                release.ReleaseError, "lacks exact provenance tag"
+            ):
+                release._verify_systemkatalog_release(
+                    resolved.ecosystem_map_source_root, latest
+                )
+
+    def test_prepare_systemkatalog_runtime_config_rejects_missing_required_provenance_tag(self) -> None:
+        remote, _latest, manifest_source = self._create_systemkatalog_remote(
+            provenance_required=True,
+            publish_provenance_tag=False,
+        )
+        expected_ref = (
+            f"refs/tags/{release.SYSTEMKATALOG_PROVENANCE_TAG_NAMESPACE}/{manifest_source}"
+        )
+        with patch.object(release, "SYSTEMKATALOG_ORIGIN", str(remote)):
+            with self.assertRaisesRegex(
+                release.ReleaseError,
+                f"missing required provenance tag {expected_ref}",
+            ):
+                release.prepare_systemkatalog_runtime_config(
+                    self.config, attempt_id=ATTEMPT
+                )
+
+    def test_prepare_systemkatalog_runtime_config_rejects_misdirected_provenance_tag(self) -> None:
+        remote, _latest, manifest_source = self._create_systemkatalog_remote(
+            provenance_required=True,
+            mismatched_provenance_tag=True,
+        )
+        expected_ref = (
+            f"refs/tags/{release.SYSTEMKATALOG_PROVENANCE_TAG_NAMESPACE}/{manifest_source}"
+        )
+        with patch.object(release, "SYSTEMKATALOG_ORIGIN", str(remote)):
+            with self.assertRaisesRegex(
+                release.ReleaseError,
+                f"provenance tag {expected_ref} resolves remotely to",
+            ):
+                release.prepare_systemkatalog_runtime_config(
+                    self.config, attempt_id=ATTEMPT
+                )
 
     def test_verify_systemkatalog_release_rejects_tracked_drift(self) -> None:
         remote, latest, _manifest_source = self._create_systemkatalog_remote()

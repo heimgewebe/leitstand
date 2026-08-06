@@ -93,6 +93,7 @@ SYSTEMKATALOG_REMOTE_REF = "refs/heads/main"
 SYSTEMKATALOG_TRACKING_REF = "refs/remotes/origin/main"
 SYSTEMKATALOG_MANIFEST_RELATIVE_PATH = Path("rendered/ecosystem-map-artifact-manifest.json")
 SYSTEMKATALOG_MANIFEST_CHECKER_RELATIVE_PATH = Path("scripts/write_ecosystem_map_artifact_manifest.py")
+SYSTEMKATALOG_PROVENANCE_TAG_NAMESPACE = "systemkatalog-provenance-v1"
 SYSTEMKATALOG_MANIFEST_CHECKER_BOOTSTRAP = """\
 import runpy
 import sys
@@ -1523,6 +1524,162 @@ def _systemkatalog_manifest_checker_command(checker: Path) -> tuple[str, ...]:
     )
 
 
+def _systemkatalog_manifest_source_commit(manifest_path: Path) -> str:
+    try:
+        value = json.loads(manifest_path.read_text("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ReleaseError("Systemkatalog map manifest cannot be read as JSON") from error
+    source = value.get("source") if isinstance(value, dict) else None
+    commit = source.get("commit") if isinstance(source, dict) else None
+    if not isinstance(commit, str) or not HEAD_RE.fullmatch(commit):
+        raise ReleaseError("Systemkatalog map manifest source commit is invalid")
+    return commit
+
+
+def _systemkatalog_resolved_commit(
+    target: Path, revision: str, *, label: str
+) -> str | None:
+    completed = run(
+        ("git", "rev-parse", "--verify", "--quiet", f"{revision}^{{commit}}"),
+        cwd=target,
+        check=False,
+        env=_systemkatalog_git_env(),
+    )
+    if completed.returncode == 1:
+        return None
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "git rev-parse failed").strip()
+        raise ReleaseError(f"could not resolve {label}: {detail[-1000:]}")
+    commit = completed.stdout.strip()
+    if not HEAD_RE.fullmatch(commit):
+        raise ReleaseError(f"{label} resolves to an invalid commit")
+    return commit
+
+
+def _systemkatalog_required_provenance_ref(
+    target: Path, manifest_source: str
+) -> str | None:
+    source = validate_head(manifest_source)
+    resolved_source = _systemkatalog_resolved_commit(
+        target, source, label="Systemkatalog manifest source commit"
+    )
+    if resolved_source == source:
+        completed = run(
+            ("git", "merge-base", "--is-ancestor", source, SYSTEMKATALOG_TRACKING_REF),
+            cwd=target,
+            check=False,
+            env=_systemkatalog_git_env(),
+        )
+        if completed.returncode == 0:
+            return None
+        if completed.returncode != 1:
+            detail = (completed.stderr or completed.stdout or "git merge-base failed").strip()
+            raise ReleaseError(
+                "could not determine Systemkatalog manifest source ancestry: "
+                + detail[-1000:]
+            )
+    return f"refs/tags/{SYSTEMKATALOG_PROVENANCE_TAG_NAMESPACE}/{source}"
+
+
+def _systemkatalog_remote_ref_commit(reference: str) -> str:
+    peeled = f"{reference}^{{}}"
+    completed = run(
+        ("git", "ls-remote", "--exit-code", SYSTEMKATALOG_ORIGIN, reference, peeled),
+        check=False,
+        timeout=60,
+        env=_systemkatalog_git_env(),
+    )
+    if completed.returncode == 2:
+        raise ReleaseError(
+            f"canonical Systemkatalog remote is missing required provenance tag {reference}"
+        )
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "git ls-remote failed").strip()
+        raise ReleaseError(
+            f"could not inspect required Systemkatalog provenance tag {reference}: {detail[-1000:]}"
+        )
+    entries: dict[str, str] = {}
+    for line in completed.stdout.splitlines():
+        parts = line.split()
+        if (
+            len(parts) != 2
+            or parts[1] not in {reference, peeled}
+            or not HEAD_RE.fullmatch(parts[0])
+        ):
+            raise ReleaseError("Systemkatalog provenance tag remote readback is invalid")
+        if parts[1] in entries:
+            raise ReleaseError("Systemkatalog provenance tag remote readback is ambiguous")
+        entries[parts[1]] = parts[0]
+    commit = entries.get(peeled, entries.get(reference))
+    if commit is None:
+        raise ReleaseError(
+            f"canonical Systemkatalog remote is missing required provenance tag {reference}"
+        )
+    return commit
+
+
+def _materialize_systemkatalog_manifest_provenance(
+    target: Path, manifest_source: str
+) -> str | None:
+    reference = _systemkatalog_required_provenance_ref(target, manifest_source)
+    if reference is None:
+        return None
+    remote_commit = _systemkatalog_remote_ref_commit(reference)
+    if remote_commit != manifest_source:
+        raise ReleaseError(
+            f"required Systemkatalog provenance tag {reference} resolves remotely to "
+            f"{remote_commit}, expected manifest source {manifest_source}"
+        )
+    local_commit = _systemkatalog_resolved_commit(
+        target, reference, label="Systemkatalog provenance tag"
+    )
+    if local_commit is not None and local_commit != manifest_source:
+        raise ReleaseError(
+            f"required Systemkatalog provenance tag {reference} resolves locally to "
+            f"{local_commit}, expected manifest source {manifest_source}"
+        )
+    if local_commit is None:
+        run(
+            (
+                "git",
+                "fetch",
+                "--quiet",
+                "--no-tags",
+                "origin",
+                f"{reference}:{reference}",
+            ),
+            cwd=target,
+            timeout=120,
+            env=_systemkatalog_git_env(),
+        )
+    verified_commit = _systemkatalog_resolved_commit(
+        target, reference, label="materialized Systemkatalog provenance tag"
+    )
+    if verified_commit != manifest_source:
+        raise ReleaseError(
+            f"materialized Systemkatalog provenance tag {reference} does not resolve to "
+            f"manifest source {manifest_source}"
+        )
+    return reference
+
+
+def _verify_systemkatalog_manifest_provenance(
+    target: Path, manifest_source: str
+) -> str | None:
+    reference = _systemkatalog_required_provenance_ref(target, manifest_source)
+    if reference is None:
+        return None
+    local_commit = _systemkatalog_resolved_commit(
+        target, reference, label="Systemkatalog provenance tag"
+    )
+    if local_commit != manifest_source:
+        raise ReleaseError(
+            f"sealed Systemkatalog release lacks exact provenance tag {reference} "
+            f"for manifest source {manifest_source}"
+        )
+    return reference
+
+
 def _verify_systemkatalog_release(target: Path, expected_head: str) -> dict[str, Any]:
     head = validate_head(expected_head)
     target = Path(os.path.abspath(target))
@@ -1577,6 +1734,10 @@ def _verify_systemkatalog_release(target: Path, expected_head: str) -> dict[str,
     checker = target / SYSTEMKATALOG_MANIFEST_CHECKER_RELATIVE_PATH
     _require_regular_file(manifest_path, owner_uid=os.getuid(), label="Systemkatalog map manifest")
     _require_regular_file(checker, owner_uid=os.getuid(), label="Systemkatalog map manifest checker")
+    expected_manifest_source = _systemkatalog_manifest_source_commit(manifest_path)
+    provenance_ref = _verify_systemkatalog_manifest_provenance(
+        target, expected_manifest_source
+    )
     completed = run(
         (
             *_systemkatalog_manifest_checker_command(checker),
@@ -1602,6 +1763,7 @@ def _verify_systemkatalog_release(target: Path, expected_head: str) -> dict[str,
         or result.get("ok") is not True
         or not isinstance(manifest_source, str)
         or not HEAD_RE.fullmatch(manifest_source)
+        or manifest_source != expected_manifest_source
         or not isinstance(artifact_count, int)
         or artifact_count < 1
     ):
@@ -1611,6 +1773,7 @@ def _verify_systemkatalog_release(target: Path, expected_head: str) -> dict[str,
         "remote_origin": SYSTEMKATALOG_ORIGIN,
         "release_commit": head,
         "manifest_source_commit": manifest_source,
+        "provenance_ref": provenance_ref,
         "artifact_count": artifact_count,
         "release_path": str(target),
         "manifest_path": str(manifest_path),
@@ -1661,6 +1824,18 @@ def prepare_systemkatalog_runtime_config(
                 timeout=180,
                 env=_systemkatalog_git_env(),
             )
+            temporary_manifest = temporary / SYSTEMKATALOG_MANIFEST_RELATIVE_PATH
+            _require_regular_file(
+                temporary_manifest,
+                owner_uid=os.getuid(),
+                label="Systemkatalog map manifest",
+            )
+            temporary_manifest_source = _systemkatalog_manifest_source_commit(
+                temporary_manifest
+            )
+            _materialize_systemkatalog_manifest_provenance(
+                temporary, temporary_manifest_source
+            )
             _verify_systemkatalog_release(temporary, remote_head)
             seal_release(temporary)
             try:
@@ -1704,6 +1879,7 @@ def confirm_systemkatalog_runtime_config(
     if (
         verified["manifest_sha256"] != evidence.get("manifest_sha256")
         or verified["manifest_source_commit"] != evidence.get("manifest_source_commit")
+        or verified["provenance_ref"] != evidence.get("provenance_ref")
         or config.ecosystem_map_source_root != target
         or config.ecosystem_map_manifest_path != target / SYSTEMKATALOG_MANIFEST_RELATIVE_PATH
     ):
