@@ -93,6 +93,15 @@ SYSTEMKATALOG_REMOTE_REF = "refs/heads/main"
 SYSTEMKATALOG_TRACKING_REF = "refs/remotes/origin/main"
 SYSTEMKATALOG_MANIFEST_RELATIVE_PATH = Path("rendered/ecosystem-map-artifact-manifest.json")
 SYSTEMKATALOG_MANIFEST_CHECKER_RELATIVE_PATH = Path("scripts/write_ecosystem_map_artifact_manifest.py")
+SYSTEMKATALOG_MANIFEST_CHECKER_BOOTSTRAP = """\
+import runpy
+import sys
+
+scripts_directory, checker, *arguments = sys.argv[1:]
+sys.path.insert(0, scripts_directory)
+sys.argv = [checker, *arguments]
+runpy.run_path(checker, run_name="__main__")
+"""
 COMPLETION_KIND = "leitstand_local_deployment_completion"
 ACTIVE_ROUTES = (
     "/",
@@ -1502,6 +1511,18 @@ def _systemkatalog_remote_main() -> str:
     return lines[0][0]
 
 
+def _systemkatalog_manifest_checker_command(checker: Path) -> tuple[str, ...]:
+    checker = Path(os.path.abspath(checker))
+    return (
+        sys.executable,
+        "-I",
+        "-c",
+        SYSTEMKATALOG_MANIFEST_CHECKER_BOOTSTRAP,
+        str(checker.parent),
+        str(checker),
+    )
+
+
 def _verify_systemkatalog_release(target: Path, expected_head: str) -> dict[str, Any]:
     head = validate_head(expected_head)
     target = Path(os.path.abspath(target))
@@ -1558,9 +1579,7 @@ def _verify_systemkatalog_release(target: Path, expected_head: str) -> dict[str,
     _require_regular_file(checker, owner_uid=os.getuid(), label="Systemkatalog map manifest checker")
     completed = run(
         (
-            sys.executable,
-            "-I",
-            str(checker),
+            *_systemkatalog_manifest_checker_command(checker),
             "--repo-root",
             str(target),
             "--check",

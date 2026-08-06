@@ -81,12 +81,20 @@ class ReleaseRuntimeTest(unittest.TestCase):
         subprocess.run(["git", "-C", str(source), "config", "user.name", "Leitstand Test"], check=True)
         (source / "rendered").mkdir()
         (source / "scripts").mkdir()
+        provenance = source / "scripts/system_catalog_provenance.py"
+        provenance.write_text(
+            "def manifest_summary(manifest):\n"
+            "    return {\"ok\": True, \"sourceCommit\": manifest[\"sourceCommit\"], \"artifactCount\": manifest[\"artifactCount\"]}\n",
+            encoding="utf-8",
+        )
         checker = source / release.SYSTEMKATALOG_MANIFEST_CHECKER_RELATIVE_PATH
         checker.write_text(
             """#!/usr/bin/env python3
 import argparse
 import json
 from pathlib import Path
+
+from system_catalog_provenance import manifest_summary
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--repo-root', required=True)
@@ -95,7 +103,7 @@ parser.add_argument('--durable-source-ref')
 parser.add_argument('--json', action='store_true')
 args = parser.parse_args()
 manifest = json.loads((Path(args.repo_root) / 'rendered/ecosystem-map-artifact-manifest.json').read_text())
-print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifactCount': manifest['artifactCount']}))
+print(json.dumps(manifest_summary(manifest)))
 """,
             encoding="utf-8",
         )
@@ -290,6 +298,16 @@ print(json.dumps({'ok': True, 'sourceCommit': manifest['sourceCommit'], 'artifac
         self.config_path.write_text(json.dumps(changed), encoding="utf-8")
         with self.assertRaisesRegex(release.ReleaseError, "key mismatch"):
             release.load_runtime_config(self.config_path)
+
+    def test_systemkatalog_manifest_checker_command_keeps_isolation_and_binds_scripts(self) -> None:
+        checker = Path("/verified/systemkatalog/scripts/write_ecosystem_map_artifact_manifest.py")
+        command = release._systemkatalog_manifest_checker_command(checker)
+
+        self.assertEqual(command[:3], (sys.executable, "-I", "-c"))
+        self.assertEqual(command[4:], (str(checker.parent), str(checker)))
+        self.assertIn("sys.path.insert(0, scripts_directory)", command[3])
+        self.assertIn("runpy.run_path", command[3])
+        self.assertNotIn("PYTHONPATH", command[3])
 
     def test_prepare_systemkatalog_runtime_config_materializes_and_reuses_exact_remote_release(self) -> None:
         remote, latest, manifest_source = self._create_systemkatalog_remote()
