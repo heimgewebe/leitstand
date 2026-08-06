@@ -1,5 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
+import { OPERATIONAL_SNAPSHOT_STALE_AFTER_MS } from './freshnessPolicy.js';
 
 export type RuntimeHealthStatus = 'ok' | 'warn' | 'fail';
 export type RuntimeHealthCheckStatus = RuntimeHealthStatus | 'unknown';
@@ -69,11 +70,11 @@ export interface RuntimeHealthOptions {
 }
 
 const SNAPSHOT_STALE_LIMITS_MS: Record<SnapshotKind, number> = {
-  bureau_tasks: 20 * 60 * 1000,
-  checkout_inventory: 20 * 60 * 1000,
-  decision_axis: 20 * 60 * 1000,
-  repoground: 20 * 60 * 1000,
-  ecosystem_map_head: 20 * 60 * 1000,
+  bureau_tasks: OPERATIONAL_SNAPSHOT_STALE_AFTER_MS,
+  checkout_inventory: OPERATIONAL_SNAPSHOT_STALE_AFTER_MS,
+  decision_axis: OPERATIONAL_SNAPSHOT_STALE_AFTER_MS,
+  repoground: OPERATIONAL_SNAPSHOT_STALE_AFTER_MS,
+  ecosystem_map_head: OPERATIONAL_SNAPSHOT_STALE_AFTER_MS,
   storage_health: 90 * 60 * 1000,
   ecosystem_map: 168 * 60 * 60 * 1000,
 };

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
+import { OPERATIONAL_SNAPSHOT_STALE_AFTER_MS } from '../freshnessPolicy.js';
 
 /**
  * Bureau task-board controller — Phase "Ausführungs-Achse".
@@ -61,8 +62,6 @@ export interface BureauViewData {
 }
 
 const CONTRACT_KIND = 'leitstand_bureau_task_snapshot';
-/** Bureau tasks are operational; a snapshot older than this reads as stale. */
-const STALE_AFTER_MS = 20 * 60 * 1000; // 20m
 
 const DEFAULT_NON_CLAIMS = [
   'task_ownership',
@@ -132,7 +131,7 @@ function freshnessOf(generatedAt: string | null): BureauFreshness {
   if (!generatedAt) return 'unknown';
   const ts = Date.parse(generatedAt);
   if (Number.isNaN(ts)) return 'unknown';
-  return Date.now() - ts <= STALE_AFTER_MS ? 'fresh' : 'stale';
+  return Date.now() - ts <= OPERATIONAL_SNAPSHOT_STALE_AFTER_MS ? 'fresh' : 'stale';
 }
 
 function nullableString(raw: unknown): string | null {
