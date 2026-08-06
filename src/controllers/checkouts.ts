@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
+import { OPERATIONAL_SNAPSHOT_STALE_AFTER_MS } from '../freshnessPolicy.js';
 
 /**
  * Checkout / worktree health controller — Phase "Ausführungs-Achse".
@@ -53,8 +54,6 @@ export interface CheckoutViewData {
 }
 
 const CONTRACT_KIND = 'leitstand_checkout_inventory';
-/** Checkout inventory changes slowly; a day-old snapshot is still useful but flagged. */
-const STALE_AFTER_MS = 20 * 60 * 1000; // 20m
 
 const DEFAULT_NON_CLAIMS = [
   'checkout_ownership',
@@ -104,7 +103,7 @@ function freshnessOf(generatedAt: string | null): CheckoutFreshness {
   if (!generatedAt) return 'unknown';
   const ts = Date.parse(generatedAt);
   if (Number.isNaN(ts)) return 'unknown';
-  return Date.now() - ts <= STALE_AFTER_MS ? 'fresh' : 'stale';
+  return Date.now() - ts <= OPERATIONAL_SNAPSHOT_STALE_AFTER_MS ? 'fresh' : 'stale';
 }
 
 function nullableString(raw: unknown): string | null {

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getBureauData } from '../../src/controllers/bureau.js';
 import { getCheckoutData } from '../../src/controllers/checkouts.js';
 import { getStorageHealthData } from '../../src/controllers/storageHealth.js';
+import { OPERATIONAL_SNAPSHOT_STALE_AFTER_MINUTES } from '../../src/freshnessPolicy.js';
 
 const OLD_BUREAU = process.env.LEITSTAND_BUREAU_SNAPSHOT_PATH;
 const OLD_CHECKOUT = process.env.LEITSTAND_CHECKOUT_SNAPSHOT_PATH;
@@ -33,6 +34,21 @@ afterEach(async () => {
 });
 
 describe('controller freshness policy alignment', () => {
+  it('keeps the documented operational threshold bound to the shared policy', async () => {
+    const runbook = await readFile(
+      join(process.cwd(), 'docs', 'runbooks', 'operator-snapshots.md'),
+      'utf-8',
+    );
+
+    expect(OPERATIONAL_SNAPSHOT_STALE_AFTER_MINUTES).toBe(20);
+    expect(runbook).toContain(
+      '`OPERATIONAL_SNAPSHOT_STALE_AFTER_MINUTES = 20`',
+    );
+    expect(runbook).toContain('| Bureau task lifecycle snapshot | every 10 minutes');
+    expect(runbook).toContain('| Grabowski checkout inventory | every 10 minutes');
+    expect(runbook).not.toMatch(/6 hours|24 hours|6 hour|24 hour/i);
+  });
+
   it('uses the same 20-minute boundary for Bureau and checkout projections', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-19T12:00:00Z'));

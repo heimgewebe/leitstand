@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { lstat, readFile } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve } from 'node:path';
+import { OPERATIONAL_SNAPSHOT_STALE_AFTER_MS } from '../freshnessPolicy.js';
 import {
   loadEcosystemCrossLinks,
   type EcosystemCrossLinkData,
@@ -13,7 +14,6 @@ const MANIFEST_SCHEMA_PATH = 'catalog/ecosystem-map-artifact-manifest.schema.v1.
 const MANIFEST_MODE = 'read_only_projection_source';
 const DEFAULT_STALE_AFTER_HOURS = 168;
 const CURRENT_HEAD_CONTRACT_KIND = 'leitstand_source_head_snapshot';
-const CURRENT_HEAD_STALE_AFTER_MS = 20 * 60 * 1000;
 const GIT_TIMEOUT_MS = 2_500;
 const MAX_GIT_OUTPUT_BYTES = 1_000_000;
 
@@ -575,7 +575,7 @@ async function readCanonicalHeadInspection(): Promise<CanonicalHeadInspection> {
       return { status: 'unavailable', reason: 'canonical_head_contract_mismatch', head: null, generatedAt: null };
     }
     const generatedMs = Date.parse(raw.generatedAt);
-    if (!Number.isFinite(generatedMs) || Date.now() - generatedMs > CURRENT_HEAD_STALE_AFTER_MS) {
+    if (!Number.isFinite(generatedMs) || Date.now() - generatedMs > OPERATIONAL_SNAPSHOT_STALE_AFTER_MS) {
       return { status: 'unavailable', reason: 'canonical_head_snapshot_stale', head: null, generatedAt: raw.generatedAt };
     }
     if (raw.status !== 'available' || typeof raw.head !== 'string' || !/^[0-9a-f]{40}$/.test(raw.head)) {

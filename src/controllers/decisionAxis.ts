@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
+import { OPERATIONAL_SNAPSHOT_STALE_AFTER_MS } from '../freshnessPolicy.js';
 
 export type DecisionSourceKind = 'artifact' | 'missing' | 'corrupt';
 export type DecisionFreshness = 'fresh' | 'stale' | 'unknown';
@@ -36,7 +37,6 @@ export interface DecisionAxisViewData {
 }
 
 const CONTRACT_KIND = 'leitstand_operator_decision_axis_snapshot';
-const STALE_AFTER_MS = 20 * 60 * 1000;
 const SECTION_ORDER: Array<{ id: DecisionAxisSection['id']; label: DecisionAxisSection['label'] }> = [
   { id: 'now', label: 'Jetzt' },
   { id: 'focus', label: 'Im Fokus' },
@@ -61,7 +61,7 @@ function freshnessOf(value: string | null): DecisionFreshness {
   if (!value) return 'unknown';
   const timestamp = Date.parse(value);
   if (Number.isNaN(timestamp)) return 'unknown';
-  return Date.now() - timestamp <= STALE_AFTER_MS ? 'fresh' : 'stale';
+  return Date.now() - timestamp <= OPERATIONAL_SNAPSHOT_STALE_AFTER_MS ? 'fresh' : 'stale';
 }
 
 function displaySourcePath(sourcePath: string): string {

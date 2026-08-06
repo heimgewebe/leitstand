@@ -79,15 +79,15 @@ Execution-axis data changes quickly enough that stale snapshots must be visible.
 
 | Snapshot | Expected refresh cadence | Leitstand stale threshold | Rationale |
 | --- | --- | --- | --- |
-| Bureau task lifecycle snapshot | at least every 60 minutes during active operator work; after relevant Bureau task/claim merges when possible | 6 hours | task/claim state is operationally volatile |
-| Grabowski checkout inventory | at least daily; after large worktree/branch cleanup or runtime-head changes when possible | 24 hours | checkout inventory changes slower but can drift materially |
+| Bureau task lifecycle snapshot | every 10 minutes through the versioned operator-snapshot timer; after relevant Bureau task/claim merges when possible | 20 minutes | two missed producer runs must be visible before task/claim evidence is treated as current |
+| Grabowski checkout inventory | every 10 minutes through the same versioned timer; after large worktree/branch cleanup or runtime-head changes when possible | 20 minutes | checkout ownership, process and lease bindings can change during active operator work |
 
-The controller thresholds are encoded in:
-
-- `src/controllers/bureau.ts` — 6 hour stale threshold.
-- `src/controllers/checkouts.ts` — 24 hour stale threshold.
-
-The runtime health receipt at `/health` is intentionally stricter: it warns when either operator snapshot is older than 20 minutes. The running service uses this tighter threshold to detect bridge/timer drift early; the human-facing boards remain renderable for longer.
+The shared threshold is encoded once in `src/freshnessPolicy.ts` as
+`OPERATIONAL_SNAPSHOT_STALE_AFTER_MINUTES = 20`. Bureau, checkout,
+decision-axis and canonical-head projections consume that policy, and `/health`
+uses the same value for the corresponding operational snapshots. The rendered
+boards and the health receipt therefore cannot classify the same evidence with
+different freshness boundaries.
 
 A stale snapshot remains renderable, but it is not a green status. Operators should refresh the raw producer export and rerun the bridge before treating the view as current.
 
