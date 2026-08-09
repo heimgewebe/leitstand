@@ -30,7 +30,7 @@ jobs:
           corepack prepare pnpm@9.1.0 --activate
 
       - name: Setup Node
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: '20'
           cache: pnpm
