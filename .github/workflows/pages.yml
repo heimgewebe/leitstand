@@ -45,7 +45,7 @@ jobs:
         run: node -e "const b=require('./dist/site/_static-boundary.json'); if (b.supportedRoutes.length !== 1 || b.supportedRoutes[0].route !== '/') process.exit(1)"
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./dist/site
 
