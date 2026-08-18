@@ -2,7 +2,12 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-interface BrowserViewMatrix {
+const ROOT = process.cwd();
+const MATRIX_PATH = join(ROOT, 'scripts', 'browser-view-matrix.v1.json');
+const PACKAGE_PATH = join(ROOT, 'package.json');
+const CI_PATH = join(ROOT, '.github', 'workflows', 'ci.yml');
+
+type Matrix = {
   schemaVersion: number;
   kind: string;
   taskId: string;
@@ -32,26 +37,20 @@ interface BrowserViewMatrix {
     source: string;
     expectedText: string;
   }>;
-}
+};
 
-const MATRIX_PATH = join(process.cwd(), 'scripts', 'browser-view-matrix.v1.json');
-const PACKAGE_PATH = join(process.cwd(), 'package.json');
-const CI_PATH = join(process.cwd(), '.github', 'workflows', 'ci.yml');
-
-async function readMatrix(): Promise<BrowserViewMatrix> {
-  return JSON.parse(await readFile(MATRIX_PATH, 'utf-8')) as BrowserViewMatrix;
+async function readMatrix(): Promise<Matrix> {
+  return JSON.parse(await readFile(MATRIX_PATH, 'utf-8')) as Matrix;
 }
 
 describe('LSV-V1-T009 browser view matrix', () => {
-  it('is versioned and bound to the browser regression task', async () => {
+  it('is a versioned, explicit, fail-closed browser contract', async () => {
     const matrix = await readMatrix();
 
-    expect(matrix).toMatchObject({
-      schemaVersion: 1,
-      kind: 'leitstand_browser_view_matrix',
-      taskId: 'LSV-V1-T009',
-    });
-    expect(matrix.contract.server).toContain('Express');
+    expect(matrix.schemaVersion).toBe(1);
+    expect(matrix.kind).toBe('leitstand_browser_view_matrix');
+    expect(matrix.taskId).toBe('LSV-V1-T009');
+    expect(matrix.contract.server).toContain('loopback');
     expect(matrix.contract.productCssOnly).toBe(true);
     expect(matrix.contract.failClosedOn).toEqual(expect.arrayContaining([
       'pageerror',
@@ -85,6 +84,7 @@ describe('LSV-V1-T009 browser view matrix', () => {
       '/',
       '/repoground',
       '/bureau',
+      '/weltgewebe',
       '/checkouts',
       '/storage-health',
       '/ecosystem-map',

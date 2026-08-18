@@ -1,11 +1,12 @@
 import { readFile, stat } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
 import { OPERATIONAL_SNAPSHOT_STALE_AFTER_MS } from './freshnessPolicy.js';
+import { weltgewebeOperationsSnapshotRecordCount } from './controllers/weltgewebeOperations.js';
 
 export type RuntimeHealthStatus = 'ok' | 'warn' | 'fail';
 export type RuntimeHealthCheckStatus = RuntimeHealthStatus | 'unknown';
 
-type SnapshotKind = 'bureau_tasks' | 'checkout_inventory' | 'decision_axis' | 'repoground' | 'ecosystem_map_head' | 'storage_health' | 'ecosystem_map';
+type SnapshotKind = 'bureau_tasks' | 'checkout_inventory' | 'decision_axis' | 'repoground' | 'ecosystem_map_head' | 'weltgewebe_operations' | 'storage_health' | 'ecosystem_map';
 
 export interface RuntimeHealthCheck {
   status: RuntimeHealthCheckStatus;
@@ -63,6 +64,7 @@ export interface RuntimeHealthOptions {
   decisionAxisSnapshotPath?: string;
   repoGroundSnapshotPath?: string;
   ecosystemMapCurrentHeadPath?: string;
+  weltgewebeOperationsSnapshotPath?: string;
   ecosystemMapSourceRoot?: string;
   storageHealthSnapshotPath?: string;
   ecosystemMapManifestPath?: string;
@@ -75,6 +77,7 @@ const SNAPSHOT_STALE_LIMITS_MS: Record<SnapshotKind, number> = {
   decision_axis: OPERATIONAL_SNAPSHOT_STALE_AFTER_MS,
   repoground: OPERATIONAL_SNAPSHOT_STALE_AFTER_MS,
   ecosystem_map_head: OPERATIONAL_SNAPSHOT_STALE_AFTER_MS,
+  weltgewebe_operations: OPERATIONAL_SNAPSHOT_STALE_AFTER_MS,
   storage_health: 90 * 60 * 1000,
   ecosystem_map: 168 * 60 * 60 * 1000,
 };
@@ -109,6 +112,9 @@ function snapshotPathFromEnv(kind: SnapshotKind, cwd: string): string {
   if (kind === 'ecosystem_map_head') {
     return process.env.LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH || join(cwd, 'artifacts', 'ecosystem-map-current-head.json');
   }
+  if (kind === 'weltgewebe_operations') {
+    return process.env.LEITSTAND_WELTGEWEBE_OPERATIONS_PATH || join(cwd, 'artifacts', 'weltgewebe-operations.json');
+  }
   if (kind === 'storage_health') {
     return process.env.LEITSTAND_STORAGE_HEALTH_PATH || join(cwd, 'artifacts', 'storage-health.json');
   }
@@ -142,6 +148,7 @@ function snapshotRecordCount(kind: SnapshotKind, raw: unknown): number | null {
       ? 1
       : null;
   }
+  if (kind === 'weltgewebe_operations') return weltgewebeOperationsSnapshotRecordCount(raw);
   if (kind === 'storage_health') return typeof snapshot.current === 'object' && snapshot.current ? 1 : null;
   if (kind === 'ecosystem_map') return Array.isArray(snapshot.artifacts) ? snapshot.artifacts.length : null;
   return null;
@@ -167,6 +174,7 @@ function expectedSnapshotKind(kind: SnapshotKind): string {
   if (kind === 'decision_axis') return 'leitstand_operator_decision_axis_snapshot';
   if (kind === 'repoground') return 'leitstand_repobrief_bundle_index';
   if (kind === 'ecosystem_map_head') return 'leitstand_source_head_snapshot';
+  if (kind === 'weltgewebe_operations') return 'leitstand_weltgewebe_operations_snapshot';
   if (kind === 'storage_health') return 'leitstand_storage_health';
   if (kind === 'ecosystem_map') return 'system_catalog_map_artifact_manifest';
   return 'leitstand_checkout_inventory';
@@ -435,6 +443,7 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
     decision_axis: options.staleAfterMsOverrides?.decision_axis ?? SNAPSHOT_STALE_LIMITS_MS.decision_axis,
     repoground: options.staleAfterMsOverrides?.repoground ?? SNAPSHOT_STALE_LIMITS_MS.repoground,
     ecosystem_map_head: options.staleAfterMsOverrides?.ecosystem_map_head ?? SNAPSHOT_STALE_LIMITS_MS.ecosystem_map_head,
+    weltgewebe_operations: options.staleAfterMsOverrides?.weltgewebe_operations ?? SNAPSHOT_STALE_LIMITS_MS.weltgewebe_operations,
     storage_health: options.staleAfterMsOverrides?.storage_health ?? SNAPSHOT_STALE_LIMITS_MS.storage_health,
     ecosystem_map: options.staleAfterMsOverrides?.ecosystem_map ?? SNAPSHOT_STALE_LIMITS_MS.ecosystem_map,
   };
@@ -444,6 +453,7 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
   const decisionAxisPath = options.decisionAxisSnapshotPath || snapshotPathFromEnv('decision_axis', cwd);
   const repoGroundPath = options.repoGroundSnapshotPath || snapshotPathFromEnv('repoground', cwd);
   const ecosystemMapHeadPath = options.ecosystemMapCurrentHeadPath || snapshotPathFromEnv('ecosystem_map_head', cwd);
+  const weltgewebeOperationsPath = options.weltgewebeOperationsSnapshotPath || snapshotPathFromEnv('weltgewebe_operations', cwd);
   const ecosystemMapSourceRoot = options.ecosystemMapSourceRoot
     || process.env.LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT
     || join(cwd, 'artifacts', 'systemkatalog-release-unbound');
@@ -457,6 +467,7 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
     decisionAxisSnapshot,
     repoGroundSnapshot,
     ecosystemMapHeadSnapshot,
+    weltgewebeOperationsSnapshot,
     storageHealthSnapshot,
     ecosystemMapSnapshot,
     ecosystemMapHeadConsistency,
@@ -467,6 +478,7 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
     readSnapshotHealth('decision_axis', decisionAxisPath, cwd, now, staleLimits.decision_axis),
     readSnapshotHealth('repoground', repoGroundPath, cwd, now, staleLimits.repoground),
     readSnapshotHealth('ecosystem_map_head', ecosystemMapHeadPath, cwd, now, staleLimits.ecosystem_map_head),
+    readSnapshotHealth('weltgewebe_operations', weltgewebeOperationsPath, cwd, now, staleLimits.weltgewebe_operations),
     readSnapshotHealth('storage_health', storageHealthPath, cwd, now, staleLimits.storage_health),
     readSnapshotHealth('ecosystem_map', ecosystemMapPath, cwd, now, staleLimits.ecosystem_map),
     readEcosystemMapHeadConsistency(ecosystemMapHeadPath, ecosystemMapSourceRoot),
@@ -480,6 +492,7 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
     decision_axis_snapshot: checkFromSnapshot(decisionAxisSnapshot),
     repoground_snapshot: checkFromSnapshot(repoGroundSnapshot),
     ecosystem_map_head_snapshot: checkFromSnapshot(ecosystemMapHeadSnapshot),
+    weltgewebe_operations_snapshot: checkFromSnapshot(weltgewebeOperationsSnapshot),
     ecosystem_map_head_consistency: ecosystemMapHeadConsistency,
     storage_health_snapshot: checkFromSnapshot(storageHealthSnapshot),
     ecosystem_map_snapshot: checkFromSnapshot(ecosystemMapSnapshot),
@@ -503,6 +516,7 @@ export async function getRuntimeHealthData(options: RuntimeHealthOptions = {}): 
       decision_axis: decisionAxisSnapshot,
       repoground: repoGroundSnapshot,
       ecosystem_map_head: ecosystemMapHeadSnapshot,
+      weltgewebe_operations: weltgewebeOperationsSnapshot,
       storage_health: storageHealthSnapshot,
       ecosystem_map: ecosystemMapSnapshot,
     },

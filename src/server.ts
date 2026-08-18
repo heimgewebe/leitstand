@@ -15,6 +15,7 @@ import {
 } from './controllers/ecosystemMapNavigation.js';
 import { getRepoBriefData } from './controllers/repoBrief.js';
 import { getStorageHealthData } from './controllers/storageHealth.js';
+import { getWeltgewebeOperationsData } from './controllers/weltgewebeOperations.js';
 import { getRuntimeHealthData } from './runtimeHealth.js';
 
 const app: Express = express();
@@ -120,6 +121,19 @@ app.get('/storage-health', async (_req, res) => {
     if (!res.headersSent) {
       console.error('[StorageHealth] Error:', error);
       res.status(500).send('Error loading storage health data');
+    }
+  }
+});
+
+// Weltgewebe operations – read-only projection of source-bound SLO, recovery, cell and federation evidence.
+app.get('/weltgewebe', async (_req, res) => {
+  try {
+    const data = await getWeltgewebeOperationsData();
+    res.render('weltgewebe', data);
+  } catch (error) {
+    if (!res.headersSent) {
+      console.error('[Weltgewebe] Error:', error);
+      res.status(500).send('Error loading Weltgewebe operations data');
     }
   }
 });

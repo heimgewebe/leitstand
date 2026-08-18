@@ -181,3 +181,39 @@ implementations:
       - tests/exportDecisionAxis.test.ts
     supersedes: []
     deprecated_by: []
+
+  - id: impl.controller.weltgewebeOperations
+    path: src/controllers/weltgewebeOperations.ts
+    impl_type: controller
+    status: active
+    documented_by:
+      - docs/operations/weltgewebe-operations.md
+    verified_by:
+      - tests/controllers/weltgewebeOperations.test.ts
+      - tests/weltgewebeOperationsServer.test.ts
+      - tests/runtimeHealth.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.view.weltgewebeOperations
+    path: src/views/weltgewebe.ejs
+    impl_type: view
+    status: active
+    documented_by:
+      - docs/operations/weltgewebe-operations.md
+    verified_by:
+      - tests/weltgewebeOperationsServer.test.ts
+      - tests/views/navigation.test.ts
+    supersedes: []
+    deprecated_by: []
+
+  - id: impl.weltgewebeOperations.snapshotBridge
+    path: scripts/export-operator-snapshots.mjs
+    impl_type: bridge
+    status: active
+    documented_by:
+      - docs/operations/weltgewebe-operations.md
+    verified_by:
+      - tests/exportOperatorSnapshots.test.ts
+    supersedes: []
+    deprecated_by: []
