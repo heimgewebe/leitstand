@@ -30,6 +30,7 @@ Leitstand is the read-only observation surface for the Heimgewebe operator ecosy
 - [Leitstand Gateway Updates](runbooks/ops.runbook.leitstand-gateway.updates.md)
 - [Operator Snapshot Producer Runbook](runbooks/operator-snapshots.md)
 - [Bounded Storage Health Projection](operations/storage-health.md)
+- [Weltgewebe Operations Projection](operations/weltgewebe-operations.md)
 - [Local Test Runner Compatibility](runbooks/local-test-runner.md)
 
 ## Current runtime surfaces
@@ -39,6 +40,7 @@ Leitstand is the read-only observation surface for the Heimgewebe operator ecosy
 | `/` | compact source, attention and read-only decision-axis overview | derived local snapshot artifacts only |
 | `/health` | in-process runtime and artifact-freshness receipt | current process and local files |
 | `/bureau` | Bureau task and claim projection | Bureau snapshot |
+| `/weltgewebe` | Weltgewebe SLO, recovery, cell and federation projection | provenance-bound Weltgewebe operations snapshot |
 | `/checkouts` | checkout and worktree projection | Grabowski snapshot |
 | `/storage-health` | bounded storage-health projection | storage-health artifact |
 | `/ecosystem-map` | system relationships | Systemkatalog artifact manifest |

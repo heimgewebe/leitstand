@@ -1,0 +1,219 @@
+<%
+const formatPercent = (value) => typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(2)} %` : '—';
+const formatMs = (value) => typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value)} ms` : '—';
+const formatDuration = (value) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  if (value < 60) return `${Math.round(value)} s`;
+  if (value < 3600) return `${(value / 60).toFixed(1)} min`;
+  if (value < 86400) return `${(value / 3600).toFixed(1)} h`;
+  return `${(value / 86400).toFixed(1)} d`;
+};
+const freshnessClass = (value) => value === 'fresh' ? 'ok' : value === 'stale' ? 'warn' : 'bad';
+const stateClass = (value) => {
+  const state = String(value || '').toLowerCase();
+  if (/(fail|down|unavailable|critical|error)/.test(state)) return 'bad';
+  if (/(degraded|warn|pending|progress|unknown)/.test(state)) return 'warn';
+  if (/^(healthy|connected|current|ready|active|ok|available|succeeded|running)$/.test(state)) return 'ok';
+  return 'fr-unknown';
+};
+const provenanceMeta = (value) => value
+  ? `${value.source_system} · ${value.source_kind} · ${value.source_ref}`
+  : 'keine Herkunft verfügbar';
+%>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Weltgewebe-Betrieb – Leitstand</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    .wg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px; }
+    .wg-grid .card { margin-bottom: 0; }
+    .wg-provenance { margin-top: 8px; color: var(--ui-text-muted); font-size: .74em; overflow-wrap: anywhere; }
+    .wg-ref-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .wg-ref-actions a { text-decoration: none; }
+    .wg-section-gap { margin-top: 28px; }
+    .wg-state { font-family: var(--ui-font-mono); font-size: .82em; }
+    .wg-table-provenance { min-width: 260px; }
+  </style>
+  <%- include('_ui-head') %>
+  <script type="module" src="/assets/shell.mjs"></script>
+</head>
+<body class="weltgewebe-view">
+  <%- include('_nav') %>
+  <main class="ui-main--wide">
+    <header class="page-header">
+      <h1>Weltgewebe-Betrieb</h1>
+      <p class="subtitle">Read-only Projektion von SLOs, Recovery, Zellen, Nachbarschaften und Föderation. Jeder Wert bleibt an seine Quelle, Beobachtungszeit und Belege gebunden.</p>
+    </header>
+
+    <section class="notice">
+      <strong>Beobachtung, keine Steuerung.</strong> Leitstand ruft weder Kubernetes noch Bureau oder Grabowski aus einer Webanfrage heraus auf. Handlungsbedarf wird nur als Task- oder Receipt-Verweis dargestellt.
+    </section>
+
+    <section class="metrics" aria-label="Weltgewebe Quellenstatus">
+      <div class="metric">
+        <div class="label">Snapshot</div>
+        <div class="value source-<%= view_meta.source_kind %>"><%= view_meta.source_kind %></div>
+        <div class="ui-caption"><%= view_meta.source_path_display %> · <code><%= view_meta.missing_reason %></code></div>
+      </div>
+      <div class="metric">
+        <div class="label">Aktualität</div>
+        <div class="value <%= freshnessClass(view_meta.freshness_state) %>"><%= view_meta.freshness_state %></div>
+        <div class="ui-caption"><%= view_meta.generated_at || 'kein Zeitstempel' %></div>
+      </div>
+      <div class="metric">
+        <div class="label">Zellen / Nachbarschaften</div>
+        <div class="value"><%= view_meta.cell_count %> / <%= view_meta.neighborhood_count %></div>
+        <div class="ui-caption">nur gelieferte Projektionen</div>
+      </div>
+      <div class="metric">
+        <div class="label">Operatorverweise</div>
+        <div class="value"><%= view_meta.operator_reference_count %></div>
+        <div class="ui-caption">Tasks oder Receipts, keine Direktwirkung</div>
+      </div>
+    </section>
+
+    <% if (view_meta.source_kind === 'fixture') { %>
+      <section class="card"><p class="muted">Fixture-Fallback aktiv. Die Werte demonstrieren nur den Vertrag und sind kein operativer Weltgewebe-Zustand.</p></section>
+    <% } else if (view_meta.source_kind !== 'artifact') { %>
+      <section class="card"><p class="muted">Kein gültiger Weltgewebe-Betriebssnapshot verfügbar. Leitstand erfindet keine Ersatzwerte und zeigt den Zustand deshalb degradiert.</p></section>
+    <% } %>
+
+    <% if (slo && recovery && deployment) { %>
+      <section class="ui-section wg-section-gap" aria-labelledby="wg-slo-title">
+        <h2 id="wg-slo-title">SLO & Recovery</h2>
+        <div class="metrics">
+          <div class="metric">
+            <div class="label">Verfügbarkeit · <%= slo.window %></div>
+            <div class="value"><%= formatPercent(slo.availability_percent) %></div>
+            <div class="wg-provenance"><%= provenanceMeta(slo.provenance) %> · <span class="<%= freshnessClass(slo.provenance.freshness_state) %>"><%= slo.provenance.freshness_state %></span></div>
+          </div>
+          <div class="metric">
+            <div class="label">p95-Latenz</div>
+            <div class="value"><%= formatMs(slo.p95_latency_ms) %></div>
+            <div class="wg-provenance"><%= slo.provenance.observed_at %></div>
+          </div>
+          <div class="metric">
+            <div class="label">Fehlerbudget verbleibend</div>
+            <div class="value"><%= formatPercent(slo.error_budget_remaining_percent) %></div>
+            <div class="wg-provenance"><%= slo.provenance.evidence_refs.join(' · ') %></div>
+          </div>
+          <div class="metric">
+            <div class="label">RTO / RPO</div>
+            <div class="value"><%= formatDuration(recovery.rto_seconds) %> / <%= formatDuration(recovery.rpo_seconds) %></div>
+            <div class="wg-provenance"><%= provenanceMeta(recovery.provenance) %> · <span class="<%= freshnessClass(recovery.provenance.freshness_state) %>"><%= recovery.provenance.freshness_state %></span></div>
+          </div>
+          <div class="metric">
+            <div class="label">Letzter Restore</div>
+            <div class="value"><%= formatDuration(recovery.restore_age_seconds) %> her</div>
+            <div class="wg-provenance"><%= recovery.last_restore_at || 'kein Restore-Zeitpunkt geliefert' %></div>
+          </div>
+          <div class="metric">
+            <div class="label">Deployment · <%= deployment.environment %></div>
+            <div class="value <%= stateClass(deployment.state) %>"><%= deployment.state %></div>
+            <div class="wg-provenance"><%= deployment.source_commit || 'kein Commit' %><% if (deployment.image_ref) { %> · <%= deployment.image_ref %><% } %></div>
+          </div>
+        </div>
+      </section>
+    <% } %>
+
+    <section class="ui-section wg-section-gap" aria-labelledby="wg-cells-title">
+      <h2 id="wg-cells-title">Zellen & Nachbarschaften</h2>
+      <section class="card table-wrap">
+        <% if (cells.length === 0) { %>
+          <p class="ui-empty">Keine belegten Zellzustände im Snapshot.</p>
+        <% } else { %>
+          <table>
+            <thead><tr><th>Zelle</th><th>Scope</th><th>Quellzustand</th><th>Frische</th><th>Herkunft</th></tr></thead>
+            <tbody>
+              <% cells.forEach(function(cell) { %>
+                <tr>
+                  <td><strong><%= cell.name %></strong><div class="muted mono"><%= cell.id %></div></td>
+                  <td><%= cell.scope %></td>
+                  <td><span class="wg-state <%= stateClass(cell.state) %>"><%= cell.state %></span></td>
+                  <td><span class="freshness-pill <%= freshnessClass(cell.provenance.freshness_state) %>"><%= cell.provenance.freshness_state %></span><div class="muted"><%= formatDuration(cell.provenance.age_seconds) %></div></td>
+                  <td class="wg-table-provenance"><%= provenanceMeta(cell.provenance) %><div class="muted"><%= cell.provenance.evidence_refs.join(' · ') %></div></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        <% } %>
+      </section>
+
+      <section class="card table-wrap">
+        <h2>Nachbarschaften</h2>
+        <% if (neighborhoods.length === 0) { %>
+          <p class="ui-empty">Keine belegten Nachbarschaftsbeziehungen im Snapshot.</p>
+        <% } else { %>
+          <table>
+            <thead><tr><th>ID</th><th>Von</th><th>Nach</th><th>Quellzustand</th><th>Herkunft / Frische</th></tr></thead>
+            <tbody>
+              <% neighborhoods.forEach(function(item) { %>
+                <tr>
+                  <td class="mono"><%= item.id %></td>
+                  <td class="mono"><%= item.local_cell_id %></td>
+                  <td class="mono"><%= item.remote_cell_id %></td>
+                  <td><span class="wg-state <%= stateClass(item.state) %>"><%= item.state %></span></td>
+                  <td><%= provenanceMeta(item.provenance) %><div class="muted"><span class="<%= freshnessClass(item.provenance.freshness_state) %>"><%= item.provenance.freshness_state %></span> · <%= item.provenance.observed_at %></div></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        <% } %>
+      </section>
+    </section>
+
+    <% if (federation) { %>
+      <section class="ui-section wg-section-gap" aria-labelledby="wg-federation-title">
+        <h2 id="wg-federation-title">Föderation</h2>
+        <div class="metrics">
+          <div class="metric"><div class="label">Quellzustand</div><div class="value <%= stateClass(federation.state) %>"><%= federation.state %></div><div class="wg-provenance"><%= provenanceMeta(federation.provenance) %></div></div>
+          <div class="metric"><div class="label">Zustell-Lag</div><div class="value"><%= formatDuration(federation.delivery_lag_seconds) %></div><div class="wg-provenance"><%= federation.last_delivered_at || 'kein Zustellzeitpunkt' %></div></div>
+          <div class="metric"><div class="label">Pending / Quarantäne</div><div class="value"><%= federation.pending_count ?? '—' %> / <%= federation.quarantined_count ?? '—' %></div><div class="wg-provenance"><span class="<%= freshnessClass(federation.provenance.freshness_state) %>"><%= federation.provenance.freshness_state %></span> · <%= federation.provenance.observed_at %></div></div>
+        </div>
+      </section>
+    <% } %>
+
+    <section class="ui-section wg-section-gap" aria-labelledby="wg-actions-title">
+      <h2 id="wg-actions-title">Operatorverweise</h2>
+      <p class="subtitle">Diese Flächen führen ausschließlich zu read-only Kontext. Die eigentliche Wirkung bleibt bei Bureau und Grabowski.</p>
+      <div class="wg-grid">
+        <% if (operator_references.length === 0) { %>
+          <section class="card"><p class="ui-empty">Keine Task- oder Receipt-Verweise geliefert.</p></section>
+        <% } %>
+        <% operator_references.forEach(function(item) { %>
+          <article class="card">
+            <h2><%= item.title %></h2>
+            <p><span class="wg-state <%= stateClass(item.state) %>"><%= item.state %></span></p>
+            <% if (item.task_id) { %><p>Task: <code><%= item.task_id %></code></p><% } %>
+            <% if (item.receipt_ref) { %><p>Receipt: <code><%= item.receipt_ref %></code></p><% } %>
+            <div class="wg-provenance"><%= provenanceMeta(item.provenance) %> · <%= item.provenance.observed_at %></div>
+            <div class="wg-ref-actions">
+              <a class="ui-action" href="/bureau">Bureau read-only öffnen</a>
+            </div>
+          </article>
+        <% }); %>
+      </div>
+    </section>
+
+    <details class="card ui-provenance wg-section-gap">
+      <summary>Snapshot-Provenienz</summary>
+      <div class="ui-provenance__content">
+        <% if (view_meta.producer) { %>
+          <p><strong>Produzent:</strong> <%= provenanceMeta(view_meta.producer) %></p>
+          <p><strong>Beobachtet:</strong> <%= view_meta.producer.observed_at %> · <span class="<%= freshnessClass(view_meta.producer.freshness_state) %>"><%= view_meta.producer.freshness_state %></span></p>
+          <p><strong>Belege:</strong> <%= view_meta.producer.evidence_refs.join(' · ') %></p>
+        <% } else { %>
+          <p class="muted">Keine Produzenten-Provenienz verfügbar.</p>
+        <% } %>
+      </div>
+    </details>
+
+    <section class="card wg-section-gap">
+      <h2>Does not establish</h2>
+      <ul><% view_meta.does_not_establish.forEach(function(item) { %><li><%= item %></li><% }); %></ul>
+    </section>
+  </main>
+</body>
+</html>

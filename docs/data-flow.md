@@ -23,6 +23,7 @@ No arrow returns from Leitstand to a source system. Leitstand does not ingest ev
 | Contract kind | Default artifact | Runtime surface | Authority |
 | --- | --- | --- | --- |
 | `leitstand_bureau_task_snapshot` | `artifacts/bureau-tasks.json` | `/bureau`, `/health` | Bureau |
+| `leitstand_weltgewebe_operations_snapshot` | `artifacts/weltgewebe-operations.json` | `/weltgewebe`, `/health` | provenance-bound Weltgewebe / Flux / Bureau / Grabowski source observations |
 | `leitstand_checkout_inventory` | `artifacts/checkout-inventory.json` | `/checkouts`, `/health` | Grabowski |
 | `leitstand_operator_decision_axis_snapshot` | `artifacts/operator-decision-axis.json` | `/`, `/health` | Bureau and Grabowski producer evidence |
 | `leitstand_repobrief_bundle_index` | `artifacts/repoground-bundles.json` | `/repoground`, `/health` | canonical RepoGround publications |
@@ -43,6 +44,7 @@ Development fixtures are allowed only as visibly marked non-operative examples. 
 | Source | Freshness limit | Stale | Missing, invalid, unreadable, wrong contract |
 | --- | ---: | --- | --- |
 | Bureau | 20 minutes | `warn` | `fail` |
+| Weltgewebe operations | 20 minutes | `warn` | `fail` |
 | Checkouts | 20 minutes | `warn` | `fail` |
 | Decision axis | 20 minutes | no priority items rendered | `fail` |
 | RepoGround publication index | 20 minutes | no bundles rendered | `fail` |
@@ -50,7 +52,7 @@ Development fixtures are allowed only as visibly marked non-operative examples. 
 | Storage health | 90 minutes | `warn` | `fail` |
 | Systemkarte manifest | 168 hours | `warn` | `fail` |
 
-Every snapshot entry in `/health` reports `age_seconds` and `stale_after_seconds`. The selected Systemkatalog release must equal the fresh canonical-head snapshot. RepoGround exposes bundles only when the canonical publication catalog is explicitly available and fresh.
+Every snapshot entry in `/health` reports `age_seconds` and `stale_after_seconds`. Weltgewebe operational subrecords additionally preserve their own source provenance and evidence age instead of being collapsed into a Leitstand-owned state. The selected Systemkatalog release must equal the fresh canonical-head snapshot. RepoGround exposes bundles only when the canonical publication catalog is explicitly available and fresh.
 
 ## Authority boundary
 

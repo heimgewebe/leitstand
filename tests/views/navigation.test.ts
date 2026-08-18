@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const canonicalRoutes = [
   '/',
   '/bureau',
+  '/weltgewebe',
   '/checkouts',
   '/storage-health',
   '/ecosystem-map',
@@ -15,6 +16,7 @@ const canonicalRoutes = [
 const navViews = [
   'index.ejs',
   'bureau.ejs',
+  'weltgewebe.ejs',
   'checkouts.ejs',
   'storage-health.ejs',
   'ecosystem-map.ejs',

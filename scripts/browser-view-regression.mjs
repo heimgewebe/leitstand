@@ -216,6 +216,7 @@ function baselineEnvironment(fixtures) {
     LEITSTAND_STRICT: '0',
     LEITSTAND_BUREAU_FIXTURE_FALLBACK: '0',
     LEITSTAND_BUREAU_SNAPSHOT_PATH: join(fixtures.sourceFixtures, 'bureau-tasks.json'),
+    LEITSTAND_WELTGEWEBE_OPERATIONS_PATH: join(fixtures.sourceFixtures, 'weltgewebe-operations.json'),
     LEITSTAND_CHECKOUT_FIXTURE_FALLBACK: '0',
     LEITSTAND_CHECKOUT_SNAPSHOT_PATH: join(fixtures.sourceFixtures, 'checkout-inventory.json'),
     LEITSTAND_STORAGE_HEALTH_FIXTURE_FALLBACK: '0',

@@ -30,6 +30,7 @@ Current read-only runtime routes:
 - `/`
 - `/health`
 - `/bureau`
+- `/weltgewebe`
 - `/checkouts`
 - `/storage-health`
 - `/ecosystem-map`
@@ -44,7 +45,7 @@ A healthy release requires:
 - `/health` returns `kind=leitstand_runtime_health_receipt`;
 - the reported Git head matches the intended release;
 - required snapshot kinds validate;
-- Bureau, checkout, decision-axis, RepoGround-index, and Systemkatalog-head snapshots are no older than 20 minutes;
+- Bureau, Weltgewebe-operations, checkout, decision-axis, RepoGround-index, and Systemkatalog-head snapshots are no older than 20 minutes;
 - the Systemkatalog-head snapshot equals the immutable release used by the Systemkarte;
 - storage health is no older than 90 minutes;
 - the Systemkarte manifest is no older than 168 hours;

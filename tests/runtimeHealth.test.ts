@@ -90,6 +90,42 @@ describe('runtime health receipt', () => {
       'utf-8',
     );
     await writeFile(
+      join(artifactsDir, 'weltgewebe-operations.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'leitstand_weltgewebe_operations_snapshot',
+        generatedAt: times.bureau,
+        producer: {
+          sourceSystem: 'test', sourceKind: 'fixture', sourceRef: 'test:producer',
+          observedAt: times.bureau, sourceCommit: null, evidenceRefs: ['receipt:producer'],
+        },
+        slo: {
+          availabilityPercent: null, p95LatencyMs: null, errorBudgetRemainingPercent: null, window: 'test',
+          provenance: { sourceSystem: 'test', sourceKind: 'slo', sourceRef: 'test:slo', observedAt: times.bureau, sourceCommit: null, evidenceRefs: ['receipt:slo'] },
+        },
+        recovery: {
+          rtoSeconds: null, rpoSeconds: null, lastRestoreAt: null,
+          provenance: { sourceSystem: 'test', sourceKind: 'recovery', sourceRef: 'test:recovery', observedAt: times.bureau, sourceCommit: null, evidenceRefs: ['receipt:recovery'] },
+        },
+        deployment: {
+          environment: 'test', state: 'unknown', sourceCommit: null, imageRef: null,
+          provenance: { sourceSystem: 'test', sourceKind: 'deployment', sourceRef: 'test:deployment', observedAt: times.bureau, sourceCommit: null, evidenceRefs: ['receipt:deployment'] },
+        },
+        cells: [],
+        neighborhoods: [],
+        federation: {
+          state: 'unknown', deliveryLagSeconds: null, pendingCount: null, quarantinedCount: null, lastDeliveredAt: null,
+          provenance: { sourceSystem: 'test', sourceKind: 'federation', sourceRef: 'test:federation', observedAt: times.bureau, sourceCommit: null, evidenceRefs: ['receipt:federation'] },
+        },
+        operatorReferences: [{
+          title: 'T008', state: 'ready', taskId: 'WELTGEWEBE-OS-V1-T008', receiptRef: null,
+          provenance: { sourceSystem: 'test', sourceKind: 'operator', sourceRef: 'test:operator', observedAt: times.bureau, sourceCommit: null, evidenceRefs: ['receipt:operator'] },
+        }],
+        doesNotEstablish: ['weltgewebe_source_truth'],
+      }),
+      'utf-8',
+    );
+    await writeFile(
       join(artifactsDir, 'storage-health.json'),
       JSON.stringify({
         kind: 'leitstand_storage_health',
@@ -123,6 +159,8 @@ describe('runtime health receipt', () => {
     expect(receipt.snapshots.decision_axis.status).toBe('ok');
     expect(receipt.snapshots.repoground.status).toBe('ok');
     expect(receipt.snapshots.ecosystem_map_head.status).toBe('ok');
+    expect(receipt.snapshots.weltgewebe_operations.status).toBe('ok');
+    expect(receipt.checks.weltgewebe_operations_snapshot).toMatchObject({ status: 'ok', reason: 'snapshot_fresh' });
     expect(receipt.checks.ecosystem_map_head_consistency).toMatchObject({
       status: 'ok', reason: 'ecosystem_map_release_matches_canonical_head',
     });
@@ -144,11 +182,13 @@ describe('runtime health receipt', () => {
 
     expect(receipt.snapshots.bureau_tasks.stale_after_seconds).toBe(20 * 60);
     expect(receipt.snapshots.checkout_inventory.stale_after_seconds).toBe(20 * 60);
+    expect(receipt.snapshots.weltgewebe_operations.stale_after_seconds).toBe(20 * 60);
     expect(receipt.snapshots.storage_health.stale_after_seconds).toBe(90 * 60);
     expect(receipt.snapshots.ecosystem_map.stale_after_seconds).toBe(168 * 60 * 60);
 
     expect(receipt.snapshots.bureau_tasks).toMatchObject({ status: 'warn', reason: 'snapshot_stale' });
     expect(receipt.snapshots.checkout_inventory).toMatchObject({ status: 'ok', reason: 'snapshot_fresh' });
+    expect(receipt.snapshots.weltgewebe_operations).toMatchObject({ status: 'warn', reason: 'snapshot_stale' });
     expect(receipt.snapshots.storage_health).toMatchObject({ status: 'warn', reason: 'snapshot_stale' });
     expect(receipt.snapshots.ecosystem_map).toMatchObject({ status: 'ok', reason: 'snapshot_fresh' });
     expect(receipt.status).toBe('warn');

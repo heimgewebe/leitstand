@@ -65,6 +65,12 @@
       "heading": "Bureau Task Board"
     },
     {
+      "id": "weltgewebe",
+      "path": "/weltgewebe",
+      "activeHref": "/weltgewebe",
+      "heading": "Weltgewebe-Betrieb"
+    },
+    {
       "id": "checkouts",
       "path": "/checkouts",
       "activeHref": "/checkouts",

@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "kind": "leitstand_weltgewebe_operations_snapshot",
+  "generatedAt": "2026-08-18T14:40:00Z",
+  "producer": {
+    "sourceSystem": "fixture",
+    "sourceKind": "demo-contract",
+    "sourceRef": "src/fixtures/weltgewebe-operations.json",
+    "observedAt": "2026-08-18T14:40:00Z",
+    "sourceCommit": null,
+    "evidenceRefs": [
+      "fixture:weltgewebe-operations-v1"
+    ]
+  },
+  "slo": {
+    "availabilityPercent": 99.97,
+    "p95LatencyMs": 284,
+    "errorBudgetRemainingPercent": 71.4,
+    "window": "30d",
+    "provenance": {
+      "sourceSystem": "weltgewebe",
+      "sourceKind": "slo-export",
+      "sourceRef": "fixture:slo",
+      "observedAt": "2026-08-18T14:39:00Z",
+      "sourceCommit": "1111111111111111111111111111111111111111",
+      "evidenceRefs": [
+        "fixture:slo-receipt"
+      ]
+    }
+  },
+  "recovery": {
+    "rtoSeconds": 180,
+    "rpoSeconds": 60,
+    "lastRestoreAt": "2026-08-18T13:20:00Z",
+    "provenance": {
+      "sourceSystem": "weltgewebe",
+      "sourceKind": "recovery-proof",
+      "sourceRef": "fixture:recovery",
+      "observedAt": "2026-08-18T14:38:00Z",
+      "sourceCommit": "1111111111111111111111111111111111111111",
+      "evidenceRefs": [
+        "fixture:restore-receipt"
+      ]
+    }
+  },
+  "deployment": {
+    "environment": "staging",
+    "state": "current",
+    "sourceCommit": "1111111111111111111111111111111111111111",
+    "imageRef": "example.invalid/weltgewebe@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "provenance": {
+      "sourceSystem": "flux",
+      "sourceKind": "deployment-readback",
+      "sourceRef": "fixture:deployment",
+      "observedAt": "2026-08-18T14:39:30Z",
+      "sourceCommit": "1111111111111111111111111111111111111111",
+      "evidenceRefs": [
+        "fixture:deployment-receipt"
+      ]
+    }
+  },
+  "cells": [
+    {
+      "id": "cell-hamburg",
+      "name": "Hamburg",
+      "state": "healthy",
+      "scope": "regional",
+      "provenance": {
+        "sourceSystem": "weltgewebe",
+        "sourceKind": "cell-profile-readback",
+        "sourceRef": "fixture:cell-hamburg",
+        "observedAt": "2026-08-18T14:39:10Z",
+        "sourceCommit": "1111111111111111111111111111111111111111",
+        "evidenceRefs": [
+          "fixture:cell-hamburg-receipt"
+        ]
+      }
+    },
+    {
+      "id": "cell-altona",
+      "name": "Altona",
+      "state": "degraded",
+      "scope": "neighborhood",
+      "provenance": {
+        "sourceSystem": "weltgewebe",
+        "sourceKind": "cell-profile-readback",
+        "sourceRef": "fixture:cell-altona",
+        "observedAt": "2026-08-18T14:37:00Z",
+        "sourceCommit": "1111111111111111111111111111111111111111",
+        "evidenceRefs": [
+          "fixture:cell-altona-receipt"
+        ]
+      }
+    }
+  ],
+  "neighborhoods": [
+    {
+      "id": "hamburg-altona",
+      "localCellId": "cell-hamburg",
+      "remoteCellId": "cell-altona",
+      "state": "connected",
+      "provenance": {
+        "sourceSystem": "weltgewebe",
+        "sourceKind": "neighborhood-readback",
+        "sourceRef": "fixture:hamburg-altona",
+        "observedAt": "2026-08-18T14:38:30Z",
+        "sourceCommit": "1111111111111111111111111111111111111111",
+        "evidenceRefs": [
+          "fixture:neighborhood-receipt"
+        ]
+      }
+    }
+  ],
+  "federation": {
+    "state": "connected",
+    "deliveryLagSeconds": 4,
+    "pendingCount": 2,
+    "quarantinedCount": 0,
+    "lastDeliveredAt": "2026-08-18T14:39:40Z",
+    "provenance": {
+      "sourceSystem": "weltgewebe",
+      "sourceKind": "federation-delivery-readback",
+      "sourceRef": "fixture:federation",
+      "observedAt": "2026-08-18T14:39:45Z",
+      "sourceCommit": "1111111111111111111111111111111111111111",
+      "evidenceRefs": [
+        "fixture:federation-receipt"
+      ]
+    }
+  },
+  "operatorReferences": [
+    {
+      "title": "Weltgewebe Leitstand-Projektion",
+      "state": "active",
+      "taskId": "WELTGEWEBE-OS-V1-T008",
+      "receiptRef": "fixture:t008-receipt",
+      "provenance": {
+        "sourceSystem": "grabowski",
+        "sourceKind": "operator-receipt",
+        "sourceRef": "fixture:grabowski-t008",
+        "observedAt": "2026-08-18T14:39:50Z",
+        "sourceCommit": null,
+        "evidenceRefs": [
+          "fixture:t008-receipt"
+        ]
+      }
+    }
+  ],
+  "doesNotEstablish": [
+    "weltgewebe_source_truth",
+    "cluster_control_authority",
+    "federation_control_authority",
+    "bureau_task_authority",
+    "grabowski_execution_authority",
+    "deployment_or_rollback_authority"
+  ]
+}

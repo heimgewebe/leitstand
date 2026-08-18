@@ -13,6 +13,7 @@ const STATIC_MIRROR_SUPPORTED_ROUTES = [
 
 const STATIC_MIRROR_RUNTIME_ONLY_ROUTES = [
   { route: '/bureau', reason: 'Bureau snapshot projection requires runtime artifacts' },
+  { route: '/weltgewebe', reason: 'Weltgewebe operations projection requires runtime artifacts' },
   { route: '/checkouts', reason: 'Grabowski checkout projection requires runtime artifacts' },
   { route: '/storage-health', reason: 'storage-health projection requires runtime artifacts' },
   { route: '/ecosystem-map', reason: 'Systemkatalog projection requires runtime artifacts' },
@@ -59,6 +60,7 @@ async function writeStaticBoundaryManifest() {
       doesNotEstablish: [
         'canonical_runtime_availability',
         'bureau_snapshot_truth',
+        'weltgewebe_operations_snapshot_truth',
         'grabowski_checkout_truth',
         'storage_health_snapshot_truth',
         'system_catalog_truth',

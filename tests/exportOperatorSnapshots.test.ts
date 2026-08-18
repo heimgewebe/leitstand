@@ -84,4 +84,66 @@ describe('export-operator-snapshots', () => {
       'example://anchored': 'unknown',
     });
   });
+
+  it('exports a provenance-bound Weltgewebe snapshot without inventing source state', async () => {
+    const root = await makeTempRoot();
+    const rawPath = join(root, 'weltgewebe-raw.json');
+    const outDir = join(root, 'out');
+    const source = JSON.parse(
+      await readFile(join(process.cwd(), 'src', 'fixtures', 'weltgewebe-operations.json'), 'utf-8'),
+    ) as Record<string, unknown>;
+    await writeFile(rawPath, JSON.stringify(source), 'utf-8');
+
+    await execFileAsync(process.execPath, [
+      scriptPath,
+      '--weltgewebe-raw', rawPath,
+      '--out-dir', outDir,
+    ]);
+
+    const snapshot = JSON.parse(
+      await readFile(join(outDir, 'weltgewebe-operations.json'), 'utf-8'),
+    ) as {
+      schemaVersion: number;
+      kind: string;
+      generatedAt: string;
+      cells: Array<{ id: string; state: string; provenance: { evidenceRefs: string[] } }>;
+      operatorReferences: Array<Record<string, unknown>>;
+      doesNotEstablish: string[];
+    };
+
+    expect(snapshot.schemaVersion).toBe(1);
+    expect(snapshot.kind).toBe('leitstand_weltgewebe_operations_snapshot');
+    expect(Date.parse(snapshot.generatedAt)).not.toBeNaN();
+    expect(snapshot.cells.map((cell) => [cell.id, cell.state])).toEqual([
+      ['cell-hamburg', 'healthy'],
+      ['cell-altona', 'degraded'],
+    ]);
+    expect(snapshot.cells[0]?.provenance.evidenceRefs).toEqual(['fixture:cell-hamburg-receipt']);
+    expect(snapshot.operatorReferences[0]).not.toHaveProperty('command');
+    expect(snapshot.operatorReferences[0]).not.toHaveProperty('actionUrl');
+    expect(snapshot.doesNotEstablish).toContain('cluster_control_authority');
+    expect(snapshot.doesNotEstablish).toContain('grabowski_execution_authority');
+  });
+
+  it('rejects executable operator fields before a Weltgewebe snapshot is written', async () => {
+    const root = await makeTempRoot();
+    const rawPath = join(root, 'weltgewebe-unsafe.json');
+    const outDir = join(root, 'out');
+    const source = JSON.parse(
+      await readFile(join(process.cwd(), 'src', 'fixtures', 'weltgewebe-operations.json'), 'utf-8'),
+    ) as { operatorReferences: Array<Record<string, unknown>> };
+    source.operatorReferences[0] = {
+      ...source.operatorReferences[0],
+      command: 'kubectl delete pod',
+    };
+    await writeFile(rawPath, JSON.stringify(source), 'utf-8');
+
+    await expect(execFileAsync(process.execPath, [
+      scriptPath,
+      '--weltgewebe-raw', rawPath,
+      '--out-dir', outDir,
+    ])).rejects.toThrow();
+    await expect(readFile(join(outDir, 'weltgewebe-operations.json'), 'utf-8')).rejects.toThrow();
+  });
+
 });

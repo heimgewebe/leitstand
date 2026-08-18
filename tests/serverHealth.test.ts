@@ -12,6 +12,7 @@ describe('GET /health', () => {
   let decisionAxisSnapshotPath: string;
   let repoGroundSnapshotPath: string;
   let ecosystemMapCurrentHeadPath: string;
+  let weltgewebeOperationsPath: string;
   let storageHealthSnapshotPath: string;
   let ecosystemMapSnapshotPath: string;
   const systemkatalogHead = 'd'.repeat(40);
@@ -24,6 +25,7 @@ describe('GET /health', () => {
     decisionAxisSnapshotPath = join(testDir, 'operator-decision-axis.json');
     repoGroundSnapshotPath = join(testDir, 'repoground-bundles.json');
     ecosystemMapCurrentHeadPath = join(testDir, 'ecosystem-map-current-head.json');
+    weltgewebeOperationsPath = join(testDir, 'weltgewebe-operations.json');
     storageHealthSnapshotPath = join(testDir, 'storage-health.json');
     ecosystemMapSnapshotPath = join(testDir, 'ecosystem-map.json');
     const generatedAt = new Date().toISOString();
@@ -82,6 +84,28 @@ describe('GET /health', () => {
       }),
       'utf-8',
     );
+    const wgProvenance = (kind: string, ref: string) => ({
+      sourceSystem: 'test', sourceKind: kind, sourceRef: ref,
+      observedAt: generatedAt, sourceCommit: null, evidenceRefs: [`receipt:${kind}`],
+    });
+    await writeFile(
+      weltgewebeOperationsPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'leitstand_weltgewebe_operations_snapshot',
+        generatedAt,
+        producer: wgProvenance('producer', 'test:producer'),
+        slo: { availabilityPercent: null, p95LatencyMs: null, errorBudgetRemainingPercent: null, window: 'test', provenance: wgProvenance('slo', 'test:slo') },
+        recovery: { rtoSeconds: null, rpoSeconds: null, lastRestoreAt: null, provenance: wgProvenance('recovery', 'test:recovery') },
+        deployment: { environment: 'test', state: 'unknown', sourceCommit: null, imageRef: null, provenance: wgProvenance('deployment', 'test:deployment') },
+        cells: [],
+        neighborhoods: [],
+        federation: { state: 'unknown', deliveryLagSeconds: null, pendingCount: null, quarantinedCount: null, lastDeliveredAt: null, provenance: wgProvenance('federation', 'test:federation') },
+        operatorReferences: [{ title: 'T008', state: 'ready', taskId: 'WELTGEWEBE-OS-V1-T008', receiptRef: null, provenance: wgProvenance('operator', 'test:operator') }],
+        doesNotEstablish: ['weltgewebe_source_truth'],
+      }),
+      'utf-8',
+    );
     await writeFile(
       storageHealthSnapshotPath,
       JSON.stringify({
@@ -105,6 +129,7 @@ describe('GET /health', () => {
     vi.stubEnv('LEITSTAND_DECISION_AXIS_SNAPSHOT_PATH', decisionAxisSnapshotPath);
     vi.stubEnv('LEITSTAND_REPOGROUND_BUNDLES_PATH', repoGroundSnapshotPath);
     vi.stubEnv('LEITSTAND_ECOSYSTEM_MAP_CURRENT_HEAD_PATH', ecosystemMapCurrentHeadPath);
+    vi.stubEnv('LEITSTAND_WELTGEWEBE_OPERATIONS_PATH', weltgewebeOperationsPath);
     vi.stubEnv('LEITSTAND_ECOSYSTEM_MAP_SOURCE_ROOT', join(testDir, systemkatalogHead));
     vi.stubEnv('LEITSTAND_STORAGE_HEALTH_PATH', storageHealthSnapshotPath);
     vi.stubEnv('LEITSTAND_ECOSYSTEM_MAP_MANIFEST_PATH', ecosystemMapSnapshotPath);
@@ -127,6 +152,8 @@ describe('GET /health', () => {
     expect(response.body.snapshots.decision_axis.path).toBe(decisionAxisSnapshotPath);
     expect(response.body.snapshots.repoground.path).toBe(repoGroundSnapshotPath);
     expect(response.body.snapshots.ecosystem_map_head.path).toBe(ecosystemMapCurrentHeadPath);
+    expect(response.body.snapshots.weltgewebe_operations.path).toBe(weltgewebeOperationsPath);
+    expect(response.body.checks.weltgewebe_operations_snapshot.status).toBe('ok');
     expect(response.body.checks.ecosystem_map_head_consistency.status).toBe('ok');
     expect(response.body.snapshots.storage_health.path).toBe(storageHealthSnapshotPath);
     expect(response.body.snapshots.ecosystem_map.path).toBe(ecosystemMapSnapshotPath);

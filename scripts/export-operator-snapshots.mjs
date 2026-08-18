@@ -8,7 +8,8 @@
  * the operator runs it (or a cron does) to transform *raw* Grabowski/Bureau
  * output into the contract-shaped snapshot artifacts Leitstand's controllers
  * read (`leitstand_bureau_task_snapshot`, `leitstand_checkout_inventory`,
- * `leitstand_operator_decision_axis_snapshot`).
+ * `leitstand_operator_decision_axis_snapshot`,
+ * `leitstand_weltgewebe_operations_snapshot`).
  *
  * It only reads raw JSON and writes local snapshot files — no external mutation.
  *
@@ -16,8 +17,9 @@
  *   node scripts/export-operator-snapshots.mjs \
  *     --checkout-raw <grabowski_checkout_inventory.json> \
  *     --bureau-raw   <bureau_task_list.json> \
- *     --decision-raw <operator_decision_axis.json> \
- *     --out-dir      artifacts
+ *     --decision-raw   <operator_decision_axis.json> \
+ *     --weltgewebe-raw <weltgewebe_operations.json> \
+ *     --out-dir        artifacts
  *
  * Any input may be omitted; only the provided snapshots are (re)written. The
  * raw inputs are whatever the producer-side source collectors emit — this bridge
@@ -61,6 +63,17 @@ const DECISION_NON_CLAIMS = [
   'runtime_or_convergence_authority',
   'dispatch_or_mutation_authority',
 ];
+const WELTGEWEBE_NON_CLAIMS = [
+  'weltgewebe_source_truth',
+  'cluster_control_authority',
+  'federation_control_authority',
+  'bureau_task_authority',
+  'grabowski_execution_authority',
+  'deployment_or_rollback_authority',
+];
+const EXECUTABLE_OPERATOR_FIELDS = ['command', 'argv', 'method', 'actionUrl', 'mutationUrl', 'endpoint'];
+const GIT_SHA_RE = /^[0-9a-f]{40}$/;
+const MAX_WELTGEWEBE_ITEMS = 200;
 const DECISION_SECTION_IDS = ['now', 'focus', 'blocked', 'convergence', 'later'];
 
 function normalizeBureauState(value) {
@@ -168,6 +181,142 @@ function mapDecisionSection(raw, id) {
   };
 }
 
+function requiredText(value, label) {
+  if (typeof value !== 'string' || value.trim().length === 0) throw new Error(`${label} must be non-empty text`);
+  return value.trim();
+}
+
+function nullableText(value) {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function finiteOrNull(value, label, { min = null, max = null, integer = false } = {}) {
+  if (value == null) return null;
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`${label} must be finite or null`);
+  if (min != null && value < min) throw new Error(`${label} is below minimum`);
+  if (max != null && value > max) throw new Error(`${label} is above maximum`);
+  if (integer && !Number.isInteger(value)) throw new Error(`${label} must be integer or null`);
+  return value;
+}
+
+function boundedObjects(value, label) {
+  if (!Array.isArray(value)) throw new Error(`${label} must be a list`);
+  if (value.length > MAX_WELTGEWEBE_ITEMS) throw new Error(`${label} exceeds bounded list limit`);
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error(`${label}[${index}] must be an object`);
+    return item;
+  });
+}
+
+function mapEvidenceRefs(value, label) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_WELTGEWEBE_ITEMS) {
+    throw new Error(`${label} must contain 1..${MAX_WELTGEWEBE_ITEMS} refs`);
+  }
+  return value.map((item) => requiredText(item, `${label} item`));
+}
+
+function mapProvenance(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label}.provenance must be an object`);
+  const observedAt = requiredText(value.observedAt, `${label}.observedAt`);
+  if (!Number.isFinite(Date.parse(observedAt))) throw new Error(`${label}.observedAt must be a timestamp`);
+  const sourceCommit = nullableText(value.sourceCommit);
+  if (sourceCommit != null && !GIT_SHA_RE.test(sourceCommit)) throw new Error(`${label}.sourceCommit must be a full Git SHA or null`);
+  return {
+    sourceSystem: requiredText(value.sourceSystem, `${label}.sourceSystem`),
+    sourceKind: requiredText(value.sourceKind, `${label}.sourceKind`),
+    sourceRef: requiredText(value.sourceRef, `${label}.sourceRef`),
+    observedAt,
+    sourceCommit,
+    evidenceRefs: mapEvidenceRefs(value.evidenceRefs, `${label}.evidenceRefs`),
+  };
+}
+
+function mapWeltgewebeSnapshot(raw, generatedAt) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('weltgewebe raw input must be an object');
+  const slo = raw.slo;
+  const recovery = raw.recovery;
+  const deployment = raw.deployment;
+  const federation = raw.federation;
+  for (const [label, value] of Object.entries({ slo, recovery, deployment, federation })) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`weltgewebe ${label} must be an object`);
+  }
+  const lastRestoreAt = nullableText(recovery.lastRestoreAt);
+  if (lastRestoreAt != null && !Number.isFinite(Date.parse(lastRestoreAt))) throw new Error('recovery.lastRestoreAt must be a timestamp or null');
+  const deploymentCommit = nullableText(deployment.sourceCommit);
+  if (deploymentCommit != null && !GIT_SHA_RE.test(deploymentCommit)) throw new Error('deployment.sourceCommit must be a full Git SHA or null');
+  const lastDeliveredAt = nullableText(federation.lastDeliveredAt);
+  if (lastDeliveredAt != null && !Number.isFinite(Date.parse(lastDeliveredAt))) throw new Error('federation.lastDeliveredAt must be a timestamp or null');
+
+  const cells = boundedObjects(raw.cells, 'cells').map((item, index) => ({
+    id: requiredText(item.id, `cells[${index}].id`),
+    name: requiredText(item.name, `cells[${index}].name`),
+    state: requiredText(item.state, `cells[${index}].state`),
+    scope: requiredText(item.scope, `cells[${index}].scope`),
+    provenance: mapProvenance(item.provenance, `cells[${index}]`),
+  }));
+  const neighborhoods = boundedObjects(raw.neighborhoods, 'neighborhoods').map((item, index) => ({
+    id: requiredText(item.id, `neighborhoods[${index}].id`),
+    localCellId: requiredText(item.localCellId, `neighborhoods[${index}].localCellId`),
+    remoteCellId: requiredText(item.remoteCellId, `neighborhoods[${index}].remoteCellId`),
+    state: requiredText(item.state, `neighborhoods[${index}].state`),
+    provenance: mapProvenance(item.provenance, `neighborhoods[${index}]`),
+  }));
+  const operatorReferences = boundedObjects(raw.operatorReferences, 'operatorReferences').map((item, index) => {
+    for (const field of EXECUTABLE_OPERATOR_FIELDS) {
+      if (field in item) throw new Error(`operatorReferences[${index}] may not carry executable field ${field}`);
+    }
+    const taskId = nullableText(item.taskId);
+    const receiptRef = nullableText(item.receiptRef);
+    if (taskId == null && receiptRef == null) throw new Error(`operatorReferences[${index}] requires taskId or receiptRef`);
+    return {
+      title: requiredText(item.title, `operatorReferences[${index}].title`),
+      state: requiredText(item.state, `operatorReferences[${index}].state`),
+      taskId,
+      receiptRef,
+      provenance: mapProvenance(item.provenance, `operatorReferences[${index}]`),
+    };
+  });
+
+  return {
+    schemaVersion: 1,
+    kind: 'leitstand_weltgewebe_operations_snapshot',
+    generatedAt,
+    producer: mapProvenance(raw.producer, 'producer'),
+    slo: {
+      availabilityPercent: finiteOrNull(slo.availabilityPercent, 'slo.availabilityPercent', { min: 0, max: 100 }),
+      p95LatencyMs: finiteOrNull(slo.p95LatencyMs, 'slo.p95LatencyMs', { min: 0 }),
+      errorBudgetRemainingPercent: finiteOrNull(slo.errorBudgetRemainingPercent, 'slo.errorBudgetRemainingPercent', { min: 0, max: 100 }),
+      window: requiredText(slo.window, 'slo.window'),
+      provenance: mapProvenance(slo.provenance, 'slo'),
+    },
+    recovery: {
+      rtoSeconds: finiteOrNull(recovery.rtoSeconds, 'recovery.rtoSeconds', { min: 0 }),
+      rpoSeconds: finiteOrNull(recovery.rpoSeconds, 'recovery.rpoSeconds', { min: 0 }),
+      lastRestoreAt,
+      provenance: mapProvenance(recovery.provenance, 'recovery'),
+    },
+    deployment: {
+      environment: requiredText(deployment.environment, 'deployment.environment'),
+      state: requiredText(deployment.state, 'deployment.state'),
+      sourceCommit: deploymentCommit,
+      imageRef: nullableText(deployment.imageRef),
+      provenance: mapProvenance(deployment.provenance, 'deployment'),
+    },
+    cells,
+    neighborhoods,
+    federation: {
+      state: requiredText(federation.state, 'federation.state'),
+      deliveryLagSeconds: finiteOrNull(federation.deliveryLagSeconds, 'federation.deliveryLagSeconds', { min: 0 }),
+      pendingCount: finiteOrNull(federation.pendingCount, 'federation.pendingCount', { min: 0, integer: true }),
+      quarantinedCount: finiteOrNull(federation.quarantinedCount, 'federation.quarantinedCount', { min: 0, integer: true }),
+      lastDeliveredAt,
+      provenance: mapProvenance(federation.provenance, 'federation'),
+    },
+    operatorReferences,
+    doesNotEstablish: WELTGEWEBE_NON_CLAIMS,
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const outDir = resolve(args['out-dir'] ?? 'artifacts');
@@ -228,8 +377,17 @@ async function main() {
     wrote += 1;
   }
 
+  if (args['weltgewebe-raw']) {
+    const raw = await readJson(resolve(args['weltgewebe-raw']));
+    const snapshot = mapWeltgewebeSnapshot(raw, generatedAt);
+    const out = join(outDir, 'weltgewebe-operations.json');
+    await writeJsonAtomic(out, snapshot);
+    console.log(`weltgewebe snapshot: ${snapshot.cells.length} cells / ${snapshot.operatorReferences.length} operator refs → ${out}`);
+    wrote += 1;
+  }
+
   if (wrote === 0) {
-    console.error('No inputs given. Provide --bureau-raw, --checkout-raw and/or --decision-raw. See header for usage.');
+    console.error('No inputs given. Provide --bureau-raw, --checkout-raw, --decision-raw and/or --weltgewebe-raw. See header for usage.');
     process.exit(2);
   }
 }
