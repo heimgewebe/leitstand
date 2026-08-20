@@ -469,6 +469,7 @@ if selection_spec is None or selection_spec.loader is None:
 selection_module = importlib.util.module_from_spec(selection_spec)
 selection_spec.loader.exec_module(selection_module)
 build_decision_axis_queue_items = selection_module.build_decision_axis_queue_items
+build_convergence_items = selection_module.build_convergence_items
 
 _runtime_bytes, runtime_config = load_json_file(runtime_config_path, "Leitstand runtime config")
 if (
@@ -774,32 +775,23 @@ if live_focus:
 convergence_items: list[dict[str, str]] = []
 convergence_observed_at = observed_at
 convergence_degraded = False
-if convergence_projection:
+if isinstance(convergence_projection, dict):
     convergence_degraded = bool(
         convergence_projection.get("warnings")
         or convergence_projection.get("source_errors")
-        or any(convergence_projection.get("source_truncation", {}).values())
+        or (
+            isinstance(convergence_projection.get("source_truncation"), dict)
+            and any(convergence_projection["source_truncation"].values())
+        )
     )
     generated_unix = convergence_projection.get("generated_at_unix")
     if isinstance(generated_unix, (int, float)):
         convergence_observed_at = datetime.datetime.fromtimestamp(generated_unix, datetime.timezone.utc).isoformat()
-    summary = convergence_projection.get("convergence_summary", {})
-    if isinstance(summary, dict):
-        convergence_items.append({
-            "id": "convergence-summary",
-            "title": f"Primary stage: {summary.get('primary_stage', 'unknown')}",
-            "detail": str(convergence_projection.get("next_convergence_action") or "No convergence action projected"),
-            "meta": f"blocking={summary.get('blocking_count', 0)} · resumable={summary.get('resumable_count', 0)} · active={summary.get('active_count', 0)} · degraded={str(convergence_degraded).lower()}",
-        })
-    for work in convergence_projection.get("work", [])[:5]:
-        if not isinstance(work, dict):
-            continue
-        convergence_items.append({
-            "id": str(work.get("work_id") or "work"),
-            "title": str(work.get("work_id") or "Operator work"),
-            "detail": str(work.get("next_convergence_action") or ""),
-            "meta": str(work.get("convergence_stage") or work.get("projection_state") or "unknown"),
-        })
+    convergence_items = build_convergence_items(
+        convergence_projection,
+        max_work_items=5,
+        degraded=convergence_degraded,
+    )
 
 decision_payload = {
     "sections": {

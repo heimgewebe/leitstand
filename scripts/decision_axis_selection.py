@@ -143,6 +143,80 @@ def _item(
     }
 
 
+def build_convergence_items(
+    current_work: Mapping[str, object] | None,
+    *,
+    max_work_items: int = 5,
+    degraded: bool = False,
+) -> list[dict[str, str]]:
+    """Project bounded convergence evidence without establishing work priority.
+
+    Grabowski's ``finishable_chain_prioritized`` flag is the authoritative
+    assertion that the ordered current-work entries are operator priorities.
+    Without that exact assertion, expose only the convergence summary.
+    """
+    if max_work_items < 0 or max_work_items > 5:
+        raise ValueError("convergence item limit is invalid")
+    if not isinstance(current_work, Mapping):
+        return []
+
+    summary = current_work.get("convergence_summary")
+    if not isinstance(summary, Mapping):
+        return []
+
+    finishable_chain_prioritized_value = summary.get(
+        "finishable_chain_prioritized"
+    )
+    finishable_chain_prioritized = finishable_chain_prioritized_value is True
+    finishable_chain_prioritized_metadata = (
+        "true"
+        if finishable_chain_prioritized_value is True
+        else "false"
+        if finishable_chain_prioritized_value is False
+        else UNKNOWN
+    )
+    items = [
+        {
+            "id": "convergence-summary",
+            "title": f"Primary stage: {summary.get('primary_stage', 'unknown')}",
+            "detail": str(
+                current_work.get("next_convergence_action")
+                or "No convergence action projected"
+            ),
+            "meta": (
+                f"blocking={summary.get('blocking_count', 0)} · "
+                f"resumable={summary.get('resumable_count', 0)} · "
+                f"active={summary.get('active_count', 0)} · "
+                f"degraded={str(degraded).lower()} · "
+                "finishable_chain_prioritized="
+                f"{finishable_chain_prioritized_metadata}"
+            ),
+        }
+    ]
+    if not finishable_chain_prioritized:
+        return items
+
+    work_entries = current_work.get("work")
+    if not isinstance(work_entries, list):
+        return items
+    for work in work_entries[:max_work_items]:
+        if not isinstance(work, Mapping):
+            continue
+        items.append(
+            {
+                "id": str(work.get("work_id") or "work"),
+                "title": str(work.get("work_id") or "Operator work"),
+                "detail": str(work.get("next_convergence_action") or ""),
+                "meta": str(
+                    work.get("convergence_stage")
+                    or work.get("projection_state")
+                    or "unknown"
+                ),
+            }
+        )
+    return items
+
+
 def build_decision_axis_queue_items(
     status_projection: Mapping[str, object] | None,
     task_by_id: Mapping[str, Mapping[str, object]],
