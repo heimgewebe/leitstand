@@ -469,7 +469,6 @@ if selection_spec is None or selection_spec.loader is None:
 selection_module = importlib.util.module_from_spec(selection_spec)
 selection_spec.loader.exec_module(selection_module)
 build_decision_axis_queue_items = selection_module.build_decision_axis_queue_items
-build_convergence_items = selection_module.build_convergence_items
 
 _runtime_bytes, runtime_config = load_json_file(runtime_config_path, "Leitstand runtime config")
 if (
@@ -587,6 +586,8 @@ evidence = {
 if verify_only:
     print(json.dumps(evidence, sort_keys=True))
     raise SystemExit(0)
+
+build_convergence_items = selection_module.build_convergence_items
 
 from grabowski_checkouts import grabowski_checkout_inventory
 from grabowski_current_work_surface import grabowski_current_work
