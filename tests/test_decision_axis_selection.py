@@ -292,6 +292,76 @@ class DecisionAxisSelectionTests(unittest.TestCase):
                 max_now_items=0,
             )
 
+    def test_convergence_nontrue_priority_suppresses_work_items(self) -> None:
+        for priority, expected_metadata in (
+            (False, "false"),
+            (None, "unknown"),
+            ("malformed", "unknown"),
+        ):
+            summary = {
+                "primary_stage": "blocked",
+                "blocking_count": 2,
+                "resumable_count": 1,
+                "active_count": 0,
+            }
+            if priority is not None:
+                summary["finishable_chain_prioritized"] = priority
+            items = selection.build_convergence_items(
+                {
+                    "convergence_summary": summary,
+                    "next_convergence_action": "Resolve the blocker",
+                    "work": [{"work_id": "HISTORICAL-WORK"}],
+                }
+            )
+
+            self.assertEqual([item["id"] for item in items], ["convergence-summary"])
+            self.assertIn(
+                f"finishable_chain_prioritized={expected_metadata}",
+                items[0]["meta"],
+            )
+
+    def test_convergence_true_priority_preserves_bounded_source_order(self) -> None:
+        items = selection.build_convergence_items(
+            {
+                "convergence_summary": {
+                    "primary_stage": "finishable",
+                    "finishable_chain_prioritized": True,
+                },
+                "work": [
+                    {"work_id": f"WORK-{index}", "projection_state": "current"}
+                    for index in range(7)
+                ],
+            }
+        )
+
+        self.assertEqual(
+            [item["id"] for item in items],
+            ["convergence-summary", "WORK-0", "WORK-1", "WORK-2", "WORK-3", "WORK-4"],
+        )
+        self.assertIn("finishable_chain_prioritized=true", items[0]["meta"])
+
+    def test_convergence_summary_metadata_and_invalid_limits(self) -> None:
+        items = selection.build_convergence_items(
+            {
+                "convergence_summary": {
+                    "primary_stage": "active",
+                    "blocking_count": 3,
+                    "resumable_count": 2,
+                    "active_count": 1,
+                    "finishable_chain_prioritized": True,
+                },
+                "next_convergence_action": "Continue",
+            },
+            degraded=True,
+        )
+
+        self.assertEqual(items[0]["title"], "Primary stage: active")
+        self.assertEqual(items[0]["detail"], "Continue")
+        self.assertIn("blocking=3", items[0]["meta"])
+        self.assertIn("degraded=true", items[0]["meta"])
+        with self.assertRaisesRegex(ValueError, "convergence item limit"):
+            selection.build_convergence_items({}, max_work_items=6)
+
 
 if __name__ == "__main__":
     unittest.main()
