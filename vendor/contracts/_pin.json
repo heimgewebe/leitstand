@@ -3,7 +3,7 @@
   "fetched_at": "2026-07-06T10:00:00.000Z",
   "contracts": {
     "contracts/knowledge.observatory.schema.json": {
-      "sha256": "8da4fe8f04a010f957f9ba1769d444991eaf2ddb378c8f696cd6d026e7c9d153",
+      "sha256": "b60fd752e7cfa5517cfc068f5cb2441fe6ecfb6e5ebe746dc401df1c3005219d",
       "url": "https://raw.githubusercontent.com/heimgewebe/metarepo/main/contracts/knowledge.observatory.schema.json",
       "vendor_path": "knowledge/observatory.schema.json"
     },
