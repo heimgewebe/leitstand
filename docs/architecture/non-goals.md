@@ -16,6 +16,6 @@ Leitstand wird nicht:
 * **mutierende oder orchestrierende Commands ausführen:** Leitstand führt keine Kommandos aus, die den Zustand anderer Repositories oder externer Systemdienste verändern oder steuern. Lokale read-orientierte Hilfsskripte (z. B. Fetch-Skripte für Datenabruf) sind davon ausgenommen, solange sie keinen schreibenden Einfluss auf externe Systeme haben.
 * **externe Systeme mutieren:** Es gibt keine APIs oder Routinen in Leitstand, die Daten auf anderen Hosts (wie ACS oder Chronik) schreibend verändern.
 * **CI/CD triggern:** Leitstand stößt keine Deployments oder Builds an.
-* **Entscheidungen automatisiert treffen:** Leitstand bereitet Daten auf. Die Interpretation und Steuerung bleiben beim Operator oder bei HausKI.
+* **Entscheidungen automatisiert treffen:** Leitstand bereitet Daten auf. Interpretation und Steuerung bleiben beim Operator oder bei einer ausdrücklich aktuellen, separat autorisierten Control-Fläche.
 
 Wenn Code diese Richtung andeutet, handelt es sich vermutlich um einen **Observer Boundary Bruch**. Diese Stellen müssen markiert (und perspektivisch in entsprechende Control-Subsysteme umgewandelt/ausgelagert) werden, statt sie umzubauen.
